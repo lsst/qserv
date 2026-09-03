@@ -42,39 +42,35 @@ using namespace std;
 namespace lsst::qserv::replica {
 
 ReplicationTask::Ptr ReplicationTask::create(Controller::Ptr const& controller,
-                                             Task::AbnormalTerminationCallbackType const& onTerminated,
-                                             unsigned int qservSyncTimeoutSec, bool disableQservSync,
-                                             bool forceQservSync, bool qservChunkMapUpdate,
-                                             unsigned int replicationIntervalSec, bool purge) {
-    return Ptr(new ReplicationTask(controller, onTerminated, qservSyncTimeoutSec, disableQservSync,
-                                   forceQservSync, qservChunkMapUpdate, replicationIntervalSec, purge));
+                                             Task::AbnormalTerminationCallbackType const& onTerminated) {
+    return Ptr(new ReplicationTask(controller, onTerminated));
 }
 
 bool ReplicationTask::onRun() {
+    auto const config = serviceProvider()->config();
     bool const saveReplicaInfo = true;
     bool const allWorkers = false;
     unsigned int const numReplicas = 0;  // Always assume the curently configured level for each family
-    int const priority =
-            serviceProvider()->config()->get<int>("controller", "catalog-management-priority-level");
+    int const priority = config->get<int>("controller", "catalog-management-priority-level");
 
     launch<FindAllJob>(priority, saveReplicaInfo, allWorkers);
-    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
+    sync();
 
-    if (_qservChunkMapUpdate) _updateChunkMap();
+    _updateChunkMap();
 
     launch<FixUpJob>(priority);
-    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
+    sync();
 
     launch<ReplicateJob>(priority, numReplicas);
-    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
+    sync();
 
     bool const estimateOnly = false;
     launch<RebalanceJob>(priority, estimateOnly);
-    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
+    sync();
 
-    if (_purge) {
+    if (config->get<unsigned int>("controller", "purge-excess-replicas") != 0) {
         launch<PurgeJob>(priority, numReplicas);
-        if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
+        sync();
     }
 
     // Keep on getting calls on this method after a wait time
@@ -82,17 +78,15 @@ bool ReplicationTask::onRun() {
 }
 
 ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
-                                 Task::AbnormalTerminationCallbackType const& onTerminated,
-                                 unsigned int qservSyncTimeoutSec, bool disableQservSync, bool forceQservSync,
-                                 bool qservChunkMapUpdate, unsigned int replicationIntervalSec, bool purge)
-        : Task(controller, "REPLICATION-THREAD  ", onTerminated, replicationIntervalSec),
-          _qservSyncTimeoutSec(qservSyncTimeoutSec),
-          _disableQservSync(disableQservSync),
-          _forceQservSync(forceQservSync),
-          _qservChunkMapUpdate(qservChunkMapUpdate),
-          _purge(purge) {}
+                                 Task::AbnormalTerminationCallbackType const& onTerminated)
+        : Task(controller, "REPLICATION-THREAD  ", onTerminated,
+               controller->serviceProvider()->config()->get<unsigned int>("controller",
+                                                                          "replication-interval")) {}
 
 void ReplicationTask::_updateChunkMap() {
+    auto const config = serviceProvider()->config();
+    if (config->get<unsigned int>("controller", "chunk-map-update") == 0) return;
+
     bool updated = serviceProvider()->chunkMap()->update();
     if (!updated) return;
 

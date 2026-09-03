@@ -83,29 +83,12 @@ unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
 bool Configuration::_schemaUpgradeWait = true;
 unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
-string Configuration::_qservCzarDbUrl = "mysql://qsmaster@localhost:3306/qservMeta";
 string Configuration::_qservWorkerDbUrl = "mysql://qsmaster@localhost:3306/qservw_worker";
 replica::Mutex Configuration::_classMtx;
 
 // ---------------
 // The static API.
 // ---------------
-
-void Configuration::setQservCzarDbUrl(string const& url) {
-    _THROW_IF_EMPTY(url);
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _qservCzarDbUrl = url;
-}
-
-string Configuration::qservCzarDbUrl() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _qservCzarDbUrl;
-}
-
-database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return connectionParams(_qservCzarDbUrl, database);
-}
 
 void Configuration::setQservWorkerDbUrl(string const& url) {
     _THROW_IF_EMPTY(url);
@@ -236,6 +219,11 @@ string Configuration::replDbUrl(bool showPassword) const {
     replica::Lock const lock(_mtx, _context(__func__));
     if (_connectionPtr == nullptr) return string();
     return _connectionParams.toString(showPassword);
+}
+
+database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return connectionParams(_get(lock, "database", "czar-db-conn").get<string>(), database);
 }
 
 map<string, set<string>> Configuration::parameters() const { return _configSchema.parameters(); }

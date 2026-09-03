@@ -42,7 +42,6 @@
 #include "replica/contr/DeleteWorkerTask.h"
 #include "replica/contr/HealthMonitorTask.h"
 #include "replica/contr/HttpProcessor.h"
-#include "replica/contr/HttpProcessorConfig.h"
 #include "replica/contr/ReplicationTask.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -59,27 +58,6 @@ using json = nlohmann::json;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MasterControllerHttpApp");
-
-/**
- * This structure encapsulates default values for the Master Controller.
- * These values may be overridden by specifying the corresponding command
- * line options. See the constructor of the application class for further details.
- */
-struct {
-    unsigned int const healthProbeIntervalSec = 60;
-    unsigned int const replicationIntervalSec = 60;
-    unsigned int const czarResponseTimeoutSec = 60;
-    unsigned int const workerResponseTimeoutSec = 60;
-    unsigned int const workerEvictTimeoutSec = 3600;
-    unsigned int const qservSyncTimeoutSec = 1800;
-    unsigned int const workerReconfigTimeoutSec = 600;
-
-    bool const purge = false;
-    bool const disableQservSync = false;
-    bool const forceQservSync = false;
-    bool const permanentDelete = false;
-
-} const defaultOptions;
 
 string const description =
         "This application is the Master Replication Controller which has"
@@ -105,100 +83,14 @@ shared_ptr<MasterControllerHttpApp> MasterControllerHttpApp::create(int argc, ch
 }
 
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaController()),
-          _healthProbeIntervalSec(::defaultOptions.healthProbeIntervalSec),
-          _replicationIntervalSec(::defaultOptions.replicationIntervalSec),
-          _czarResponseTimeoutSec(::defaultOptions.czarResponseTimeoutSec),
-          _workerResponseTimeoutSec(::defaultOptions.workerResponseTimeoutSec),
-          _workerEvictTimeoutSec(::defaultOptions.workerEvictTimeoutSec),
-          _qservSyncTimeoutSec(::defaultOptions.qservSyncTimeoutSec),
-          _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
-          _purge(::defaultOptions.purge),
-          _disableQservSync(::defaultOptions.disableQservSync),
-          _forceQservSync(::defaultOptions.forceQservSync),
-          _permanentDelete(::defaultOptions.permanentDelete),
-          _qservCzarDbUrl(Configuration::qservCzarDbUrl()) {
-    parser().option("name",
-                    "The unique name of the controller as it's seen in the service discovery Registry.",
-                    _name);
-    parser().option("health-probe-interval",
-                    "Interval (seconds) between iterations of the health monitoring probes.",
-                    _healthProbeIntervalSec);
-    parser().option("replication-interval",
-                    "Interval (seconds) between running the linear sequence of"
-                    " actions: check - fix-up - replicate - re-balance.",
-                    _replicationIntervalSec);
-    parser().option("czar-response-timeout",
-                    "The maximum number of seconds to wait before giving up"
-                    " on requests sent to Czar.",
-                    _czarResponseTimeoutSec);
-    parser().option("worker-response-timeout",
-                    "The maximum number of seconds to wait before giving up"
-                    " on requests sent to workers.",
-                    _workerResponseTimeoutSec);
-    parser().option("worker-evict-timeout",
-                    "The maximum number of seconds to allow troubled workers to recover"
-                    " from the last catastrophic event before evicting them from a cluster.",
-                    _workerEvictTimeoutSec);
-    parser().option("qserv-sync-timeout",
-                    "The maximum number of seconds to wait before Qserv workers respond"
-                    " to the synchronization requests before bailing out and proceeding"
-                    " to the next step in the normal replication sequence. A value which"
-                    " differs from " +
-                            to_string(defaultOptions.qservSyncTimeoutSec) +
-                            " would override the corresponding parameter specified"
-                            " in the Configuration.",
-                    _qservSyncTimeoutSec);
-    parser().option("worker-config-timeout",
-                    "The maximum number of seconds to wait for the completion of the worker"
-                    " reconfiguration requests. A value which"
-                    " differs from " +
-                            to_string(defaultOptions.workerReconfigTimeoutSec) +
-                            " would override the corresponding parameter specified"
-                            " in the Configuration.",
-                    _workerReconfigTimeoutSec);
-    parser().flag("qserv-sync-disable", "The flag which disables replica synchroization at Qserv workers.",
-                  _disableQservSync);
-    parser().flag("qserv-sync-force",
-                  "The flag which would force Qserv workers to update their list of replicas"
-                  " even if some of the chunk replicas were still in use by on-going queries."
-                  " This affect replicas to be deleted from the workers during the synchronization"
-                  " stages.",
-                  _forceQservSync);
-    parser().flag("qserv-chunk-map-update",
-                  "The flag which would result in updating the chunk disposition map"
-                  " in Qserv's QMeta database.",
-                  _qservChunkMapUpdate);
-    parser().flag("purge",
-                  "The binary flag which, if provided, enables the 'purge' algorithm in"
-                  " the end of each replication cycle that eliminates excess replicas which"
-                  " may have been created by algorithms ran earlier in the cycle.",
-                  _purge);
-    parser().flag("permanent-worker-delete",
-                  "The flag would trigger the permanent removal of the evicted workers"
-                  " from the configuration of the Replication system. Please, use"
-                  " this option with caution as it will result in losing all records"
-                  " associated with the deleted workers.",
-                  _permanentDelete);
-    parser().option("qserv-czar-db", "A connection URL to the MySQL server of the Qserv master database.",
-                    _qservCzarDbUrl);
-    parser().option("http-root",
-                    "The root folder for the static content to be served by the built-in HTTP service.",
-                    _httpRoot);
-    parser().flag("do-not-create-folders",
-                  "Do not attempt creating missing folders used by the Controller."
-                  " Specify this flag in the production deployments of the Replication/Ingest system.",
-                  _doNotCreateMissingFolders);
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaController()) {}
+
+string MasterControllerHttpApp::_controllerName4log() const {
+    auto const config = _controller->serviceProvider()->config();
+    return "CONTROLLER[" + config->get<std::string>("controller", "name") + "]";
 }
 
 int MasterControllerHttpApp::runImpl() {
-    // IMPORTANT: clear the corresponding member variables after using the URLs
-    // to the Configuration to prevent contamination of the application's log
-    // stream with values of the sensitive command line arguments.
-    if (!_qservCzarDbUrl.empty()) {
-        Configuration::setQservCzarDbUrl(_qservCzarDbUrl);
-        _qservCzarDbUrl = "******";
-    }
     _controller = Controller::create(serviceProvider());
 
     // ATTENTION: Controller depends on a number of folders that are used for
@@ -210,7 +102,8 @@ int MasterControllerHttpApp::runImpl() {
     // and scalability greatly depends on the quality of of the underlying filesystems.
     // Usually, in the large-scale deployments, the folders should be pre-created and be placed
     // at the large-capacity high-performance filesystems at the Qserv deployment time.
-    _controller->verifyFolders(!_doNotCreateMissingFolders);
+    auto const config = _controller->serviceProvider()->config();
+    _controller->verifyFolders(config->get<unsigned int>("controller", "create-folders") != 0);
 
     _logControllerStartedEvent();
 
@@ -218,23 +111,17 @@ int MasterControllerHttpApp::runImpl() {
 
     auto self = shared_from_base<MasterControllerHttpApp>();
 
-    _replicationTask = ReplicationTask::create(
-            _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, _qservSyncTimeoutSec,
-            _disableQservSync, _forceQservSync, _qservChunkMapUpdate, _replicationIntervalSec, _purge);
+    _replicationTask =
+            ReplicationTask::create(_controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); });
     _replicationTask->start();
 
     _healthMonitorTask = HealthMonitorTask::create(
             _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); },
-            [self](string const& worker2evict) { self->_evict(worker2evict); }, _workerEvictTimeoutSec,
-            _workerResponseTimeoutSec, _healthProbeIntervalSec);
+            [self](string const& worker2evict) { self->_evict(worker2evict); });
     _healthMonitorTask->start();
 
     // Running the REST server in its own thread
-    auto const httpProcessor = HttpProcessor::create(
-            _controller,
-            HttpProcessorConfig(_czarResponseTimeoutSec, _workerResponseTimeoutSec, _qservSyncTimeoutSec,
-                                _workerReconfigTimeoutSec, _httpRoot, _qservChunkMapUpdate),
-            _healthMonitorTask);
+    auto const httpProcessor = HttpProcessor::create(_controller, _healthMonitorTask);
     thread ingestHttpSvrThread([httpProcessor]() { httpProcessor->run(); });
 
     // Keep sending periodic 'heartbeats' to the Registry service to report a configuration
@@ -272,7 +159,7 @@ void MasterControllerHttpApp::_evict(string const& worker) {
     auto self = shared_from_base<MasterControllerHttpApp>();
 
     _deleteWorkerTask = DeleteWorkerTask::create(
-            _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, worker, _permanentDelete);
+            _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, worker);
     _deleteWorkerTask->startAndWait([self](Task::Ptr const& ptr) -> bool { return self->_isFailed(); });
     _deleteWorkerTask->stop();  // it's safe to call this method even if the thread is
                                 // no longer running.
@@ -289,20 +176,32 @@ void MasterControllerHttpApp::_evict(string const& worker) {
 
 void MasterControllerHttpApp::_logControllerStartedEvent() const {
     _assertIsStarted(__func__);
+    auto const config = _controller->serviceProvider()->config();
     ControllerEvent event;
     event.status = "STARTED";
+    event.kvInfo.emplace_back("name", config->get<string>("controller", "name"));
     event.kvInfo.emplace_back("host", _controller->identity().host);
     event.kvInfo.emplace_back("pid", to_string(_controller->identity().pid));
-    event.kvInfo.emplace_back("health-probe-interval", to_string(_healthProbeIntervalSec));
-    event.kvInfo.emplace_back("replication-interval", to_string(_replicationIntervalSec));
-    event.kvInfo.emplace_back("czar-response-timeout", to_string(_czarResponseTimeoutSec));
-    event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
-    event.kvInfo.emplace_back("worker-evict-timeout", to_string(_workerEvictTimeoutSec));
-    event.kvInfo.emplace_back("qserv-sync-timeout", to_string(_qservSyncTimeoutSec));
-    event.kvInfo.emplace_back("qserv-sync-force", bool2str(_forceQservSync));
-    event.kvInfo.emplace_back("worker-config-timeout", to_string(_workerReconfigTimeoutSec));
-    event.kvInfo.emplace_back("purge", bool2str(_purge));
-    event.kvInfo.emplace_back("permanent-worker-delete", bool2str(_permanentDelete));
+    event.kvInfo.emplace_back("health-probe-interval",
+                              to_string(config->get<unsigned int>("controller", "health-probe-interval")));
+    event.kvInfo.emplace_back("replication-interval",
+                              to_string(config->get<unsigned int>("controller", "replication-interval")));
+    event.kvInfo.emplace_back("czar-response-timeout",
+                              to_string(config->get<unsigned int>("controller", "czar-response-timeout")));
+    event.kvInfo.emplace_back("worker-response-timeout",
+                              to_string(config->get<unsigned int>("controller", "worker-response-timeout")));
+    event.kvInfo.emplace_back("worker-evict-timeout",
+                              to_string(config->get<unsigned int>("controller", "worker-evict-timeout")));
+    event.kvInfo.emplace_back("qserv-sync-timeout",
+                              to_string(config->get<unsigned int>("controller", "qserv-sync-timeout")));
+    event.kvInfo.emplace_back("qserv-sync-force",
+                              to_string(config->get<unsigned int>("controller", "qserv-sync-force")));
+    event.kvInfo.emplace_back("worker-config-timeout",
+                              to_string(config->get<unsigned int>("controller", "worker-config-timeout")));
+    event.kvInfo.emplace_back("purge-excess-replicas",
+                              to_string(config->get<unsigned int>("controller", "purge-excess-replicas")));
+    event.kvInfo.emplace_back("permanent-worker-delete",
+                              to_string(config->get<unsigned int>("controller", "permanent-worker-delete")));
     _logEvent(event);
 }
 
@@ -361,7 +260,7 @@ void MasterControllerHttpApp::_registryUpdateLoop() {
                                        {"instance_id", config->get<string>("security", "instance-id")},
                                        {"auth_key", config->httpAuthContext().authKey},
                                        {"controller",
-                                        {{"name", _name},
+                                        {{"name", config->get<string>("controller", "name")},
                                          {"id", _controller->identity().id},
                                          {"port", config->get<uint16_t>("controller", "http-server-port")},
                                          {"host-name", util::get_current_host_fqdn()}}}});

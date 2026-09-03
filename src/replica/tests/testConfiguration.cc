@@ -73,23 +73,22 @@ BOOST_AUTO_TEST_SUITE(Suite)
 BOOST_AUTO_TEST_CASE(ConfigTestStaticParams) {
     LOGS_INFO("Testing static parameters");
 
-    BOOST_CHECK_THROW(Configuration::setQservCzarDbUrl(""), std::invalid_argument);
-    BOOST_CHECK_THROW(Configuration::setQservWorkerDbUrl(""), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setQservWorkerDbUrl(""), invalid_argument);
 
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(true));
     BOOST_CHECK(Configuration::databaseAllowReconnect() == true);
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(false));
     BOOST_CHECK(Configuration::databaseAllowReconnect() == false);
 
-    BOOST_CHECK_THROW(Configuration::setDatabaseConnectTimeoutSec(0), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setDatabaseConnectTimeoutSec(0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseConnectTimeoutSec(1));
     BOOST_CHECK(Configuration::databaseConnectTimeoutSec() == 1);
 
-    BOOST_CHECK_THROW(Configuration::setDatabaseMaxReconnects(0), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setDatabaseMaxReconnects(0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseMaxReconnects(2));
     BOOST_CHECK(Configuration::databaseMaxReconnects() == 2);
 
-    BOOST_CHECK_THROW(Configuration::setDatabaseTransactionTimeoutSec(0), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setDatabaseTransactionTimeoutSec(0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseTransactionTimeoutSec(3));
     BOOST_CHECK(Configuration::databaseTransactionTimeoutSec() == 3);
 
@@ -98,7 +97,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestStaticParams) {
     BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWait(false));
     BOOST_CHECK(Configuration::schemaUpgradeWait() == false);
 
-    BOOST_CHECK_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(0), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(Configuration::setSchemaUpgradeWaitTimeoutSec(4));
     BOOST_CHECK(Configuration::schemaUpgradeWaitTimeoutSec() == 4);
 }
@@ -186,6 +185,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 10);
 
+    BOOST_CHECK(config->get<string>("controller", "name") == "test-master");
     BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8080);
     BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 256);
     BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 3);
@@ -195,6 +195,19 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 2);
+    BOOST_CHECK(config->get<unsigned int>("controller", "health-probe-interval") == 10);
+    BOOST_CHECK(config->get<unsigned int>("controller", "replication-interval") == 120);
+    BOOST_CHECK(config->get<unsigned int>("controller", "czar-response-timeout") == 180);
+    BOOST_CHECK(config->get<unsigned int>("controller", "worker-response-timeout") == 240);
+    BOOST_CHECK(config->get<unsigned int>("controller", "worker-config-timeout") == 360);
+    BOOST_CHECK(config->get<unsigned int>("controller", "worker-evict-timeout") == 720);
+    BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-timeout") == 1440);
+    BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-disable") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-force") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "chunk-map-update") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "purge-excess-replicas") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "permanent-worker-delete") == 1);
+    BOOST_CHECK(config->get<string>("controller", "http-root") == "/tmp/http");
     BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
     BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 2);
     BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 3);
@@ -205,6 +218,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "num-director-index-connections") == 6);
     BOOST_CHECK(config->get<string>("controller", "director-index-charset-name") == "latin1");
     BOOST_CHECK(config->get<string>("controller", "director-index-engine") == "MyISAM");
+    BOOST_CHECK(config->get<unsigned int>("controller", "create-folders") == 1);
 
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
@@ -220,10 +234,12 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
     BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
-    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
+    BOOST_CHECK(config->get<string>("database", "repl-db-conn") ==
+                "mysql://qsreplica@host-A:13306/qservReplica");
+    BOOST_CHECK(config->get<string>("database", "czar-db-conn") == "mysql://qsmaster@host-B:3306/qservMeta");
 
     LOGS_INFO("Testing reading general parameters of the Registry");
     config = configRegistry;
@@ -253,7 +269,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
     BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
-    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
@@ -284,7 +299,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
     BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
-    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
@@ -319,11 +333,11 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     LOGS_INFO("Testing modifying general parameters of the Controller");
     config = configController;
 
-    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "asio-num-threads", 3));
     BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 3);
 
-    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
@@ -339,46 +353,48 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     expectedAuthContext = lsst::qserv::http::AuthContext("", "", "", "");
     BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
 
-    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("security", "instance-id", "qserv-2"));
     BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-2");
 
-    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
     BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("registry", "port", 8083));
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8083);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "http-server-port", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("controller", "name", string()), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("controller", "name", "test-master-2"));
+    BOOST_CHECK(config->get<string>("controller", "name") == "test-master-2");
+
+    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "http-server-port", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("controller", "http-server-port", 8081));
     BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8081);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 0),
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 1024));
     BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 1024);
 
-    BOOST_CHECK_THROW(config->set<size_t>("controller", "http-server-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("controller", "http-server-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "http-server-threads", 4));
     BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 4);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 0),
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 101));
     BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 101);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-retry-interval-sec", 0),
-                      std::invalid_argument);
+                      invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request-retry-interval-sec", 2));
     BOOST_CHECK(config->get<unsigned int>("controller", "request-retry-interval-sec") == 2);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 201));
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 201);
 
@@ -389,13 +405,60 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 0);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("controller", "num-requests-per-worker", 0),
-                      std::invalid_argument);
+                      invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "num-requests-per-worker", 2));
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 2);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "max-repl-level", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "max-repl-level", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "max-repl-level", 3));
     BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 3);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "replication-interval", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "replication-interval", 121));
+    BOOST_CHECK(config->get<unsigned int>("controller", "replication-interval") == 121);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "health-probe-interval", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "health-probe-interval", 15));
+    BOOST_CHECK(config->get<unsigned int>("controller", "health-probe-interval") == 15);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "czar-response-timeout", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "czar-response-timeout", 181));
+    BOOST_CHECK(config->get<unsigned int>("controller", "czar-response-timeout") == 181);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "worker-response-timeout", 0),
+                      invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "worker-response-timeout", 241));
+    BOOST_CHECK(config->get<unsigned int>("controller", "worker-response-timeout") == 241);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "worker-config-timeout", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "worker-config-timeout", 361));
+    BOOST_CHECK(config->get<unsigned int>("controller", "worker-config-timeout") == 361);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "worker-evict-timeout", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "worker-evict-timeout", 721));
+    BOOST_CHECK(config->get<unsigned int>("controller", "worker-evict-timeout") == 721);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "qserv-sync-timeout", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "qserv-sync-timeout", 1441));
+    BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-timeout") == 1441);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "qserv-sync-disable", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-disable") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "qserv-sync-force", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-force") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "chunk-map-update", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "chunk-map-update") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "purge-excess-replicas", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "purge-excess-replicas") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "permanent-worker-delete", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "permanent-worker-delete") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<string>("controller", "http-root", string()));
+    BOOST_CHECK(config->get<string>("controller", "http-root") == string());
 
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker-evict-priority-level", 1));
     BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
@@ -428,23 +491,25 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-czars") == 1);
 
     BOOST_CHECK_THROW(config->set<uint16_t>("controller", "ingest-job-monitor-ival-sec", 0),
-                      std::invalid_argument);
+                      invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "ingest-job-monitor-ival-sec", 6));
     BOOST_CHECK(config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec") == 6);
 
     BOOST_CHECK_THROW(config->set<uint16_t>("controller", "num-director-index-connections", 0),
-                      std::invalid_argument);
+                      invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "num-director-index-connections", 7));
     BOOST_CHECK(config->get<unsigned int>("controller", "num-director-index-connections") == 7);
 
-    BOOST_CHECK_THROW(config->set<string>("controller", "director-index-charset-name", ""),
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("controller", "director-index-charset-name", ""), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("controller", "director-index-charset-name", "utf8mb3"));
     BOOST_CHECK(config->get<string>("controller", "director-index-charset-name") == "utf8mb3");
 
-    BOOST_CHECK_THROW(config->set<string>("controller", "director-index-engine", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("controller", "director-index-engine", ""), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("controller", "director-index-engine", "InnoDB"));
     BOOST_CHECK(config->get<string>("controller", "director-index-engine") == "InnoDB");
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "create-folders", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "create-folders") == 0);
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 1));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") != 0);
@@ -452,15 +517,15 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 0));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
 
-    BOOST_CHECK_THROW(config->set<string>("xrootd", "host", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("xrootd", "host", ""), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("xrootd", "host", "localhost"));
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("xrootd", "port", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<uint16_t>("xrootd", "port", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("xrootd", "port", 1105));
     BOOST_CHECK(config->get<uint16_t>("xrootd", "port") == 1105);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "request-timeout-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "request-timeout-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "request-timeout-sec", 401));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "request-timeout-sec") == 401);
 
@@ -470,22 +535,33 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "allow-reconnect", 0));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "allow-reconnect") == 0);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "reconnect-timeout", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("xrootd", "reconnect-timeout", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "reconnect-timeout", 403));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect-timeout") == 403);
 
-    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
+
+    BOOST_CHECK_THROW(config->set<string>("database", "repl-db-conn", string()), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(
+            config->set<string>("database", "repl-db-conn", "mysql://qsreplica@host-A:23306/qservReplica"));
+    BOOST_CHECK(config->get<string>("database", "repl-db-conn") ==
+                "mysql://qsreplica@host-A:23306/qservReplica");
+
+    BOOST_CHECK_THROW(config->set<string>("database", "czar-db-conn", string()), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(
+            config->set<string>("database", "czar-db-conn", "mysql://qsmaster@host-B:3366/qservMeta"));
+    BOOST_CHECK(config->get<string>("database", "czar-db-conn") == "mysql://qsmaster@host-B:3366/qservMeta");
 
     LOGS_INFO("Testing modifying general parameters of the Registry");
     config = configRegistry;
 
-    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "asio-num-threads", 3));
     BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 3);
 
-    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
@@ -501,42 +577,42 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     expectedAuthContext = lsst::qserv::http::AuthContext("", "", "", "");
     BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
 
-    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("security", "instance-id", "qserv-2"));
     BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-2");
 
-    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
     BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("registry", "port", 8083));
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8083);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "max-listen-conn", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "max-listen-conn", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "max-listen-conn", 1024));
     BOOST_CHECK(config->get<unsigned int>("registry", "max-listen-conn") == 1024);
 
-    BOOST_CHECK_THROW(config->set<size_t>("registry", "threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("registry", "threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("registry", "threads", 5));
     BOOST_CHECK(config->get<size_t>("registry", "threads") == 5);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
 
-    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
 
     LOGS_INFO("Testing modifying general parameters of the Worker");
     config = configWorker;
 
-    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "asio-num-threads", 3));
     BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 3);
 
-    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
@@ -552,61 +628,61 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     expectedAuthContext = lsst::qserv::http::AuthContext("", "", "", "");
     BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
 
-    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("security", "instance-id", "qserv-2"));
     BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-2");
 
-    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
     BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("registry", "port", 8083));
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8083);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
 
-    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 123));
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 123);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-threads", 4));
     BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 4);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 5);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-svc-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-svc-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-http-svc-threads", 11));
     BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 11);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 6));
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 6);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 1025));
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1025);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "exporter-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "exporter-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "exporter-threads", 8));
     BOOST_CHECK(config->get<size_t>("worker", "exporter-threads") == 8);
 
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 0),
-                      std::invalid_argument);
+                      invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 9));
     BOOST_CHECK(config->get<size_t>("worker", "num-http-loader-processing-threads") == 9);
 
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 0),
-                      std::invalid_argument);
+                      invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 10));
     BOOST_CHECK(config->get<size_t>("worker", "num-async-loader-processing-threads") == 10);
 
@@ -620,7 +696,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "async-loader-cleanup-on-resume", 0));
     BOOST_CHECK(config->get<unsigned int>("worker", "async-loader-cleanup-on-resume") == 0);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 2048));
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 2048);
 
@@ -642,11 +718,11 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "http-svc-max-queued-requests", 0));
     BOOST_CHECK(config->get<size_t>("worker", "http-svc-max-queued-requests") == 0);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 100));
     BOOST_CHECK(config->get<unsigned int>("worker", "loader-max-warnings") == 100);
 
-    BOOST_CHECK_THROW(config->set<string>("worker", "ingest-charset-name", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<string>("worker", "ingest-charset-name", ""), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("worker", "ingest-charset-name", "utf8mb3"));
     BOOST_CHECK(config->get<string>("worker", "ingest-charset-name") == "utf8mb3");
 
@@ -660,7 +736,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "ingest-max-retries", 100));
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 100);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "director-index-record-size", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "director-index-record-size", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(
             config->set<size_t>("worker", "director-index-record-size", ProtocolBuffer::HARD_LIMIT));
     BOOST_CHECK(config->get<size_t>("worker", "director-index-record-size") == ProtocolBuffer::HARD_LIMIT);
@@ -725,22 +801,22 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkers) {
     }
 
     // Incorrect worker names.
-    BOOST_CHECK_THROW(config->isKnownWorker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->isKnownWorker(""), invalid_argument);
     BOOST_CHECK(!config->isKnownWorker("worker-X"));
-    BOOST_CHECK_THROW(config->worker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->worker(""), invalid_argument);
     BOOST_CHECK_THROW(config->worker("worker-X"), ConfigUnknownWorker);
-    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("", "worker-A"), std::invalid_argument);
-    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", ""), std::invalid_argument);
-    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", "worker-A"), std::logic_error);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("", "worker-A"), invalid_argument);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", ""), invalid_argument);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", "worker-A"), logic_error);
     BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", "worker-X"), ConfigUnknownWorker);
     BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-X", "worker-A"), ConfigUnknownWorker);
-    BOOST_CHECK_THROW(config->deleteWorker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteWorker(""), invalid_argument);
     BOOST_CHECK_THROW(config->deleteWorker("worker-X"), ConfigUnknownWorker);
-    BOOST_CHECK_THROW(config->disableWorker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->disableWorker(""), invalid_argument);
     BOOST_CHECK_THROW(config->disableWorker("worker-X"), ConfigUnknownWorker);
     ConfigWorker unknownWorker;
     unknownWorker.name = "";
-    BOOST_CHECK_THROW(config->updateWorker(unknownWorker), std::invalid_argument);
+    BOOST_CHECK_THROW(config->updateWorker(unknownWorker), invalid_argument);
     unknownWorker.name = "worker-X";
     BOOST_CHECK_THROW(config->updateWorker(unknownWorker), ConfigUnknownWorker);
 }
@@ -805,7 +881,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_CHECK(workerD.isReadOnly);
 
     // Adding the same worker again should fail.
-    BOOST_CHECK_THROW(config->addWorker(workerD), std::logic_error);
+    BOOST_CHECK_THROW(config->addWorker(workerD), logic_error);
 
     // Adding a new worker with incomplete set of specs. The only required
     // attribute is the name of the worker.
@@ -908,11 +984,11 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestFamilies) {
     BOOST_CHECK(abs(newFamilyAdded.overlap - 0.001) <= numeric_limits<double>::epsilon());
 
     // Adding duplicate families is not allowed.
-    BOOST_REQUIRE_THROW(config->addDatabaseFamily(newFamily), std::logic_error);
+    BOOST_REQUIRE_THROW(config->addDatabaseFamily(newFamily), logic_error);
 
     // Modify the replication level
-    BOOST_REQUIRE_THROW(config->setReplicationLevel("", 5), std::invalid_argument);
-    BOOST_REQUIRE_THROW(config->setReplicationLevel(newFamilyAdded.name, 0), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->setReplicationLevel("", 5), invalid_argument);
+    BOOST_REQUIRE_THROW(config->setReplicationLevel(newFamilyAdded.name, 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->setReplicationLevel(newFamilyAdded.name, 5));
     BOOST_CHECK(config->databaseFamilyInfo(newFamilyAdded.name).replicationLevel == 5);
 
@@ -931,7 +1007,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestFamilies) {
     BOOST_CHECK(!config->isKnownDatabaseFamily("new"));
 
     // Deleting non-existing families.
-    BOOST_REQUIRE_THROW(config->deleteDatabaseFamily(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->deleteDatabaseFamily(""), invalid_argument);
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily("non-existing"), ConfigUnknownDatabaseFamily);
 }
 
@@ -992,14 +1068,14 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadDatabases) {
     }
 
     // Incorrect parameters for database selectors.
-    BOOST_REQUIRE_THROW(config->isKnownDatabase(""), std::invalid_argument);
-    BOOST_REQUIRE_THROW(config->assertDatabaseIsValid(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->isKnownDatabase(""), invalid_argument);
+    BOOST_REQUIRE_THROW(config->assertDatabaseIsValid(""), invalid_argument);
     BOOST_REQUIRE_THROW(config->assertDatabaseIsValid("non-existing"), ConfigUnknownDatabase);
-    BOOST_REQUIRE_THROW(config->databaseInfo(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->databaseInfo(""), invalid_argument);
     BOOST_REQUIRE_THROW(config->databaseInfo("non-existing"), ConfigUnknownDatabase);
-    BOOST_REQUIRE_THROW(config->unPublishDatabase(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->unPublishDatabase(""), invalid_argument);
     BOOST_REQUIRE_THROW(config->unPublishDatabase("non-existing"), ConfigUnknownDatabase);
-    BOOST_REQUIRE_THROW(config->deleteDatabase(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->deleteDatabase(""), invalid_argument);
     BOOST_REQUIRE_THROW(config->deleteDatabase("non-existing"), ConfigUnknownDatabase);
 }
 
@@ -1570,15 +1646,15 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestAddDatabases) {
         BOOST_CHECK(database.directorTables().empty());
         BOOST_CHECK(database.refMatchTables().empty());
         BOOST_CHECK(database.regularTables().empty());
-        BOOST_CHECK_THROW(database.findTable(""), std::invalid_argument);
+        BOOST_CHECK_THROW(database.findTable(""), invalid_argument);
         BOOST_CHECK_THROW(database.findTable("NonExistingTable"), ConfigUnknownTable);
 
         // Adding duplicate databases is not allowed.
-        BOOST_CHECK_THROW(config->addDatabase(databaseName, familyName), std::logic_error);
+        BOOST_CHECK_THROW(config->addDatabase(databaseName, familyName), logic_error);
     }
-    BOOST_CHECK_THROW(config->addDatabase("", ""), std::invalid_argument);
-    BOOST_CHECK_THROW(config->addDatabase("", "unknown"), std::invalid_argument);
-    BOOST_CHECK_THROW(config->addDatabase("another", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->addDatabase("", ""), invalid_argument);
+    BOOST_CHECK_THROW(config->addDatabase("", "unknown"), invalid_argument);
+    BOOST_CHECK_THROW(config->addDatabase("another", ""), invalid_argument);
     BOOST_CHECK_THROW(config->addDatabase("another", "unknown"), ConfigUnknownDatabaseFamily);
     {
         SqlColDef const emptyColumn;
@@ -1640,7 +1716,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         BOOST_CHECK(table.collationName.empty());
         BOOST_CHECK(table.createTime != 0);
         BOOST_CHECK(table.publishTime == 0);
-        BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addTable(inTable), invalid_argument);
     }
     {
         DatabaseInfo database;
@@ -1675,7 +1751,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         BOOST_CHECK(!table.isPublished);
         BOOST_CHECK(table.createTime != 0);
         BOOST_CHECK(table.publishTime == 0);
-        BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addTable(inTable), invalid_argument);
     }
     {
         DatabaseInfo database;
@@ -1705,14 +1781,14 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         BOOST_CHECK(table.publishTime == 0);
 
         // Unsuccessful deletion attempt should leave the table intact
-        BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addTable(inTable), invalid_argument);
         BOOST_CHECK(config->databaseInfo("new").tableExists(inTable.name));
     }
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T3"));
 
     // Incorrect parameters for database selectors.
-    BOOST_CHECK_THROW(config->deleteTable("", ""), std::invalid_argument);
-    BOOST_CHECK_THROW(config->deleteTable("new", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteTable("", ""), invalid_argument);
+    BOOST_CHECK_THROW(config->deleteTable("new", ""), invalid_argument);
     BOOST_CHECK_THROW(config->deleteTable("Non-existing", "T1"), ConfigUnknownDatabase);
     BOOST_CHECK_THROW(config->deleteTable("new", "Non-existing"), ConfigUnknownTable);
 }
@@ -1729,17 +1805,17 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestPublishDatabases) {
         BOOST_CHECK(database.tables().size() == 2);
 
         // Databases cannot be published twice.
-        BOOST_CHECK_THROW(database = config->publishDatabase("new"), std::logic_error);
+        BOOST_CHECK_THROW(database = config->publishDatabase("new"), logic_error);
     }
 
     // Adding tables to the database after it's published isn't allowed.
     TableInfo inTable;
     inTable.name = "T4";
     inTable.database = "new";
-    BOOST_CHECK_THROW(config->addTable(inTable), std::logic_error);
+    BOOST_CHECK_THROW(config->addTable(inTable), logic_error);
 
     // Deleting director tables which may still have dependent ones is not allowed
-    BOOST_CHECK_THROW(config->deleteTable("new", "T1"), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteTable("new", "T1"), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T2"));
     // Now we can do this, after deleting the dependent one.
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T1"));
@@ -1756,7 +1832,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestUnPublishDatabases) {
         BOOST_CHECK(!database.isPublished);
 
         // Databases cannot be unpublished twice.
-        BOOST_CHECK_THROW(database = config->unPublishDatabase("new"), std::logic_error);
+        BOOST_CHECK_THROW(database = config->unPublishDatabase("new"), logic_error);
     }
 
     // Adding tables to the database should be now allowed.
@@ -1828,9 +1904,9 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestCzars) {
     }
 
     // Test for incorrect Czar names.
-    BOOST_CHECK_THROW(config->isKnownCzar(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->isKnownCzar(""), invalid_argument);
     BOOST_CHECK(!config->isKnownCzar("non-existing"));
-    BOOST_CHECK_THROW(config->czar(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->czar(""), invalid_argument);
     BOOST_CHECK_THROW(config->czar("non-existing"), ConfigUnknownCzar);
 }
 
@@ -1852,7 +1928,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestCzarParams) {
     // Adding a new Czar with missing mandatory name parameter.
     ConfigCzar czarIncorrect;
     czarIncorrect.name = "";
-    BOOST_CHECK_THROW(config->addCzar(czarIncorrect), std::invalid_argument);
+    BOOST_CHECK_THROW(config->addCzar(czarIncorrect), invalid_argument);
 
     // Adding a new Czar with well formed and unique parameters.
     ConfigHost const hostB({"192.10.10.12", "host-B"});
@@ -1871,7 +1947,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestCzarParams) {
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
 
     // Adding a duplicate Czar is not allowed.
-    BOOST_CHECK_THROW(config->addCzar(czarSecond), std::logic_error);
+    BOOST_CHECK_THROW(config->addCzar(czarSecond), logic_error);
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
 
     // Adding a new Czar with incomplete set of specs. The only required
@@ -1905,11 +1981,11 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestCzarParams) {
 
     // Adding a new Czar with incorrect spec (missing mandatory name).
     ConfigCzar czarEmpty;
-    BOOST_CHECK_THROW(config->addCzar(czarEmpty), std::invalid_argument);
+    BOOST_CHECK_THROW(config->addCzar(czarEmpty), invalid_argument);
     BOOST_CHECK_EQUAL(config->numCzars(), 3U);
 
     // Deleting Czars.
-    BOOST_CHECK_THROW(config->deleteCzar(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteCzar(""), invalid_argument);
 
     BOOST_REQUIRE_NO_THROW(config->deleteCzar("second"));
     BOOST_CHECK(!config->isKnownCzar("second"));

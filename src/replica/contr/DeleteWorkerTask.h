@@ -40,10 +40,7 @@ namespace lsst::qserv::replica {
  */
 class DeleteWorkerTask : public Task {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<DeleteWorkerTask> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     DeleteWorkerTask() = delete;
     DeleteWorkerTask(DeleteWorkerTask const&) = delete;
@@ -58,58 +55,37 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param controller
-     *   a reference to the Controller for launching requests, jobs, etc.
-     *
-     * @param onTerminated
-     *   callback function to be called upon abnormal termination
+     * @param controller A reference to the Controller for launching requests, jobs, etc.
+     * @param onTerminated The callback function to be called upon abnormal termination
      *   of the task. Set it to 'nullptr' if no call back should be made.
-     *
-     * @param worker
-     *   the name of a worker to be evicted.
-     *
-     * @param permanentDelete
-     *   the flag of set to 'true' will result in complete removal of the evicted
-     *   worker from the Replication system's Configuration, thus preventing it from
-     *   being re-enabled w/o reconfiguring the cluster.
-     *
-     * @return
-     *   the smart pointer to a new object
+     * @param worker The name of a worker to be evicted.
+     * @return The smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker,
-                      bool permanentDelete);
+                      Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker);
 
 protected:
-    /// @see Task::onStart()
     void onStart() override;
 
 private:
-    /// @see DeleteWorkerTask::create()
     DeleteWorkerTask(Controller::Ptr const& controller,
-                     Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker,
-                     bool permanentDelete);
+                     Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker);
 
     /**
      * Log a persistent event on the started job
-     *
-     * @param job
-     *   pointer to the worker eviction job
+     * @param job A pointer to the worker eviction job.
      */
     void _logStartedEvent(DeleteWorkerJob::Ptr const& job) const;
 
     /**
      * Log a persistent event on the finished job
-     *
-     * @param job
-     *   pointer to the worker eviction job
+     * @param job A pointer to the worker eviction job.
      */
     void _logFinishedEvent(DeleteWorkerJob::Ptr const& job) const;
 
     // Input parameters
 
     std::string const _worker;
-    bool const _permanentDelete;
 };
 
 }  // namespace lsst::qserv::replica

@@ -40,6 +40,10 @@ namespace lsst::qserv::css {
 class CssAccess;
 }  // namespace lsst::qserv::css
 
+namespace lsst::qserv::mysql {
+class MySqlConfig;
+}  // namespace lsst::qserv::mysql
+
 namespace lsst::qserv::wbase {
 struct TaskSelector;
 }  // namespace lsst::qserv::wbase
@@ -84,8 +88,8 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpQservMonitorModule() = delete;
@@ -108,8 +112,7 @@ private:
                                      std::shared_ptr<QservMgtRequest> const& request);
 
     HttpQservMonitorModule(Controller::Ptr const& controller, std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                           qhttp::Response::Ptr const& resp);
+                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /**
      * Process a request for extracting various status info for select
@@ -284,6 +287,12 @@ private:
      * @throw http::ErrorNotFound404 If the specified worker is unknown to the configuration.
      */
     ConfigWorker _getWorkerFromParamOrThrow404(std::string const& func) const;
+
+    /**
+     * @brief Get the MySQL configuration for the czar's QMeta database.
+     * @return The MySQL configuration object.
+     */
+    qserv::mysql::MySqlConfig czarQMetaConfig() const;
 };
 
 }  // namespace lsst::qserv::replica
