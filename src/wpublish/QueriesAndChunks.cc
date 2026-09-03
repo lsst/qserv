@@ -339,18 +339,20 @@ void QueriesAndChunks::examineAll() {
 
     double const maxAgeSeconds = _maxQueryAgeMinutes * 60.0;
 
-    // Check all query for taking too long, and cancel it if it is.
+    // Cancel all queries that have taken too long.
     if (maxAgeSeconds > 0) {
         for (auto const& uqElem : uqStatList) {
-            //&&&; // don't check if query is finished.
-            auto const ageSeconds = uqElem->getAgeSeconds();
-            if (ageSeconds > maxAgeSeconds) {
-                auto const uqInfo = uqElem->getUserQueryInfo();
-                string errMsg = string("Query is too old, age=") + to_string(ageSeconds) +
-                                " maxAge=" + to_string(maxAgeSeconds);
-                LOGS(_log, LOG_LVL_ERROR, errMsg);
-                util::Error error(util::Error::WORKER_QUERY_TOO_OLD, util::Error::NONE, errMsg);
-                uqInfo->fatalErrorForAllUberJobs(error);
+            // Only check if query is not finished.
+            auto const uqInfo = uqElem->getUserQueryInfo();
+            if (!uqInfo->isWorkDone()) {
+                auto const ageSeconds = uqElem->getAgeSeconds();
+                if (ageSeconds > maxAgeSeconds) {
+                    string errMsg = string("Query is too old, age=") + to_string(ageSeconds) +
+                                    " maxAge=" + to_string(maxAgeSeconds);
+                    LOGS(_log, LOG_LVL_ERROR, errMsg);
+                    util::Error error(util::Error::WORKER_QUERY_TOO_OLD, util::Error::NONE, errMsg);
+                    uqInfo->fatalErrorForAllUberJobs(error);
+                }
             }
         }
     }
