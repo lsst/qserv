@@ -27,10 +27,9 @@
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
-#include <sys/types.h>
 #include <thread>
 #include <vector>
-#include <unistd.h>
+#include <unistd.h>  // getpid()
 
 // Qserv headers
 #include "replica/config/ConfigCzar.h"
@@ -168,13 +167,15 @@ Controller::Ptr Controller::create(shared_ptr<ServiceProvider> const& servicePro
 Controller::Controller(shared_ptr<ServiceProvider> const& serviceProvider)
         : _serviceProvider(serviceProvider),
           _identity({Generators::uniqueId(), boost::asio::ip::host_name(), getpid()}),
-          _startTime(util::TimeUtils::now()) {
+          _startTime(util::TimeUtils::now()),
+          _messenger(Messenger::create(serviceProvider->config(), serviceProvider->io_service())),
+          _qservMgtServices(QservMgtServices::create(_serviceProvider)) {
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
 
 void Controller::stop() {
     // Cancel all outstanding requests to workers (if any)
-    if (_messenger != nullptr) _messenger->stop();
+    _messenger->stop();
 }
 
 string Controller::_context(string const& func) const {
@@ -185,22 +186,6 @@ void Controller::verifyFolders(bool createMissingFolders) const {
     vector<string> const folders = {
             serviceProvider()->config()->get<string>("database", "qserv-master-tmp-dir")};
     FileUtils::verifyFolders("CONTROLLER", folders, createMissingFolders);
-}
-
-shared_ptr<Messenger> const& Controller::messenger() const {
-    replica::Lock lock(_mtx, _context(__func__));
-    if (_messenger == nullptr) {
-        _messenger = Messenger::create(_serviceProvider->config(), _serviceProvider->io_service());
-    }
-    return _messenger;
-}
-
-shared_ptr<QservMgtServices> const& Controller::qservMgtServices() const {
-    replica::Lock lock(_mtx, _context(__func__));
-    if (_qservMgtServices == nullptr) {
-        _qservMgtServices = QservMgtServices::create(_serviceProvider);
-    }
-    return _qservMgtServices;
 }
 
 }  // namespace lsst::qserv::replica
