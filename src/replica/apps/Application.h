@@ -117,9 +117,6 @@ private:
     /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;
 
-    /// Connection URL for the Replication database.
-    std::string _replDbUrl;
-
     // Database connector options (if enabled)
 
     unsigned int _databaseAllowReconnect;

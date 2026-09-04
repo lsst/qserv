@@ -108,21 +108,18 @@ BOOST_AUTO_TEST_CASE(ConfigInitTestJSON) {
     BOOST_REQUIRE_NO_THROW(configController = Configuration::load(ConfigurationSchemaController(),
                                                                   ConfigTestDataController::data()));
     BOOST_CHECK(configController != nullptr);
-    BOOST_CHECK(configController->replDbUrl().empty());
     string const configJsonStr = configController->toJson().dump();
     BOOST_CHECK(!configJsonStr.empty());
 
     BOOST_REQUIRE_NO_THROW(configRegistry = Configuration::load(ConfigurationSchemaRegistry(),
                                                                 ConfigTestDataRegistry::data()));
     BOOST_CHECK(configRegistry != nullptr);
-    BOOST_CHECK(configRegistry->replDbUrl().empty());
     string const configJsonStrRegistry = configRegistry->toJson().dump();
     BOOST_CHECK(!configJsonStrRegistry.empty());
 
     BOOST_REQUIRE_NO_THROW(
             configWorker = Configuration::load(ConfigurationSchemaWorker(), ConfigTestDataWorker::data()));
     BOOST_CHECK(configWorker != nullptr);
-    BOOST_CHECK(configWorker->replDbUrl().empty());
     string const configJsonStrWorker = configWorker->toJson().dump();
     BOOST_CHECK(!configJsonStrWorker.empty());
 }
