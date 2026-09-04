@@ -299,7 +299,7 @@ void UserQuerySelect::submit() {
     auto submitTmEnd = CLOCK::now();
 
     LOGS(_log, LOG_LVL_INFO,
-         "UserQuerySelect::submit() times ms QID:"
+         "UserQuerySelect::submit() times ms QID="
                  << _queryId << " total="
                  << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmStart).count()
                  << " setup="

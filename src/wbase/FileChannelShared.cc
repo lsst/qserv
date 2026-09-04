@@ -305,8 +305,7 @@ FileChannelShared::~FileChannelShared() {
 
 void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
 
-bool FileChannelShared::transmitTaskLast(bool rowLimitComplete) {
-    lock_guard<mutex> const streamMutexLock(_streamMutex);
+bool FileChannelShared::_transmitTaskLast(lock_guard<mutex> const& tMtxLock, bool rowLimitComplete) {
     ++_lastCount;
     if (rowLimitComplete) {
         // There are enough rows in the file so other tasks can be ignored.
@@ -325,8 +324,12 @@ bool FileChannelShared::transmitTaskLast(bool rowLimitComplete) {
 }
 
 bool FileChannelShared::kill(string const& note) {
-    lock_guard<mutex> const streamMutexLock(_streamMutex);
-    return _kill(streamMutexLock, note);
+    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::" << __func__ << " " << note);
+    bool oldVal = _dead.exchange(true);
+    if (!oldVal) {
+        LOGS(_log, LOG_LVL_WARN, "FileChannelShared::" << __func__ << " first kill call " << note);
+    }
+    return oldVal;
 }
 
 bool FileChannelShared::isDead() const { return _dead; }
@@ -350,14 +353,13 @@ void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
 
 void FileChannelShared::buildAndTransmitUJError(util::MultiError& multiErr, string const& idStr) {
     lock_guard<mutex> const tMtxLock(_tMtx);
-    int const chunkId = -1;           // This method is not used for individual chunks.
-    bool const notCancelled = false;  // This only applies to individual tasks
-    _buildAndTransmitError(tMtxLock, multiErr, idStr, chunkId, LOG_LVL_ERROR, notCancelled);
+    int const chunkId = -1;        // This method is not used for individual chunks.
+    bool const cancelled = false;  // This only applies to individual tasks
+    _buildAndTransmitError(tMtxLock, multiErr, idStr, chunkId, LOG_LVL_ERROR, cancelled);
 }
 
-void FileChannelShared::_buildAndTransmitError(lock_guard<mutex> const& streamMutexLock,
-                                               util::MultiError& multiErr, string const& idStr, int chunkId,
-                                               int logLvl, bool cancelled) {
+void FileChannelShared::_buildAndTransmitError(lock_guard<mutex> const& tMtxLock, util::MultiError& multiErr,
+                                               string const& idStr, int chunkId, int logLvl, bool cancelled) {
     if (_rowLimitComplete) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " already enough rows, this call likely a side effect" << idStr);
         return;
@@ -368,7 +370,7 @@ void FileChannelShared::_buildAndTransmitError(lock_guard<mutex> const& streamMu
         ujd->responseError(multiErr, chunkId, cancelled, logLvl);
     }
     // Flag the result as dead after sending the error to avoid races on queries with missing tables.
-    _kill(streamMutexLock, " buildAndTransmitError");
+    kill(" buildAndTransmitError");
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -441,7 +443,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // if this is last task in a logical group of ones created for processing
         // the current request (note that certain classes of requests may require
         // more than one task for processing).
-        if (transmitTaskLast(rowLimitComplete)) {
+        if (_transmitTaskLast(tMtxLockA, rowLimitComplete)) {
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
@@ -475,19 +477,10 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     // successfully processing the query and writing all results into the file.
     // The file is not going to be used by Czar in either of these scenarios.
     if ((cancelled || erred || isDead()) && !_rowLimitComplete) {
-        lock_guard<mutex> const tMtxLockA(_tMtx);
-        _removeFile(tMtxLockA);
+        lock_guard<mutex> const tMtxLockB(_tMtx);
+        _removeFile(tMtxLockB);
     }
     return erred;
-}
-
-bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
-    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::" << __func__ << " " << note);
-    bool oldVal = _dead.exchange(true);
-    if (!oldVal) {
-        LOGS(_log, LOG_LVL_WARN, "FileChannelShared::" << __func__ << " first kill call " << note);
-    }
-    return oldVal;
 }
 
 void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
@@ -559,11 +552,6 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     auto const queryId = task->getQueryId();
     auto const jId = task->getJobId();
     auto const idStr(makeIdStr(queryId, jId));
-
-    // This lock is required for making consistent modifications and usage of the metadata
-    // and response buffers.
-    lock_guard<mutex> const streamMutexLock(_streamMutex);
-
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jId);
 
     if (isDead() && !mustSend) {

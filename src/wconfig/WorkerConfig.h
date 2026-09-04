@@ -383,7 +383,7 @@ private:
             util::ConfigValTUInt::create(_configValMap, "czar", "ComNumHttpThreads", notReq, 40);
 
     CVTUIntPtr _maxQueryAgeMinutes =
-            util::ConfigValTUInt::create(_configValMap, "query", "maxQueryAgeMinutes", notReq, 0);
+            util::ConfigValTUInt::create(_configValMap, "query", "maxQueryAgeMinutes", notReq, 720);
 };
 
 }  // namespace lsst::qserv::wconfig
