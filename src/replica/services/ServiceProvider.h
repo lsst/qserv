@@ -39,7 +39,6 @@
 namespace lsst::qserv::replica {
 class ChunkMap;
 class Configuration;
-class ConfigurationSchema;
 class DatabaseServices;
 class Registry;
 }  // namespace lsst::qserv::replica
@@ -62,11 +61,10 @@ public:
     /**
      * Static factory for creating objects of the class
      *
-     * @param configSchema  The configuration schema used by the service provider.
-     * @param replDbUrl  Connection URL for the Replication database
-     *  Qserv or the Replication/Ingest system.
+     * @param config  The configuration object used by the service provider. It must be already
+     *  initialized and reloaded with the latest values for Qserv or the Replication/Ingest system.
      */
-    static ServiceProvider::Ptr create(ConfigurationSchema const& configSchema, std::string const& replDbUrl);
+    static ServiceProvider::Ptr create(std::shared_ptr<Configuration> const& config);
 
     ~ServiceProvider() = default;
 
@@ -144,8 +142,7 @@ public:
     std::shared_ptr<ChunkMap> const& chunkMap();
 
 private:
-    /// @see ServiceProvider::create()
-    ServiceProvider(ConfigurationSchema const& configSchema, std::string const& replDbUrl);
+    ServiceProvider(std::shared_ptr<Configuration> const& config);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;

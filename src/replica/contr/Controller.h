@@ -28,17 +28,18 @@
 
 // System headers
 #include <cstdint>
+#include <iosfwd>
 #include <memory>
+#include <string>
+#include <sys/types.h>  // pid_t
 
 // Qserv headers
 #include "replica/util/Common.h"
-#include "replica/util/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
 class Messenger;
 class QservMgtServices;
-class Request;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
@@ -77,7 +78,6 @@ std::ostream& operator<<(std::ostream& os, ControllerIdentity const& identity);
  */
 class Controller : public std::enable_shared_from_this<Controller> {
 public:
-    friend class ControllerImpl;
     typedef std::shared_ptr<Controller> Ptr;
 
     static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider);
@@ -101,10 +101,10 @@ public:
     void verifyFolders(bool createMissingFolders = false) const;
 
     /// @return a reference to worker messenger service (configured for controllers)
-    std::shared_ptr<Messenger> const& messenger() const;
+    std::shared_ptr<Messenger> messenger() const { return _messenger; }
 
     /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
-    std::shared_ptr<QservMgtServices> const& qservMgtServices() const;
+    std::shared_ptr<QservMgtServices> qservMgtServices() const { return _qservMgtServices; }
 
     /// Stop outstanding requests (if any).
     void stop();
@@ -122,17 +122,13 @@ private:
 
     /// The number of milliseconds since UNIX Epoch when an instance of
     /// the Controller was created.
-    uint64_t const _startTime;
+    std::uint64_t const _startTime;
 
-    /// Worker messenger service (lazy instantiation on a first request)
-    mutable std::shared_ptr<Messenger> _messenger;
+    /// Worker messenger service
+    std::shared_ptr<Messenger> const _messenger;
 
-    /// Qserv management services (lazy instantiation on a first request)
-    mutable std::shared_ptr<QservMgtServices> _qservMgtServices;
-
-    /// The mutex for enforcing thread safety of the class's public API
-    /// and internal operations.
-    mutable replica::Mutex _mtx;
+    /// Qserv management services
+    std::shared_ptr<QservMgtServices> const _qservMgtServices;
 };
 
 }  // namespace lsst::qserv::replica
