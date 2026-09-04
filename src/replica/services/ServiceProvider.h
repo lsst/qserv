@@ -31,7 +31,6 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "http/Auth.h"
 #include "replica/services/ChunkLocker.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/NamedMutexRegistry.h"
@@ -41,8 +40,6 @@ namespace lsst::qserv::replica {
 class ChunkMap;
 class Configuration;
 class DatabaseServices;
-class Messenger;
-class QservMgtServices;
 class Registry;
 }  // namespace lsst::qserv::replica
 
@@ -64,18 +61,10 @@ public:
     /**
      * Static factory for creating objects of the class
      *
-     * @param configUrl  A source of the application configuration parameters.
-     * @param instanceId  A unique identifier of a Qserv instance served by
-     *  the Replication System. Its value will be passed along various internal
-     *  communication lines of the system to ensure that all services are related
-     *  to the same instance. This mechanism also prevents 'cross-talks' between
-     *  two (or many) Replication System's setups in case of an accidental
-     *  mis-configuration.
-     * @param httpAuthContext  An authorization context for operations affecting the state of
-     *  Qserv or the Replication/Ingest system.
+     * @param config  The configuration object used by the service provider. It must be already
+     *  initialized and reloaded with the latest values for Qserv or the Replication/Ingest system.
      */
-    static ServiceProvider::Ptr create(std::string const& configUrl, std::string const& instanceId,
-                                       http::AuthContext const& httpAuthContext);
+    static ServiceProvider::Ptr create(std::shared_ptr<Configuration> const& config);
 
     ~ServiceProvider() = default;
 
@@ -103,23 +92,11 @@ public:
     /// @return a reference to the configuration service
     std::shared_ptr<Configuration> const& config() const { return _configuration; }
 
-    /// @return A unique identifier of a Qserv instance served by the Replication System
-    std::string const& instanceId() const { return _instanceId; }
-
-    /// @return the authorization context for operations affecting the state of Qserv or
-    http::AuthContext httpAuthContext() const { return _httpAuthContext; }
-
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
 
     /// @return a reference to the database services
     std::shared_ptr<DatabaseServices> const& databaseServices();
-
-    /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
-    std::shared_ptr<QservMgtServices> const& qservMgtServices();
-
-    /// @return a reference to worker messenger service (configured for controllers)
-    std::shared_ptr<Messenger> const& messenger();
 
     /// @return a reference to worker registration service
     std::shared_ptr<Registry> const& registry();
@@ -165,9 +142,7 @@ public:
     std::shared_ptr<ChunkMap> const& chunkMap();
 
 private:
-    /// @see ServiceProvider::create()
-    ServiceProvider(std::string const& configUrl, std::string const& instanceId,
-                    http::AuthContext const& httpAuthContext);
+    ServiceProvider(std::shared_ptr<Configuration> const& config);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -182,24 +157,12 @@ private:
     /// URL passed into the constructor of the class).
     std::shared_ptr<Configuration> const _configuration;
 
-    /// A unique identifier of a Qserv instance served by the Replication System
-    std::string const _instanceId;
-
-    /// Authorization context
-    http::AuthContext const _httpAuthContext;
-
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.
     ChunkLocker _chunkLocker;
 
     /// Database services (lazy instantiation on a first request)
     std::shared_ptr<DatabaseServices> _databaseServices;
-
-    /// Qserv management services (lazy instantiation on a first request)
-    std::shared_ptr<QservMgtServices> _qservMgtServices;
-
-    /// Worker messenger service (lazy instantiation on a first request)
-    std::shared_ptr<Messenger> _messenger;
 
     /// Worker registration service (lazy instantiation on a first request)
     std::shared_ptr<Registry> _registry;

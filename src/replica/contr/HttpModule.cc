@@ -50,21 +50,21 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModule");
 namespace lsst::qserv::replica {
 
 HttpModule::HttpModule(Controller::Ptr const& controller, string const& taskName,
-                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp)
+                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
         : EventLogger(controller, taskName),
-          http::QhttpModule(controller->serviceProvider()->httpAuthContext(), req, resp),
-          _processorConfig(processorConfig) {}
+          http::QhttpModule(controller->serviceProvider()->config()->httpAuthContext(), req, resp) {}
 
 string HttpModule::context() const { return name() + " "; }
 
 database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string const& database) const {
-    return database::mysql::Connection::open(Configuration::qservCzarDbParams(database));
+    auto const config = controller()->serviceProvider()->config();
+    return database::mysql::Connection::open(config->qservCzarDbParams(database));
 }
 
 shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
+    auto const config = controller()->serviceProvider()->config();
     // Use all parmeters of the connection from the czar's MySQL connection parameters object.
-    auto const connectionParams = Configuration::qservCzarDbParams("qservCssData");
+    auto const connectionParams = config->qservCzarDbParams("qservCssData");
     map<string, string> cssConfig;
     cssConfig["technology"] = "mysql";
     // Address translation is required because CSS MySQL connector doesn't set
@@ -77,12 +77,12 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     return css::CssAccess::createFromConfig(cssConfig);
 }
 
-string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
-                                      unsigned int workerResponseTimeoutSec) const {
+string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+    auto const config = controller()->serviceProvider()->config();
     string const noParentJobId;
     auto const job = ServiceReconfigJob::create(
-            allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
+            allWorkers, config->get<unsigned int>("controller", "worker-config-timeout"), controller(),
+            noParentJobId, nullptr, config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
     job->wait();

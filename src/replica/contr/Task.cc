@@ -27,6 +27,7 @@
 #include <thread>
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/jobs/QservSyncJob.h"
 #include "replica/services/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -91,8 +92,11 @@ Task::Task(Controller::Ptr const& controller, string const& name,
 
 string Task::context() const { return _name + " "; }
 
-void Task::sync(unsigned int qservSyncTimeoutSec, bool forceQservSync) {
-    launch<QservSyncJob>(PRIORITY_NORMAL, qservSyncTimeoutSec, forceQservSync);
+void Task::sync() {
+    auto const config = serviceProvider()->config();
+    if (config->get<int>("controller", "qserv-sync-disable") != 0) return;
+    launch<QservSyncJob>(PRIORITY_NORMAL, config->get<unsigned int>("controller", "qserv-sync-timeout"),
+                         config->get<unsigned int>("controller", "qserv-sync-force") != 0);
 }
 
 void Task::_startImpl() {

@@ -479,7 +479,7 @@ void RebalanceJob::_onPrecursorJobFinish() {
     }
     size_t const numJobs =
             uniqueDestinationWorkers.size() *
-            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
+            controller()->serviceProvider()->config()->get<size_t>("controller", "num-requests-per-worker");
 
     size_t const numJobsLaunched = _launchNextJobs(lock, numJobs);
     if (0 != numJobsLaunched) {

@@ -85,7 +85,7 @@ void FindAllRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND_ALL);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestFindAll message;
@@ -111,7 +111,7 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestTrack message;
@@ -123,7 +123,7 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
 }
 
 void FindAllRequest::_send(replica::Lock const& lock) {
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseFindAll>(
+    controller()->messenger()->send<ProtocolResponseFindAll>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<FindAllRequest>()](string const& id, bool success,
                                                         ProtocolResponseFindAll const& response) {

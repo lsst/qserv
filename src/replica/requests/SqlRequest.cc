@@ -30,6 +30,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
@@ -110,7 +111,7 @@ void SqlRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::SQL);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
     buffer()->serialize(requestBody);
 
@@ -133,7 +134,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestTrack statusRequestBody;
@@ -147,7 +148,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
 void SqlRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<SqlRequest>();
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseSql>(
+    controller()->messenger()->send<ProtocolResponseSql>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseSql const& response) {
                 self->_analyze(success, response);

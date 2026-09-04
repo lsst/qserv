@@ -28,8 +28,8 @@
 #include <string>
 
 // Qserv headers
-#include "http/Auth.h"
 #include "replica/apps/ApplicationTypes.h"
+#include "replica/config/ConfigurationSchema.h"
 #include "replica/services/ServiceProvider.h"
 
 // This header declarations
@@ -69,20 +69,15 @@ protected:
      *
      * @param arc An argument count.
      * @param argv A vector of argument values.
-     * @param description An optional description of an application as it will appear
+     * @param description A description of an application as it will appear
      *  in the documentation string reported with option "--help".
-     * @param injectDatabaseOptions An optional flag which will inject database options
-     *  and use an input from a user to change the corresponding defaults in the Configuration.
-     * @param boostProtobufVersionCheck An optional flag which will force Google Protobuf
-     *  version check. The check will ensure that a version of the Protobuf library linked
-     *  to an application is consistent with header files.
-     * @param enableServiceProvider An optional flag which will inject configuration
-     *  option "--config=<url>", load the configuration into Configuration and initialize
+     * @param enableServiceProvider A flag which will inject configuration
+     *  option "--repl-db=<url>", load the configuration into Configuration and initialize
      *  the ServiceProvider with the configuration.
+     * @param configSchema The configuration schema to be used by the application.
      */
-    Application(int argc, const char* const argv[], std::string const& description = "",
-                bool const injectDatabaseOptions = true, bool const boostProtobufVersionCheck = false,
-                bool const enableServiceProvider = false);
+    Application(int argc, const char* const argv[], std::string const& description,
+                bool const enableServiceProvider, ConfigurationSchema const& configSchema);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -102,22 +97,6 @@ protected:
     ServiceProvider::Ptr const& serviceProvider() const;
 
     /**
-     * @return The configuration URL, either its default value or the one that was
-     *   explicitly specified in a command line. This requires that a base class configured
-     *   the application with the option 'enableServiceProvider=true'.
-     * @throws std::logic_error If Configuration loading and ServiceProvider was
-     *   not enabled in the constructor of the class, or if the method was called
-     *   before Parser finishes processing command-line parameters.
-     */
-    std::string const& configUrl() const;
-
-    /// @return The unique identifier of a Qserv instance served by the Replication System.
-    std::string const& instanceId() const { return _instanceId; }
-
-    /// @return The authorization context.
-    http::AuthContext const& httpAuthContext() const { return _httpAuthContext; }
-
-    /**
      * This method is required to be implements by subclasses to run
      * the application's logic. The method is called after successfully
      * parsing the command-line parameters and initializing the application's
@@ -128,37 +107,15 @@ protected:
     virtual int runImpl() = 0;
 
 private:
-    /**
-     * @brief Make sure the command-line parsing has finished and the specified
-     *   option was configured in the c-tor of the class.
-     * @param func the name of the calling context.
-     * @param option the option to be checked.
-     * @param the meaning of the option.
-     * @throws std::logic_error If the method was called before Parser finished
-     *  processing command-line parameters, or if the option was not configured.
-     */
-    void _assertValidOption(std::string const& func, bool option, std::string const& context) const;
-
     // Input parameters
-    bool const _injectDatabaseOptions;
-    bool const _boostProtobufVersionCheck;
     bool const _enableServiceProvider;
+    ConfigurationSchema const _configSchema;
 
     /// For parsing command-line parameters, options and flags
     Parser _parser;
 
     /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;
-
-    /// Configuration URL
-    std::string _config;
-
-    /// A unique identifier of a Qserv instance served by the Replication System
-    std::string _instanceId;
-
-    // Authorization context for operations that may change a state of Qserv or
-    // the Replication/Ingest system.
-    http::AuthContext _httpAuthContext;
 
     // Database connector options (if enabled)
 

@@ -55,12 +55,9 @@ public:
     /// The function type for notifications on the worker eviction events
     typedef std::function<void(std::string const&)> WorkerEvictCallbackType;
 
-    // Default construction and copy semantics are prohibited
-
     HealthMonitorTask() = delete;
     HealthMonitorTask(HealthMonitorTask const&) = delete;
     HealthMonitorTask& operator=(HealthMonitorTask const&) = delete;
-
     ~HealthMonitorTask() final = default;
 
     /**
@@ -80,77 +77,44 @@ public:
      * @param onWorkerEvictTimeout
      *   callback function to be called when one or more workers
      *   are continuously not responding during the specified period of
-     *   time (parameter 'workerEvictTimeoutSec'). A candidate worker becomes
-     *   eligible for eviction from the cluster if both Replication and Qserv
-     *   worker services are both not responding.
-     *
-     * @param workerEvictTimeoutSec
-     *   the maximum number of seconds a couple of Replication and Qserv services
-     *   run on the same worker node are allowed not to respond before evicting
-     *   that worker from the cluster.
-     *
-     * @param workerResponseTimeoutSec
-     *   the number of seconds to wait before a response when probing a remote
-     *   worker service (Replication or Qserv). The timeout is needed for continuous
-     *   monitoring of all workers even if one (or many of those) are not
-     *   responding.
-     *
-     * @param healthProbeIntervalSec
-     *   the number of seconds to wait between iterations of the inner monitoring
-     *   loop. This parameter determines a frequency of probes sent to the worker
-     *   services.
+     *   time (configuration parameter ("controller", "worker-evict-timeout").
+     *   An affected worker becomes eligible for eviction from the cluster if both
+     *   the Replication and the Qserv worker services are both not responding.
      *
      * @return
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
-                      WorkerEvictCallbackType const& onWorkerEvictTimeout, unsigned int workerEvictTimeoutSec,
-                      unsigned int workerResponseTimeoutSec, unsigned int healthProbeIntervalSec);
+                      WorkerEvictCallbackType const& onWorkerEvictTimeout);
 
     /// @return delays (seconds) in getting responses from the worker services
     WorkerResponseDelay workerResponseDelay() const;
 
 protected:
-    /// @see Task::onStart()
-    void onStart() final;
-
-    /// @see Task::onRun()
-    bool onRun() final;
+    virtual void onStart() final;
+    virtual bool onRun() final;
 
 private:
-    /**
-     * The constructor is available to the class's factory method
-     *
-     * @see HealthMonitorTask::create()
-     */
     HealthMonitorTask(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
-                      WorkerEvictCallbackType const& onWorkerEvictTimeout, unsigned int workerEvictTimeoutSec,
-                      unsigned int workerResponseTimeoutSec, unsigned int healthProbeIntervalSec);
+                      WorkerEvictCallbackType const& onWorkerEvictTimeout);
 
     /**
      * Log a persistent event on the started job
-     *
-     * @param job
-     *   pointer to the job
+     * @param job A pointer to the job
      */
     void _logStartedEvent(ClusterHealthJob::Ptr const& job) const;
 
     /**
      * Log a persistent event on the finished job
-     *
-     * @param job
-     *   pointer to the job
+     * @param job A pointer to the job
      */
     void _logFinishedEvent(ClusterHealthJob::Ptr const& job) const;
 
     // Input parameters
 
     WorkerEvictCallbackType const _onWorkerEvictTimeout;
-
-    unsigned int const _workerEvictTimeoutSec;
-    unsigned int const _workerResponseTimeoutSec;
 
     /// The thread-safe counter of the finished jobs
     std::atomic<size_t> _numFinishedJobs;

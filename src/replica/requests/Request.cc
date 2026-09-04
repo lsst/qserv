@@ -121,7 +121,7 @@ Request::Request(shared_ptr<Controller> const& controller, string const& type, s
                   controller->serviceProvider()->config()->get<size_t>("common", "request-buf-size-bytes"))),
           _worker(controller->serviceProvider()->config()->worker(workerName)),
           _timerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                  "common", "request-retry-interval-sec")),
+                  "controller", "request-retry-interval-sec")),
           _timer(controller->serviceProvider()->io_service()),
           _requestExpirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
                   "controller", "request-timeout-sec")),
@@ -291,7 +291,7 @@ void Request::finish(replica::Lock const& lock, ExtendedState extendedState) {
     // will be at the messenger's queue. This optimization also reduces extra
     // locking (and delays) in the messenger because the operation is synchronized.
     if (extendedState != Request::ExtendedState::SUCCESS) {
-        controller()->serviceProvider()->messenger()->cancel(workerName(), id());
+        controller()->messenger()->cancel(workerName(), id());
     }
 
     // Tell the worker to dispose the request if a subclass made such requirement,
@@ -359,15 +359,15 @@ void Request::dispose(replica::Lock const& lock, int priority, OnDisposeCallback
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
 
     buffer()->serialize(hdr);
     ProtocolRequestDispose message;
     message.add_ids(id());
     buffer()->serialize(message);
 
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseDispose>(workerName(), id(), priority,
-                                                                                buffer(), onFinish);
+    controller()->messenger()->send<ProtocolResponseDispose>(workerName(), id(), priority, buffer(),
+                                                             onFinish);
 }
 
 boost::asio::io_service& Request::_ioService() { return controller()->serviceProvider()->io_service(); }

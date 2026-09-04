@@ -55,7 +55,7 @@ void WorkerHttpSvcMod::process(shared_ptr<ServiceProvider> const& serviceProvide
 WorkerHttpSvcMod::WorkerHttpSvcMod(shared_ptr<ServiceProvider> const& serviceProvider,
                                    shared_ptr<WorkerHttpProcessor> const& processor, string const& workerName,
                                    httplib::Request const& req, httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp),
+        : http::ChttpModule(serviceProvider->config()->httpAuthContext(), req, resp),
           _serviceProvider(serviceProvider),
           _processor(processor),
           _workerName(workerName) {}
@@ -64,7 +64,7 @@ string WorkerHttpSvcMod::context() const { return "WORKER-HTTP-SVC "; }
 
 json WorkerHttpSvcMod::executeImpl(string const& subModuleName) {
     debug(__func__, "subModuleName: '" + subModuleName + "'");
-    enforceInstanceId(__func__, _serviceProvider->instanceId());
+    enforceInstanceId(__func__, _serviceProvider->config()->get<string>("security", "instance-id"));
     if (subModuleName == "ECHO")
         return _echo();
     else if (subModuleName == "REPLICA-CREATE")

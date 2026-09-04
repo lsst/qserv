@@ -29,6 +29,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
@@ -182,11 +183,11 @@ void ServiceManagementRequestBase::startImpl(replica::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     // Send the message
-    controller()->serviceProvider()->messenger()->send<ProtocolServiceResponse>(
+    controller()->messenger()->send<ProtocolServiceResponse>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<ServiceManagementRequestBase>()](
                     string const& id, bool success, ProtocolServiceResponse const& response) {

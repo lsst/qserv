@@ -28,9 +28,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
-#include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
-#include "replica/requests/Messenger.h"
 #include "replica/services/ChunkMap.h"
 #include "replica/services/DatabaseServicesPool.h"
 
@@ -47,16 +45,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
 
 namespace lsst::qserv::replica {
 
-ServiceProvider::Ptr ServiceProvider::create(string const& configUrl, string const& instanceId,
-                                             http::AuthContext const& httpAuthContext) {
-    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, httpAuthContext));
+ServiceProvider::Ptr ServiceProvider::create(shared_ptr<Configuration> const& config) {
+    return ServiceProvider::Ptr(new ServiceProvider(config));
 }
 
-ServiceProvider::ServiceProvider(string const& configUrl, string const& instanceId,
-                                 http::AuthContext const& httpAuthContext)
-        : _configuration(Configuration::load(configUrl)),
-          _instanceId(instanceId),
-          _httpAuthContext(httpAuthContext) {}
+ServiceProvider::ServiceProvider(shared_ptr<Configuration> const& config) : _configuration(config) {}
 
 DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     replica::Lock lock(_mtx, _context() + __func__);
@@ -64,22 +57,6 @@ DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
         _databaseServices = DatabaseServicesPool::create(_configuration);
     }
     return _databaseServices;
-}
-
-QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
-    replica::Lock lock(_mtx, _context() + __func__);
-    if (_qservMgtServices == nullptr) {
-        _qservMgtServices = QservMgtServices::create(shared_from_this());
-    }
-    return _qservMgtServices;
-}
-
-Messenger::Ptr const& ServiceProvider::messenger() {
-    replica::Lock lock(_mtx, _context() + __func__);
-    if (_messenger == nullptr) {
-        _messenger = Messenger::create(_configuration, _io_service);
-    }
-    return _messenger;
 }
 
 Registry::Ptr const& ServiceProvider::registry() {
@@ -114,7 +91,7 @@ void ServiceProvider::run() {
     _work.reset(new boost::asio::io_service::work(_io_service));
     auto self = shared_from_this();
     _threads.clear();
-    for (size_t i = 0; i < config()->get<size_t>("controller", "num-threads"); ++i) {
+    for (size_t i = 0; i < config()->get<size_t>("common", "asio-num-threads"); ++i) {
         _threads.push_back(make_unique<thread>([self]() {
             // This will prevent the I/O service from exiting the .run()
             // method event when it will run out of any requests to process.
@@ -136,9 +113,6 @@ void ServiceProvider::stop() {
 
     // Check if the service is already stopped
     if (_threads.empty()) return;
-
-    // These steps will cancel all outstanding requests to workers (if any)
-    if (_messenger != nullptr) _messenger->stop();
 
     // Destroying this object will let the I/O service to (eventually) finish
     // all on-going work and shut down all service threads. In that case there

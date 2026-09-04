@@ -20,30 +20,24 @@
  */
 
 // Class header
-#include "replica/config/ConfigTestData.h"
+#include "replica/config/ConfigTestDataWorker.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-map<string, set<string>> ConfigTestData::parameters() {
+map<string, set<string>> ConfigTestDataWorker::parameters() {
     return map<string, set<string>>(
-            {{"common", {"request-buf-size-bytes", "request-retry-interval-sec"}},
-             {"registry", {"host", "port", "max-listen-conn", "threads", "heartbeat-ival-sec"}},
-             {"controller",
-              {"num-threads", "http-server-port", "http-max-listen-conn", "http-server-threads",
-               "request-timeout-sec", "job-timeout-sec", "job-heartbeat-sec", "max-repl-level",
-               "worker-evict-priority-level", "health-monitor-priority-level", "ingest-priority-level",
-               "catalog-management-priority-level", "auto-register-workers", "auto-register-czars",
-               "ingest-job-monitor-ival-sec", "num-director-index-connections", "director-index-engine"}},
+            {{"common", {"asio-num-threads", "request-buf-size-bytes"}},
+             {"security", {"auth-key", "admin-auth-key", "http-user", "http-password", "instance-id"}},
+             {"registry", {"host", "port", "heartbeat-ival-sec"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
-             {"xrootd",
-              {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect", "reconnect-timeout"}},
              {"worker",
-              {"num-threads",
+              {"request-timeout-sec",
+               "num-threads",
                "num-svc-processing-threads",
                "num-http-svc-threads",
                "num-fs-processing-threads",
@@ -73,33 +67,17 @@ map<string, set<string>> ConfigTestData::parameters() {
                "create-databases-on-scan"}}});
 }
 
-json ConfigTestData::data() {
+json ConfigTestDataWorker::data() {
     json obj;
     json& generalObj = obj["general"];
-    generalObj["common"] =
-            json::object({{"request-buf-size-bytes", 8192}, {"request-retry-interval-sec", 1}});
-    generalObj["registry"] = json::object({{"host", "127.0.0.1"},
-                                           {"port", 8081},
-                                           {"max-listen-conn", 512},
-                                           {"threads", 4},
-                                           {"heartbeat-ival-sec", 10}});
-    generalObj["controller"] = json::object({{"num-threads", 2},
-                                             {"http-server-port", 8080},
-                                             {"http-max-listen-conn", 256},
-                                             {"http-server-threads", 3},
-                                             {"request-timeout-sec", 100},
-                                             {"job-timeout-sec", 200},
-                                             {"job-heartbeat-sec", 300},
-                                             {"max-repl-level", 2},
-                                             {"worker-evict-priority-level", 1},
-                                             {"health-monitor-priority-level", 2},
-                                             {"ingest-priority-level", 3},
-                                             {"catalog-management-priority-level", 4},
-                                             {"auto-register-workers", 1},
-                                             {"auto-register-czars", 0},
-                                             {"ingest-job-monitor-ival-sec", 5},
-                                             {"num-director-index-connections", 6},
-                                             {"director-index-engine", "MyISAM"}});
+    generalObj["common"] = json::object({{"asio-num-threads", 2}, {"request-buf-size-bytes", 8192}});
+    generalObj["security"] = json::object({{"auth-key", "key1"},
+                                           {"admin-auth-key", "key2"},
+                                           {"http-user", "qsreplica"},
+                                           {"http-password", "CHANGEME"},
+                                           {"instance-id", "qserv-1"}});
+    generalObj["registry"] =
+            json::object({{"host", "127.0.0.1"}, {"port", 8081}, {"heartbeat-ival-sec", 10}});
     generalObj["database"] = json::object({{"host", "localhost"},
                                            {"port", 13306},
                                            {"user", "qsreplica"},
@@ -108,13 +86,8 @@ json ConfigTestData::data() {
                                            {"qserv-master-user", "qsmaster"},
                                            {"services-pool-size", 2},
                                            {"qserv-master-tmp-dir", "/qserv/data/ingest"}});
-    generalObj["xrootd"] = json::object({{"auto-notify", 0},
-                                         {"host", "localhost"},
-                                         {"port", 1104},
-                                         {"request-timeout-sec", 400},
-                                         {"allow-reconnect", 0},
-                                         {"reconnect-timeout", 500}});
-    generalObj["worker"] = json::object({{"num-threads", 3},
+    generalObj["worker"] = json::object({{"request-timeout-sec", 122},
+                                         {"num-threads", 3},
                                          {"num-svc-processing-threads", 4},
                                          {"num-http-svc-threads", 10},
                                          {"num-fs-processing-threads", 5},

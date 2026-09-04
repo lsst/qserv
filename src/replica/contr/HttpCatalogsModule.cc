@@ -47,17 +47,15 @@ uint64_t HttpCatalogsModule::_catalogsReportTimeMs = 0;
 replica::Mutex HttpCatalogsModule::_catalogsMtx;
 
 void HttpCatalogsModule::process(Controller::Ptr const& controller, string const& taskName,
-                                 HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                 http::AuthType const authType) {
-    HttpCatalogsModule module(controller, taskName, processorConfig, req, resp);
+                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                 string const& subModuleName, http::AuthType const authType) {
+    HttpCatalogsModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpCatalogsModule::HttpCatalogsModule(Controller::Ptr const& controller, string const& taskName,
-                                       HttpProcessorConfig const& processorConfig,
                                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpCatalogsModule::executeImpl(string const& subModuleName) {
     debug(__func__);

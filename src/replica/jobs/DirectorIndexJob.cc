@@ -268,7 +268,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     // to absorb the latency of the network and disk I/O, so that worker threads
     // would be able to work on another batch of the data extraction requests while
     // results of the previous batch were being sent back to the Controller.
-    size_t const maxRequestsPerWorker = config->get<size_t>("worker", "num-svc-processing-threads");
+    size_t const maxRequestsPerWorker = config->get<size_t>("controller", "num-requests-per-worker");
     for (auto&& workerName : workerNames) {
         for (auto&& ptr : _launchRequests(lock, workerName, maxRequestsPerWorker)) {
             _inFlightRequests[ptr->id()] = ptr;
@@ -372,11 +372,13 @@ void DirectorIndexJob::_loadDataIntoTable() {
     string const context_ = context() + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
+    auto const config = controller()->serviceProvider()->config();
+
     // Open MySQL connection using the RAII-style handler that would automatically
     // abort the transaction should any problem occurred when loading data into the table.
     Connection::Ptr conn;
     try {
-        conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+        conn = Connection::open(config->qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
     } catch (exception const& ex) {
         string const error =
                 context_ + "failed to connect to the czar's database server, ex: " + string(ex.what());
@@ -401,8 +403,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
         try {
             string const query = g.loadDataInfile(
                     request->responseData().fileName, directorIndexTableName(database(), directorTable()),
-                    controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
-                    localFile);
+                    config->get<string>("controller", "director-index-charset-name"), localFile);
             h.conn->executeInOwnTransaction([&](auto conn) {
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in

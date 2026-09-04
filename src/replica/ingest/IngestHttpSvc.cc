@@ -72,9 +72,10 @@ void IngestHttpSvc::registerServices(unique_ptr<httplib::Server> const& server) 
     throwIf<logic_error>(server == nullptr, context_ + "the server is not initialized");
     auto const self = shared_from_base<IngestHttpSvc>();
     server->Get("/meta/version", [self](httplib::Request const& req, httplib::Response& resp) {
-        json const info = json::object({{"kind", "replication-worker-ingest"},
-                                        {"id", self->_workerName},
-                                        {"instance_id", self->serviceProvider()->instanceId()}});
+        json const info = json::object(
+                {{"kind", "replication-worker-ingest"},
+                 {"id", self->_workerName},
+                 {"instance_id", self->serviceProvider()->config()->get<string>("security", "instance-id")}});
         http::ChttpMetaModule::process(context_, info, req, resp, "VERSION");
     });
 

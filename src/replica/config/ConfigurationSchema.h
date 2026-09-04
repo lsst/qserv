@@ -56,33 +56,38 @@ struct EmptyValueValidator<std::string> {
 }  // namespace detail
 
 /**
- * This utility class ConfigurationSchema provides methods returning known JSON schemas of
+ * This base class ConfigurationSchema is a foundation for constructing JSON schemas of
  * the Configuration service.
  */
 class ConfigurationSchema {
 public:
+    ConfigurationSchema() = default;
+    ConfigurationSchema(ConfigurationSchema const&) = default;
+    ConfigurationSchema& operator=(ConfigurationSchema const&) = default;
+    ~ConfigurationSchema() = default;
+
     /// @return A documentation string for the specified parameter or the empty string
     ///   if none is available in the schema.
-    static std::string description(std::string const& category, std::string const& param);
+    std::string description(std::string const& category, std::string const& param) const;
 
     /// @return A 'true' if the parameter can't be modified via the 'set' methods
     ///   of the Configuration class. This information is used by class Configuration
     ///   to validate the parameters.
-    static bool readOnly(std::string const& category, std::string const& param);
+    bool readOnly(std::string const& category, std::string const& param) const;
 
     /// @return A 'true' if the parameter represents the security context (passwords,
     ///   authorization keys, etc.). Parameters possessing this attribute are supposed
     ///   to be used with care by the dependent automation tools to avoid exposing
     ///   sensitive information in log files, reports, etc.
-    static bool securityContext(std::string const& category, std::string const& param);
+    bool securityContext(std::string const& category, std::string const& param) const;
 
     /// @return The default value of the specified parameter serialized into a string.
     /// @throws std::invalid_argument If the parameter is unknown.
-    static std::string defaultValueAsString(std::string const& category, std::string const& param);
+    std::string defaultValueAsString(std::string const& category, std::string const& param) const;
 
     /// @return The default configuration data as per the current JSON schema to be loaded
     ///   into the transient state of the class Configuration upon its initialization.
-    static nlohmann::json defaultConfigData();
+    nlohmann::json defaultConfigData() const;
 
     /**
      * The directory method for locating categories and parameters within
@@ -95,7 +100,15 @@ public:
      *   the dictionary will contains a set of the parameter names within
      *   the corresponding category.
      */
-    static std::map<std::string, std::set<std::string>> parameters();
+    std::map<std::string, std::set<std::string>> parameters() const;
+
+    /**
+     * Check if a parameter exists within a given category.
+     * @param category The name of the parameter's category.
+     * @param param The name of the parameter within its category.
+     * @return True if the parameter exists, false otherwise.
+     */
+    bool exists(std::string const& category, std::string const& param) const;
 
     /**
      * Serialize a primitive JSON object into a non-quoted string.
@@ -104,10 +117,10 @@ public:
      * @param obj A JSON object to be serialized.
      * @throws std::invalid_argument If the input object can't be serialized into a string.
      */
-    static std::string json2string(std::string const& context, nlohmann::json const& obj);
+    std::string json2string(std::string const& context, nlohmann::json const& obj) const;
 
     template <typename T>
-    static void validate(std::string const& category, std::string const& param, T const& val) {
+    void validate(std::string const& category, std::string const& param, T const& val) const {
         // The test for parameters that have "zero" numeric value or the "empty"
         // string restrictions.
         if (!_emptyAllowed(category, param)) detail::EmptyValueValidator<T>::validate(val);
@@ -130,6 +143,13 @@ public:
                 "', param: '" + param + "'.");
     }
 
+protected:
+    /**
+     * @brief Construct a ConfigurationSchema object with the given JSON schema.
+     * @param schemaJson The JSON object representing the configuration schema.
+     */
+    ConfigurationSchema(nlohmann::json const& schemaJson);
+
 private:
     /**
      * @brief Retreive a value of the parameter's attribute (allow default value).
@@ -143,8 +163,8 @@ private:
      * @return T The value of the attribute (or the default value).
      */
     template <typename T>
-    static T _attributeValue(std::string const& category, std::string const& param, std::string const& attr,
-                             T const& defaultValue) {
+    T _attributeValue(std::string const& category, std::string const& param, std::string const& attr,
+                      T const& defaultValue) const {
         auto const categoryItr = _schemaJson.find(category);
         if (categoryItr != _schemaJson.end()) {
             auto const paramItr = categoryItr->find(param);
@@ -165,20 +185,43 @@ private:
      * @return nlohmann::json The value of the attribute.
      * @throws std::invalid_argument For unknown parameters or attributes.
      */
-    static nlohmann::json _attributeValueJson(std::string const& category, std::string const& param,
-                                              std::string const& attr);
+    nlohmann::json _attributeValueJson(std::string const& category, std::string const& param,
+                                       std::string const& attr) const;
 
     /// @return A 'true' if, depending on the actual type of the parameter, the empty
     ///   string (for strings) or zero value (for numeric parameters) is allowed.
     ///   This information is used by class Configuration to validate input values
     ///   of the parameters.
-    static bool _emptyAllowed(std::string const& category, std::string const& param);
+    bool _emptyAllowed(std::string const& category, std::string const& param) const;
 
-    /// @return The optional restrictor object or JSON's null object for teh parameter.
-    static nlohmann::json _restrictor(std::string const& category, std::string const& param);
+    /// @return The optional restrictor object or JSON's null object for the parameter.
+    nlohmann::json _restrictor(std::string const& category, std::string const& param) const;
 
-    /// The schema of the transient configuration.
-    static nlohmann::json const _schemaJson;
+    /**
+     * The schema definition is nested dictionary in which the top-level key reprsents
+     * the so called "categories" of parameters. Each entry under a category defines
+     * a single parameter. Values of these parameters are obtained and modified
+     * using the Configuration API methods 'get<T>` and 'set<T>`.
+     *
+     * All parameters have two mandatory attributes:
+     *  - The attribute "description" contains the documentation string explaining the attribute
+     *  - The attribute "default" holds the default value of the attribute. The value's type depends
+     *    on the attribute's role, and once it's defined here it's enforced through the rest of
+     *    the implementation. For instance, the type can't be changed via the method 'Configuration::set<T>'.
+     *
+     * Some parameters are also allowed to have the optional attributes:
+     *   - The attribute "read-only" set to 1 would indicate that the parameter's state
+     *     can't be changed via method 'Configuration::set<T>'.
+     *   - The attribute "empty-allowed" set to 1 would relax parameter value's validation
+     *     by method 'Configuration::set<T>' to allow 0 for numeric types and the empty string
+     *     fr strings.
+     *   - The attribute "security-context" if set to 1 would indicate to the API user that
+     *     the parameter has some the security-sensitive context (passwords, authorization keys,
+     *     etc.). Parameters possesing this attribute are supposed to be used with care by
+     *     the dependent automation tools to avoid exposing sensitive information in log files,
+     *     reports, etc.
+     */
+    nlohmann::json _schemaJson = nlohmann::json::object();
 };
 
 }  // namespace lsst::qserv::replica

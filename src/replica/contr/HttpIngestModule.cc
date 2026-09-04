@@ -127,17 +127,15 @@ string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
 void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
-                               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp, string const& subModuleName,
-                               http::AuthType const authType) {
-    HttpIngestModule module(controller, taskName, processorConfig, req, resp);
+                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                               string const& subModuleName, http::AuthType const authType) {
+    HttpIngestModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller, string const& taskName,
-                                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "DATABASES")
@@ -285,7 +283,7 @@ json HttpIngestModule::_addDatabase() {
                                       to_string(enableAutoBuildDirectorIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
-    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     json result;
@@ -370,7 +368,7 @@ json HttpIngestModule::_publishDatabase() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    auto const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    auto const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
@@ -483,7 +481,7 @@ json HttpIngestModule::_deleteDatabase() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     // Notify Czars about the database removal event.
@@ -661,7 +659,7 @@ json HttpIngestModule::_addTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    string const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     return result;
@@ -741,7 +739,7 @@ json HttpIngestModule::_deleteTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     // Notify Czars about the table removal event.
@@ -1376,11 +1374,12 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     string const context = "database=" + database.name;
     debug(__func__, context);
 
+    auto const config = controller()->serviceProvider()->config();
     bool const saveReplicaInfo = true;
     string const noParentJobId;
-    auto const findAlljob = FindAllJob::create(
-            database.family, saveReplicaInfo, allWorkers, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
+    auto const findAlljob =
+            FindAllJob::create(database.family, saveReplicaInfo, allWorkers, controller(), noParentJobId,
+                               nullptr, config->get<int>("controller", "ingest-priority-level"));
     findAlljob->start();
     logJobStartedEvent(FindAllJob::typeName(), findAlljob, database.family);
     findAlljob->wait();
@@ -1394,8 +1393,8 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     }
 
     bool const force = false;
-    auto const qservSyncJob =
-            QservSyncJob::create(database.family, force, qservSyncTimeoutSec(), controller());
+    auto const qservSyncJob = QservSyncJob::create(
+            database.family, force, config->get<int>("controller", "qserv-sync-timeout"), controller());
     qservSyncJob->start();
     logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
     qservSyncJob->wait();
@@ -1410,7 +1409,8 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
 }
 
 void HttpIngestModule::_notifyCzars(cconfig::DataManagementEvent const& event) const {
-    if (qservChunkMapUpdate()) {
+    auto const config = controller()->serviceProvider()->config();
+    if (config->get<unsigned int>("controller", "chunk-map-update") != 0) {
         // The replica disposition map neeeds to be updated in the database before sending
         // the notification to the czars.
         controller()->serviceProvider()->chunkMap()->update();

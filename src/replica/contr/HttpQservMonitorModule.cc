@@ -140,25 +140,14 @@ json czarIdsToJson(map<qmeta::CzarId, string> const& ids) {
     return result;
 }
 
-/**
- * Create a MySQL configuration for connecting to the Czar's QMeta database.
- */
-lsst::qserv::mysql::MySqlConfig czarQMetaConfig() {
-    database::mysql::ConnectionParams const params = Configuration::qservCzarDbParams("qservMeta");
-    string const noSocket;
-    return lsst::qserv::mysql::MySqlConfig(params.user, params.password, params.host, params.port, noSocket,
-                                           params.database);
-}
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 void HttpQservMonitorModule::process(Controller::Ptr const& controller, string const& taskName,
-                                     HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                      string const& subModuleName, http::AuthType const authType) {
-    HttpQservMonitorModule module(controller, taskName, processorConfig, req, resp);
+    HttpQservMonitorModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
@@ -171,10 +160,9 @@ void HttpQservMonitorModule::_throwIfNotSucceeded(string const& func,
 }
 
 HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller, string const& taskName,
-                                               HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
                                                qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "WORKERS")
@@ -215,7 +203,9 @@ json HttpQservMonitorModule::_workers() {
     debug(__func__);
     checkApiVersion(__func__, 19);
 
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    auto const config = controller()->serviceProvider()->config();
+    unsigned int const timeoutSec = query().optionalUInt(
+            "timeout_sec", config->get<unsigned int>("controller", "worker-response-timeout"));
     bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
     wbase::TaskSelector const taskSelector = _translateTaskSelector(__func__);
 
@@ -250,8 +240,10 @@ json HttpQservMonitorModule::_worker() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const timeoutSec = query().optionalUInt(
+            "timeout_sec", config->get<unsigned int>("controller", "worker-response-timeout"));
     bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
     wbase::TaskSelector const taskSelector = _translateTaskSelector(__func__);
 
@@ -260,8 +252,8 @@ json HttpQservMonitorModule::_worker() {
 
     string const noParentJobId;
     GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->status(
-            workerName, noParentJobId, taskSelector, onFinish, timeoutSec);
+    auto const request = controller()->qservMgtServices()->status(workerName, noParentJobId, taskSelector,
+                                                                  onFinish, timeoutSec);
     request->wait();
 
     json result = json::object();
@@ -283,15 +275,17 @@ json HttpQservMonitorModule::_workerConfig() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const timeoutSec = query().optionalUInt(
+            "timeout_sec", config->get<unsigned int>("controller", "worker-response-timeout"));
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetConfigQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->config(
-            workerName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->config(workerName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -302,15 +296,17 @@ json HttpQservMonitorModule::_workerDb() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const timeoutSec = query().optionalUInt(
+            "timeout_sec", config->get<unsigned int>("controller", "worker-response-timeout"));
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetDbStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->databaseStatus(
-            workerName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->databaseStatus(workerName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -321,10 +317,12 @@ json HttpQservMonitorModule::_workerFiles() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
     auto const queryIds = query().optionalVectorUInt64("query_ids");
     auto const maxFiles = query().optionalUInt("max_files", 0);
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const timeoutSec = query().optionalUInt(
+            "timeout_sec", config->get<unsigned int>("controller", "worker-response-timeout"));
 
     debug(__func__, "query_ids=" + util::String::toString(queryIds));
     debug(__func__, "max_files=" + to_string(maxFiles));
@@ -332,8 +330,8 @@ json HttpQservMonitorModule::_workerFiles() {
 
     string const noParentJobId;
     GetResultFilesQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->resultFiles(
-            workerName, noParentJobId, queryIds, maxFiles, onFinish, timeoutSec);
+    auto const request = controller()->qservMgtServices()->resultFiles(workerName, noParentJobId, queryIds,
+                                                                       maxFiles, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -348,13 +346,15 @@ json HttpQservMonitorModule::_czar() {
     checkApiVersion(__func__, 58);
 
     auto const czarName = _getCzarFromParamOrThrow404(__func__).name;
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
+    unsigned int const timeoutSec =
+            query().optionalUInt("timeout_sec", controller()->serviceProvider()->config()->get<unsigned int>(
+                                                        "controller", "czar-response-timeout"));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetStatusQservCzarMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->czarStatus(
-            czarName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->czarStatus(czarName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -366,13 +366,15 @@ json HttpQservMonitorModule::_czarConfig() {
     checkApiVersion(__func__, 58);
 
     auto const czarName = _getCzarFromParamOrThrow404(__func__).name;
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
+    unsigned int const timeoutSec =
+            query().optionalUInt("timeout_sec", controller()->serviceProvider()->config()->get<unsigned int>(
+                                                        "controller", "czar-response-timeout"));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetConfigQservCzarMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->czarConfig(
-            czarName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->czarConfig(czarName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -383,9 +385,11 @@ json HttpQservMonitorModule::_czarDb() {
     debug(__func__);
     checkApiVersion(__func__, 24);
 
+    auto const config = controller()->serviceProvider()->config();
+
     // Connect to the master database. Manage the new connection via the RAII-style
     // handler to ensure the transaction is automatically rolled-back in case of exceptions.
-    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(config->qservCzarDbParams("qservMeta")));
     bool const full = true;
     return json::object({{"status", database::mysql::processList(h.conn, full)}});
 }
@@ -458,7 +462,8 @@ json HttpQservMonitorModule::_activeQueries() {
     checkApiVersion(__func__, 25);
 
     auto const config = controller()->serviceProvider()->config();
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    unsigned int const timeoutSec = query().optionalUInt(
+            "timeout_sec", config->get<unsigned int>("controller", "worker-response-timeout"));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     // Check which queries and in which schedulers are being executed
@@ -492,7 +497,7 @@ json HttpQservMonitorModule::_activeQueries() {
 
     // Connect to the master database. Manage the new connection via the RAII-style
     // handler to ensure the transaction is automatically rolled-back in case of exceptions.
-    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(config->qservCzarDbParams("qservMeta")));
     QueryGenerator const g(h.conn);
 
     // Get info on the ongoing queries
@@ -508,7 +513,9 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
     checkApiVersion(__func__, 58);
 
     auto const czarName = _getCzarFromParamOrThrow404(__func__).name;
-    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
+    unsigned int const timeoutSec =
+            query().optionalUInt("timeout_sec", controller()->serviceProvider()->config()->get<unsigned int>(
+                                                        "controller", "czar-response-timeout"));
     auto const queryIds = query().optionalVectorUInt64("query_ids");
     unsigned int const lastSeconds = query().optionalUInt("last_seconds", 0);
     string const queryStatus = query().optionalString("query_status");
@@ -520,7 +527,7 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
     string const noParentJobId;
     GetQueryProgressQservCzarMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->czarQueryProgress(
+    auto const request = controller()->qservMgtServices()->czarQueryProgress(
             czarName, noParentJobId, queryIds, lastSeconds, queryStatus, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
@@ -559,7 +566,7 @@ json HttpQservMonitorModule::_pastQueries() {
 
     // Connect to the master database. Manage the new connection via the RAII-style
     // handler to ensure the transaction is automatically rolled-back in case of exceptions.
-    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(config->qservCzarDbParams("qservMeta")));
     QueryGenerator const g(h.conn);
 
     // Get info on the past queries matching the specified criteria.
@@ -614,7 +621,8 @@ json HttpQservMonitorModule::_userQuery() {
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    auto const config = controller()->serviceProvider()->config();
+    ConnectionHandler const h(Connection::open(config->qservCzarDbParams("qservMeta")));
     QueryGenerator const g(h.conn);
 
     json result;
@@ -774,7 +782,7 @@ json HttpQservMonitorModule::_getQueries(json const& workerInfo) const {
     // is automatically rolled-back in case of exceptions.
 
     auto const config = controller()->serviceProvider()->config();
-    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(config->qservCzarDbParams("qservMeta")));
     QueryGenerator const g(h.conn);
 
     // Extract descriptions of those queries from qservMeta
@@ -821,7 +829,7 @@ json HttpQservMonitorModule::_userTables() {
     debug(__func__);
     checkApiVersion(__func__, 59);
 
-    qmeta::UserTables userTables(::czarQMetaConfig());
+    qmeta::UserTables userTables(czarQMetaConfig());
 
     // The implementation of the API supports two modes of operation:
     // 1) if the 'id' parameter is specified then the request is for a
@@ -975,6 +983,14 @@ ConfigWorker HttpQservMonitorModule::_getWorkerFromParamOrThrow404(string const&
     } catch (ConfigUnknownWorker const& ex) {
         throw http::ErrorNotFound404(func, "no such worker found, name: " + workerName);
     }
+}
+
+qserv::mysql::MySqlConfig HttpQservMonitorModule::czarQMetaConfig() const {
+    auto const config = controller()->serviceProvider()->config();
+    database::mysql::ConnectionParams const params = config->qservCzarDbParams("qservMeta");
+    string const noSocket;
+    return lsst::qserv::mysql::MySqlConfig(params.user, params.password, params.host, params.port, noSocket,
+                                           params.database);
 }
 
 }  // namespace lsst::qserv::replica

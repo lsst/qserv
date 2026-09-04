@@ -23,6 +23,7 @@
 #include "replica/apps/RegistryHttpApp.h"
 
 // Qserv headers
+#include "replica/config/ConfigurationSchemaRegistry.h"
 #include "replica/registry/RegistryHttpSvc.h"
 
 using namespace std;
@@ -34,8 +35,6 @@ string const description =
         "connection and configuration parameters of the workers. The service can be used "
         "to obtain the run-time status of the workers for the system monitoring purposes";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = true;
 
 }  // namespace
@@ -47,8 +46,7 @@ shared_ptr<RegistryHttpApp> RegistryHttpApp::create(int argc, char* argv[]) {
 }
 
 RegistryHttpApp::RegistryHttpApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
-                      ::enableServiceProvider) {}
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaRegistry()) {}
 
 int RegistryHttpApp::runImpl() {
     auto const svc = RegistryHttpSvc::create(serviceProvider());

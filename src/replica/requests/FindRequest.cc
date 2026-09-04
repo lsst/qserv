@@ -89,7 +89,7 @@ void FindRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestFind message;
@@ -117,7 +117,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestTrack message;
@@ -130,7 +130,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
 void FindRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseFind>(
+    controller()->messenger()->send<ProtocolResponseFind>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<FindRequest>()](string const& id, bool success,
                                                      ProtocolResponseFind const& response) {

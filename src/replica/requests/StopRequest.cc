@@ -23,6 +23,7 @@
 #include "replica/requests/StopRequest.h"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
@@ -85,7 +86,7 @@ void StopRequest::startImpl(replica::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STOP);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestStop message;
@@ -107,7 +108,7 @@ void StopRequest::awaken(boost::system::error_code const& ec) {
 }
 
 void StopRequest::_send(replica::Lock const& lock) {
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseStop>(
+    controller()->messenger()->send<ProtocolResponseStop>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<StopRequest>()](string const& id, bool success,
                                                      ProtocolResponseStop const& response) {

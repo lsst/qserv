@@ -279,7 +279,7 @@ void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned i
                    << "  chunk=" << chunk << ", databases=" << util::String::toString(databases)
                    << ", worker=" << workerName << ", force=" << (force ? "true" : "false"));
 
-    controller()->serviceProvider()->qservMgtServices()->removeReplica(
+    controller()->qservMgtServices()->removeReplica(
             chunk, databases, workerName, force,
             [self = shared_from_this(), onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
                 LOGS(_log, LOG_LVL_DEBUG,
