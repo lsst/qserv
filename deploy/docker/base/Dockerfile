@@ -42,6 +42,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         git \
         glib2-devel \
         glibc-langpack-en \
+        helm \
         java-devel \
         libcurl-devel \
         libevent-devel \
@@ -50,15 +51,16 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         lsof \
         lua5.1-devel \
         make \
-        mariadb-connector-c-devel \
         mariadb-devel \
         netcat \
         openssl-devel \
         patch \
+        procps-ng \
         protobuf-compiler \
         protobuf-devel \
         python3.12 \
         python3.12-devel \
+        socat \
         tree \
         vim \
         zip \
@@ -97,10 +99,10 @@ RUN cd /tmp \
 RUN cd /tmp \
     && git clone https://github.com/apache/logging-log4cxx \
     && cd logging-log4cxx \
-    && git checkout rel/v1.3.1 \
+    && git checkout rel/v1.8.0 \
     && mkdir build \
     && cd build \
-    && cmake .. \
+    && cmake .. -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--as-needed" \
     && make -j8 \
     && make install \
     && cd /tmp \
@@ -162,7 +164,7 @@ RUN cd /tmp \
     && git checkout tags/1.11.729 \
     && mkdir build \
     && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_ONLY="s3" -DUSE_TLS_V1_3=on -DCPP_STANDARD=17 \
+    && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_ONLY="s3" -DUSE_TLS_V1_3=on -DCPP_STANDARD=23 \
     && make -j8 \
     && make install \
     && cd /tmp \
@@ -239,7 +241,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         libevent \
         libuuid \
         lua5.1 \
-        mariadb-connector-c \
+        mariadb \
         openssl \
         procps-ng \
         protobuf \
@@ -249,8 +251,6 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         lsof \
         strace \
         net-tools \
-        openldap \
-        mariadb-client-utils \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
