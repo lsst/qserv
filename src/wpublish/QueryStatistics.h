@@ -117,8 +117,6 @@ public:
         _tasksBooted += 1;
     }
 
-    QueryId getQueryId() const { return queryId; }
-
     /// Return a vector of all tasks considered running.
     std::vector<wbase::Task::Ptr> getRunningTasks() const;
 

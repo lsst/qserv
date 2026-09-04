@@ -281,7 +281,7 @@ void QueriesAndChunks::removeDead() {
 /// Query Ids should be unique for the life of the system, so erasing
 /// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
-    QueryId qId = queryStats->getQueryId();
+    QueryId qId = queryStats->queryId;
     LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead " << qId);
 
     _bootedTaskTracker.removeQuery(qId);
@@ -310,6 +310,7 @@ void QueriesAndChunks::examineAll() {
         // Already running this function.
         return;
     }
+    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll");
 
     /// Ensure that `_runningExamineAll` gets set to false.
     class SetExamineAllRunningFalse {
@@ -347,10 +348,9 @@ void QueriesAndChunks::examineAll() {
             if (!uqInfo->isWorkDone()) {
                 auto const ageSeconds = uqElem->getAgeSeconds();
                 if (ageSeconds > maxAgeSeconds) {
-                    string errMsg = string("Query is too old, age=") + to_string(ageSeconds) +
-                                    " maxAge=" + to_string(maxAgeSeconds);
-                    LOGS(_log, LOG_LVL_ERROR, errMsg);
-                    util::Error error(util::Error::WORKER_QUERY_TOO_OLD, util::Error::NONE, errMsg);
+                    string errMsg = string("Query took too long, age=") + to_string(ageSeconds) +
+                                    " maxAge=" + to_string(maxAgeSeconds) + " seconds";
+                    util::Error error(util::Error::WORKER_QUERY_TOOK_TOO_LONG, util::Error::NONE, errMsg);
                     uqInfo->fatalErrorForAllUberJobs(error);
                 }
             }

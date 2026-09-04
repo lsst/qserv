@@ -24,7 +24,6 @@
 
 // Qserv headers
 #include "util/Bug.h"
-#include "util/MultiError.h"
 #include "wbase/UberJobData.h"
 
 // LSST headers
