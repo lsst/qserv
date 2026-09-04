@@ -170,19 +170,10 @@ void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
     _schemaUpgradeWaitTimeoutSec = value;
 }
 
-Configuration::Ptr Configuration::load(ConfigurationSchema const& _configSchema, string const& replDbUrl) {
-    Ptr const ptr(new Configuration(_configSchema));
-    replica::Lock const lock(ptr->_mtx, _context(__func__));
-    bool const reset = false;
-    ptr->_load(lock, replDbUrl, reset);
-    return ptr;
-}
-
 Configuration::Ptr Configuration::load(ConfigurationSchema const& _configSchema, json const& obj) {
     Ptr const ptr(new Configuration(_configSchema));
     replica::Lock const lock(ptr->_mtx, _context(__func__));
-    bool const reset = false;
-    ptr->_load(lock, obj, reset);
+    ptr->_loadFromJSON(lock, obj);
     return ptr;
 }
 
@@ -197,28 +188,12 @@ Configuration::Configuration(ConfigurationSchema const& configSchema)
 
 void Configuration::reload() {
     replica::Lock const lock(_mtx, _context(__func__));
-    if (!_replDbUrl.empty()) {
-        bool const reset = true;
-        _load(lock, _replDbUrl, reset);
-    }
-}
-
-void Configuration::reload(string const& replDbUrl) {
-    replica::Lock const lock(_mtx, _context(__func__));
-    bool const reset = true;
-    _load(lock, replDbUrl, reset);
+    _loadFromMySQL(lock);
 }
 
 void Configuration::reload(json const& obj) {
     replica::Lock const lock(_mtx, _context(__func__));
-    bool const reset = true;
-    _load(lock, obj, reset);
-}
-
-string Configuration::replDbUrl(bool showPassword) const {
-    replica::Lock const lock(_mtx, _context(__func__));
-    if (_connectionPtr == nullptr) return string();
-    return _connectionParams.toString(showPassword);
+    _loadFromJSON(lock, obj);
 }
 
 database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
@@ -227,6 +202,10 @@ database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const&
 }
 
 map<string, set<string>> Configuration::parameters() const { return _configSchema.parameters(); }
+
+bool Configuration::exists(string const& category, string const& param) const {
+    return _configSchema.exists(category, param);
+}
 
 string Configuration::getAsString(string const& category, string const& param) const {
     replica::Lock const lock(_mtx, _context(__func__));
@@ -263,15 +242,11 @@ http::AuthContext Configuration::httpAuthContext() const {
                              _get(lock, "security", "admin-auth-key").get<string>());
 }
 
-void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset) {
-    if (reset) {
-        _workers.clear();
-        _databaseFamilies.clear();
-        _databases.clear();
-        _czars.clear();
-    }
-    _replDbUrl = string();
-    _connectionPtr = nullptr;
+void Configuration::_loadFromJSON(replica::Lock const& lock, json const& obj) {
+    _workers.clear();
+    _databaseFamilies.clear();
+    _databases.clear();
+    _czars.clear();
 
     // Validate and update configuration parameters.
     // Catch exceptions for error reporting.
@@ -282,28 +257,11 @@ void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << " " << _toJson(lock, showPassword).dump());
 }
 
-void Configuration::_load(replica::Lock const& lock, string const& replDbUrl, bool reset) {
-    if (reset) {
-        _workers.clear();
-        _databaseFamilies.clear();
-        _databases.clear();
-        _czars.clear();
-    }
-    _replDbUrl = replDbUrl;
-
-    // When initializing the connection object use the current defaults for the relevant
-    // fields that are missing in the connection string. After that update the database
-    // info in the configuration to match values of the parameters that were parsed
-    // in the connection string.
-    _connectionParams = database::mysql::ConnectionParams::parse(
-            replDbUrl, _get(lock, "database", "host").get<string>(),
-            _get(lock, "database", "port").get<uint16_t>(), _get(lock, "database", "user").get<string>(),
-            _get(lock, "database", "password").get<string>());
-    _data["database"]["host"] = _connectionParams.host;
-    _data["database"]["port"] = _connectionParams.port;
-    _data["database"]["user"] = _connectionParams.user;
-    _data["database"]["password"] = _connectionParams.password;
-    _data["database"]["name"] = _connectionParams.database;
+void Configuration::_loadFromMySQL(replica::Lock const& lock) {
+    _workers.clear();
+    _databaseFamilies.clear();
+    _databases.clear();
+    _czars.clear();
 
     // The schema upgrade timer is used for limiting a duration of time when
     // tracking (if enabled) the schema upgrade. The timeout includes
@@ -312,7 +270,9 @@ void Configuration::_load(replica::Lock const& lock, string const& replDbUrl, bo
     schemaUpgradeTimer.start();
 
     // Read data, validate and update configuration parameters.
-    _connectionPtr = database::mysql::Connection::open(_connectionParams);
+    auto const connectionParams =
+            database::mysql::ConnectionParams::parse(_get(lock, "database", "repl-db-conn").get<string>());
+    _connectionPtr = database::mysql::Connection::open(connectionParams);
     _g = database::mysql::QueryGenerator(_connectionPtr);
     while (true) {
         try {
@@ -844,8 +804,8 @@ json const& Configuration::_get(replica::Lock const& lock, string const& categor
                                 string const& param) const {
     json::json_pointer const pointer("/" + category + "/" + param);
     if (!_data.contains(pointer)) {
-        throw invalid_argument(_context(__func__) + " no such parameter for category: '" + category +
-                               "', param: '" + param + "'");
+        throw ConfigNoSuchParameter(_context(__func__) + " no such parameter for category: '" + category +
+                                    "', param: '" + param + "'");
     }
     return _data.at(pointer);
 }

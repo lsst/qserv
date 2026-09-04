@@ -48,7 +48,6 @@ Application::Application(int argc, const char* const argv[], string const& descr
           _configSchema(configSchema),
           _parser(argc, argv, description),
           _debugFlag(false),
-          _replDbUrl("mysql://qsreplica@localhost:3306/qservReplica"),
           _databaseAllowReconnect(Configuration::databaseAllowReconnect() ? 1 : 0),
           _databaseConnectTimeoutSec(Configuration::databaseConnectTimeoutSec()),
           _databaseMaxReconnects(Configuration::databaseMaxReconnects()),
@@ -71,7 +70,6 @@ int Application::run() {
 
     // Add extra options if requested by an application.
     if (_enableServiceProvider) {
-        parser().option("repl-db", "Configuration URL (a database connection string).", _replDbUrl);
         parser().option("db-allow-reconnect",
                         "Change the default database connection handling node. Set 0 to disable"
                         " automatic reconnects. Any other number would allow reconnects.",
@@ -149,21 +147,34 @@ int Application::run() {
         Configuration::setSchemaUpgradeWait(_schemaUpgradeWait != 0);
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
 
-        // Create the service provider instance and initialize the Configuration.
-        _serviceProvider = ServiceProvider::create(_configSchema, _replDbUrl);
-
-        // Update general configuration parameters.
+        // Create and initialze the configuration object.
         // Note that options specified by a user will have non-empty values.
+        auto const config = Configuration::load(_configSchema);
+
         for (auto&& categoryItr : _generalParams) {
             string const& category = categoryItr.first;
             for (auto&& paramItr : categoryItr.second) {
                 string const& param = paramItr.first;
                 string const& value = paramItr.second;
                 if (!value.empty()) {
-                    _serviceProvider->config()->setFromString(category, param, value);
+                    config->setFromString(category, param, value);
                 }
             }
         }
+
+        // This step is available only for the configuration loaded from the database. It will
+        // verify that the schema version of the database is compatible with the one expected by
+        // the application. If the schema version is older than the expected one then the method
+        // will throw an exception. If the schema version is newer than the expected one then
+        // the method will throw an exception if the option --schema-upgrade-wait is set to 0.
+        // Otherwise, the method will keep tracking the schema version for a duration of time
+        // specified by the option --schema-upgrade-wait-timeout.
+        if (config->exists("database", "repl-db-conn")) {
+            config->reload();
+        }
+
+        // Create the service provider instance and initialize the Configuration.
+        _serviceProvider = ServiceProvider::create(config);
 
         // Start the provider in its own thread pool before performing any asynchronous
         // operations via BOOST ASIO.

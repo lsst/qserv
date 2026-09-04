@@ -103,6 +103,14 @@ public:
     std::map<std::string, std::set<std::string>> parameters() const;
 
     /**
+     * Check if a parameter exists within a given category.
+     * @param category The name of the parameter's category.
+     * @param param The name of the parameter within its category.
+     * @return True if the parameter exists, false otherwise.
+     */
+    bool exists(std::string const& category, std::string const& param) const;
+
+    /**
      * Serialize a primitive JSON object into a non-quoted string.
      * @param context A context from which the operation was initiated. It's used for
      *   error reporting purposes.

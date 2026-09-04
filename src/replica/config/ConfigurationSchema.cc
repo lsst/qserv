@@ -69,6 +69,15 @@ map<string, set<string>> ConfigurationSchema::parameters() const {
     return result;
 }
 
+bool ConfigurationSchema::exists(string const& category, string const& param) const {
+    auto const categoryItr = _schemaJson.find(category);
+    if (categoryItr != _schemaJson.end()) {
+        auto const paramItr = categoryItr->find(param);
+        if (paramItr != categoryItr->end()) return true;
+    }
+    return false;
+}
+
 string ConfigurationSchema::json2string(string const& context, json const& obj) const {
     if (obj.is_string()) return obj.get<string>();
     if (obj.is_boolean()) return obj.get<bool>() ? "1" : "0";
