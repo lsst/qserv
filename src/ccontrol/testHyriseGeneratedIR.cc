@@ -2513,14 +2513,21 @@ BOOST_DATA_TEST_CASE(having_supported, HAVING_QUERIES, query) {
     BOOST_CHECK_NO_THROW(ccontrol::ParseRunner::makeSelectStmt(query));
 }
 
-// An aggregate's argument must be exactly a bare column reference or COUNT(*) (ANTLR compatibility)
 static std::vector<std::string> const AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES = {
-        "SELECT COUNT(1) FROM Object",
-        "SELECT MAX(1) FROM Object",
-        "SELECT MAX(objectId + 1) FROM Object",
-        "SELECT MAX(LENGTH(filterName)) FROM Object",
-        "SELECT LENGTH(MAX(filterName)) FROM Object",
-        "SELECT SUM(MAX(objectId)) FROM Object",
+        "SELECT MAX(objectId, 1) FROM Object",
+        "SELECT COUNT(objectId, 1) FROM Object",
+        "SELECT COUNT(DISTINCT objectId) FROM Object",
+        "SELECT STDDEV(ra_PS) FROM Object",
+        "SELECT GROUP_CONCAT(filterName) FROM Object",
+        "SELECT objectId FROM Object WHERE SUM(ra_PS) > 5",
+        "SELECT objectId FROM Object WHERE ROUND(SUM(ra_PS), 2) > 5",
+        "SELECT MAX(*) FROM Object",
+        "SELECT MIN(*) FROM Object",
+        "SELECT SUM(*) FROM Object",
+        "SELECT AVG(*) FROM Object",
+        "SELECT BIT_OR(*) FROM Object",
+        "SELECT BIT_AND(*) FROM Object",
+        "SELECT BIT_XOR(*) FROM Object",
 };
 
 BOOST_DATA_TEST_CASE(aggregate_argument_not_supported, AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES, query) {
@@ -2532,8 +2539,14 @@ static std::vector<std::string> const AGGREGATE_ARGUMENT_SUPPORTED_QUERIES = {
         "SELECT COUNT(*) FROM Object",
         "SELECT MAX(objectId) FROM Object",
         "SELECT SUM(objectId) FROM Object",
-        // Arithmetic surrounding a bare aggregate is still accepted, matching ANTLR
         "SELECT MAX(objectId) + 1 FROM Object",
+        "SELECT COUNT(1) FROM Object",
+        "SELECT MAX(1) FROM Object",
+        "SELECT MAX(objectId + 1) FROM Object",
+        "SELECT MAX(LENGTH(filterName)) FROM Object",
+        "SELECT LENGTH(MAX(filterName)) FROM Object",
+        "SELECT ROUND(100.0 * COUNT(filterName) / COUNT(*), 1) FROM Object",
+        "SELECT SUM(MAX(objectId)) FROM Object",
 };
 
 BOOST_DATA_TEST_CASE(aggregate_argument_supported, AGGREGATE_ARGUMENT_SUPPORTED_QUERIES, query) {

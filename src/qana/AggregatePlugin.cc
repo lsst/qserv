@@ -40,8 +40,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qana/CheckAggregation.h"
+#include "qana/AnalysisError.h"
 #include "query/AggOp.h"
+#include "query/ColumnRef.h"
 #include "query/FuncExpr.h"
 #include "query/OrderByClause.h"
 #include "query/QueryContext.h"
@@ -65,7 +66,27 @@ inline query::ValueExprPtr newExprFromAlias(std::string const& alias) {
     return query::ValueExpr::newSimple(vf);
 }
 
-/// ConvertAgg build records for merge expressions from parallel expressions
+/// ConvertAgg builds records for merge expressions from parallel expressions
+/// It rewrites the select list of an aggregate query into two select lists:
+///     * a *parallel* list evaluated per-chunk on the workers
+///     * a *merge* list evaluated once on the czar over result rows
+///
+/// It is called once per SELECT item. Each call appends to both lists, with non-aggregates (such as
+/// plain columns, *, scalars) passed through directly. Aggregate items are decomposed, with query::AggOp
+/// splitting them into the aggregates the workers must compute, plus a merge expression that will
+/// combine the partial results into their final value.
+///
+/// _rewriteForMerge walks the tree so aggregates nested inside scalars / function calls are found.
+///
+/// Example: `SELECT AVG(x) AS a FROM Object`
+///           ------------------
+///                  |
+///                  +--> parallelList: COUNT(x) AS QS1_COUNT
+///                  |                  SUM(x) AS QS2_SUM
+///                  |
+///                  +--> mergeList: SUM(QS2_SUM) / SUM(QS1_COUNT) AS a
+///
+/// NOTE: GROUP BY, ORDER BY, LIMIT and DISTINCT are not handled by ConvertAgg.
 template <class C>
 class ConvertAgg {
 public:
@@ -79,13 +100,14 @@ private:
         std::string origAlias = e.getAlias();
 
         if (!e.hasAggregation()) {
-            // Compute aliases as necessary to protect select list
-            // elements so that result tables can be dumped and the
-            // columns can be re-referenced in merge queries.
+            // Compute aliases as necessary to ensure SELECT list elements are referenceable in intermediate
+            // results so result tables can be dumped and columns can be re-referenced in merge queries.
+            //
+            // First, check for passthrough:
+            // - If an alias was already provided, use it.
+            // - `*` expands to multiple columns so it cannot be aliased
+            // - bare column refs are already addressable; no need for an alias
             std::string interName = origAlias;
-            // If there is no user alias, the expression is unprotected
-            // * cannot be protected--can't alias a set of columns
-            // simple column names are already legal column names
             if (origAlias.empty() && !e.isStar() && !e.isColumnRef()) {
                 interName = aMgr.getAggName("PASS");
             }
@@ -103,39 +125,86 @@ private:
             }
             return;
         }
-        // For exprs with aggregation, we must separate out the
-        // expression into pieces.
-        // Split the elements of a ValueExpr into its
-        // constituent ValueFactors, compute the lists in parallel, and
-        // then compute the expression result from the parallel
-        // results during merging.
-        query::ValueExprPtr mergeExpr = std::make_shared<query::ValueExpr>();
-        query::ValueExpr::FactorOpVector& mergeFactorOps = mergeExpr->getFactorOps();
-        query::ValueExpr::FactorOpVector const& factorOps = e.getFactorOps();
-        for (query::ValueExpr::FactorOpVector::const_iterator i = factorOps.begin(); i != factorOps.end();
-             ++i) {
-            query::ValueFactorPtr newFactor = i->factor->clone();
-            if (newFactor->getType() != query::ValueFactor::AGGFUNC) {
-                parallelList.push_back(query::ValueExpr::newSimple(newFactor));
-            } else {
-                query::AggRecord r;
-                r.orig = newFactor;
-                if (!newFactor->getFuncExpr()) {
-                    throw std::logic_error("Missing FuncExpr in AggRecord");
-                }
-                query::AggRecord::Ptr p = aMgr.applyOp(newFactor->getFuncExpr()->getName(), *newFactor);
-                if (!p) {
-                    throw std::logic_error("Couldn't process AggRecord");
-                }
-                parallelList.insert(parallelList.end(), p->parallel.begin(), p->parallel.end());
-                query::ValueExpr::FactorOp m;
-                m.factor = p->merge;
-                m.op = i->op;
-                mergeFactorOps.push_back(m);
-            }
-        }
+
+        // This SELECT item contains an aggregation. Rewrite it into the expression the czar should evaluate,
+        // and place per-chunk aggregates into the parallel select list.
+        query::ValueExprPtr mergeExpr = _rewriteForMerge(e, e);
         mergeExpr->setAlias(origAlias);
         mergeList.push_back(mergeExpr);
+    }
+
+    /// Rewrite a ValueExpr into its merge form and update parallelList. Recurses so that aggregates in
+    /// nested expressions or scalar function arguments are found.
+    ///
+    /// @param expr       the expression being rewritten
+    /// @param selectItem the select item (used for diagnostics)
+    query::ValueExprPtr _rewriteForMerge(query::ValueExpr const& expr, query::ValueExpr const& selectItem) {
+        query::ValueExprPtr merged = std::make_shared<query::ValueExpr>();
+        query::ValueExpr::FactorOpVector& mergeFactorOps = merged->getFactorOps();
+        for (auto const& factorOp : expr.getFactorOps()) {
+            mergeFactorOps.push_back(query::ValueExpr::FactorOp(
+                    _rewriteFactorForMerge(*factorOp.factor, selectItem), factorOp.op));
+        }
+        return merged;
+    }
+
+    /// Rewrite a ValueFactor into its merge form.
+    ///
+    /// @param factor     the factor being rewritten
+    /// @param selectItem the select item (used for diagnostics)
+    query::ValueFactorPtr _rewriteFactorForMerge(query::ValueFactor const& factor,
+                                                 query::ValueExpr const& selectItem) {
+        if (factor.getType() == query::ValueFactor::AGGFUNC) {
+            if (!factor.getFuncExpr()) {
+                throw AnalysisBug("Missing FuncExpr in an aggregation ValueFactor");
+            }
+            for (auto const& param : factor.getFuncExpr()->params) {
+                if (param->hasAggregation()) {
+                    // e.g. MAX(SUM(x)). MariaDB rejects this too without a subquery.
+                    throw AnalysisError(
+                            "Qserv does not support an aggregate directly inside another aggregate: \"" +
+                            selectItem.sqlFragment(query::QueryTemplate::NO_ALIAS) +
+                            "\". Select the aggregate on its own.");
+                }
+            }
+            query::AggRecord::Ptr record = aMgr.applyOp(factor.getFuncExpr()->getName(), factor);
+            if (!record) {
+                throw AnalysisBug("Couldn't process AggRecord");
+            }
+            parallelList.insert(parallelList.end(), record->parallel.begin(), record->parallel.end());
+            return record->merge;
+        }
+
+        if (factor.hasAggregation()) {
+            // Handle factors that wrap an aggregate
+            switch (factor.getType()) {
+                case query::ValueFactor::EXPR:
+                    return query::ValueFactor::newExprFactor(_rewriteForMerge(*factor.getExpr(), selectItem));
+                case query::ValueFactor::FUNCTION: {
+                    auto funcExpr = factor.getFuncExpr()->clone();
+                    for (auto& param : funcExpr->params) {
+                        param = _rewriteForMerge(*param, selectItem);
+                    }
+                    return query::ValueFactor::newFuncFactor(funcExpr);
+                }
+                default:
+                    throw AnalysisBug("Found aggregation in a factor that can't contain one: " +
+                                      query::ValueFactor::getTypeString(factor.getType()));
+            }
+        }
+
+        // At this point there is no aggregation in this factor. If it doesn't read any columns, the czar can
+        // evaluate it directly, so it is admissible. Anything that reads a column would have to be passed
+        // through under an intermediate alias, with the merge GROUP BY rewritten (NOT supported).
+        query::ColumnRef::Vector columnRefs;
+        factor.findColumnRefs(columnRefs);
+        if (!columnRefs.empty()) {
+            throw AnalysisError(
+                    "Qserv does not support an aggregate combined with a column-dependent expression: \"" +
+                    selectItem.sqlFragment(query::QueryTemplate::NO_ALIAS) +
+                    "\". Select the aggregate on its own.");
+        }
+        return factor.clone();
     }
 
     C& parallelList;
@@ -147,7 +216,7 @@ private:
 // AggregatePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext& context) {
-    // For each entry in original's SelectList, modify the SelectList for the parallel and merge versions.
+    // For each entry in original's SelectList, build the SelectList for the parallel and merge versions.
     // Set hasMerge to true if aggregation is detected.
     auto origSelectValueExprs = plan.stmtOriginal.getSelectList().getValueExprList();
     if (nullptr == origSelectValueExprs) {
@@ -163,7 +232,6 @@ void AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext
     ConvertAgg<query::ValueExprPtrVector> ca(*parallelSelectList.getValueExprList(),
                                              *mergeSelectList->getValueExprList(), aggOpManager);
     std::for_each(origSelectValueExprs->begin(), origSelectValueExprs->end(), ca);
-    // Also need to operate on GROUP BY.
 
     plan.stmtMerge.setSelectList(mergeSelectList);
 
