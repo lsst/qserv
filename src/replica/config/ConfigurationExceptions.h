@@ -130,6 +130,15 @@ public:
             : ConfigError(msg), czarName(czarName_) {}
 };
 
+/**
+ * The class ConfigNoSuchParameter represents exceptions thrown when an operation
+ * is attempted on a configuration object with a parameter that does not exist.
+ */
+class ConfigNoSuchParameter : public ConfigError {
+public:
+    using ConfigError::ConfigError;
+};
+
 }  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H

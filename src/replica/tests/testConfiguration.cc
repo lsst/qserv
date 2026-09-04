@@ -108,21 +108,18 @@ BOOST_AUTO_TEST_CASE(ConfigInitTestJSON) {
     BOOST_REQUIRE_NO_THROW(configController = Configuration::load(ConfigurationSchemaController(),
                                                                   ConfigTestDataController::data()));
     BOOST_CHECK(configController != nullptr);
-    BOOST_CHECK(configController->replDbUrl().empty());
     string const configJsonStr = configController->toJson().dump();
     BOOST_CHECK(!configJsonStr.empty());
 
     BOOST_REQUIRE_NO_THROW(configRegistry = Configuration::load(ConfigurationSchemaRegistry(),
                                                                 ConfigTestDataRegistry::data()));
     BOOST_CHECK(configRegistry != nullptr);
-    BOOST_CHECK(configRegistry->replDbUrl().empty());
     string const configJsonStrRegistry = configRegistry->toJson().dump();
     BOOST_CHECK(!configJsonStrRegistry.empty());
 
     BOOST_REQUIRE_NO_THROW(
             configWorker = Configuration::load(ConfigurationSchemaWorker(), ConfigTestDataWorker::data()));
     BOOST_CHECK(configWorker != nullptr);
-    BOOST_CHECK(configWorker->replDbUrl().empty());
     string const configJsonStrWorker = configWorker->toJson().dump();
     BOOST_CHECK(!configJsonStrWorker.empty());
 }
@@ -148,18 +145,32 @@ BOOST_AUTO_TEST_CASE(ConfigTestDir) {
     logParameters(config->parameters(), "Controller:actual");
     logParameters(ConfigTestDataController::parameters(), "Controller:expected");
     BOOST_CHECK(config->parameters() == ConfigTestDataController::parameters());
+    BOOST_CHECK(config->exists("common"));
+    BOOST_CHECK(config->exists("controller"));
+    BOOST_CHECK(config->exists("database"));
+    BOOST_CHECK(config->exists("registry"));
+    BOOST_CHECK(config->exists("security"));
+    BOOST_CHECK(config->exists("xrootd"));
 
     LOGS_INFO("Testing directory functions of the Registry");
     config = configRegistry;
     logParameters(config->parameters(), "Registry:actual");
     logParameters(ConfigTestDataRegistry::parameters(), "Registry:expected");
     BOOST_CHECK(config->parameters() == ConfigTestDataRegistry::parameters());
+    BOOST_CHECK(config->exists("common"));
+    BOOST_CHECK(config->exists("registry"));
+    BOOST_CHECK(config->exists("security"));
 
     LOGS_INFO("Testing directory functions of the Worker");
     config = configWorker;
     logParameters(config->parameters(), "Worker:actual");
     logParameters(ConfigTestDataWorker::parameters(), "Worker:expected");
     BOOST_CHECK(config->parameters() == ConfigTestDataWorker::parameters());
+    BOOST_CHECK(config->exists("common"));
+    BOOST_CHECK(config->exists("database"));
+    BOOST_CHECK(config->exists("registry"));
+    BOOST_CHECK(config->exists("security"));
+    BOOST_CHECK(config->exists("worker"));
 }
 
 BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
