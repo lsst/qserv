@@ -242,6 +242,16 @@ std::string UberJobData::resultFileHttpUrl() const {
     return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }
 
+void UberJobData::fatalError(util::Error const& err) {
+    auto const fcs = getFileChannelShared();
+    if (fcs != nullptr) {
+        util::MultiError multiErr;
+        multiErr.insert(err);
+        fcs->buildAndTransmitUJError(multiErr, getIdStr());
+    }
+    cancelAllTasks();
+}
+
 void UberJobData::cancelAllTasks() {
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
     int count = 0;
@@ -267,7 +277,6 @@ string UJTransmitCmd::cName(const char* funcN) const {
 void UJTransmitCmd::action(util::CmdData* data) {
     LOGS(_log, LOG_LVL_TRACE, cName(__func__));
     // Make certain _selfPtr is reset before leaving this function.
-    // If a retry is needed, duplicate() is called.
     class ResetSelf {
     public:
         ResetSelf(UJTransmitCmd* ujtCmd) : _ujtCmd(ujtCmd) {}
@@ -277,11 +286,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     ResetSelf resetSelf(this);
 
     _attemptCount++;
-    auto ujPtr = _ujData.lock();
-    if (ujPtr == nullptr || ujPtr->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
-        return;
-    }
     auto request = _ujMsg->toJson();
     string const requestStr = request.dump();
     http::Client client(_method, _url, requestStr, _headers);
@@ -292,11 +296,13 @@ void UJTransmitCmd::action(util::CmdData* data) {
         if (respMsg->success) {
             transmitSuccess = true;
             if (respMsg->dataObsolete) {
-                // Mark the as obsolete and end this UberJob
-                ujPtr->cancelAllTasks();
-                // At this point, just deleting obsolete result files.
-                wbase::FileChannelShared::cleanUpResults(ujPtr->getCzarId(), ujPtr->getQueryId(),
-                                                         ujPtr->getUberJobId());
+                // Mark the UberJob as obsolete and end this UberJob
+                auto ujPtr = _ujData.lock();
+                if (ujPtr != nullptr) {
+                    ujPtr->cancelAllTasks();
+                    // At this point, just deleting obsolete result files.
+                    wbase::FileChannelShared::cleanUpResults(_czarId, _queryId, _uberJobId);
+                }
             }
             string note = response.at("note");
             if (!note.empty()) {
@@ -305,9 +311,9 @@ void UJTransmitCmd::action(util::CmdData* data) {
         } else {
             LOGS(_log, LOG_LVL_WARN,
                  cName(__func__) << " Transmit success=0 " << protojson::pwHide(response));
-            respMsg->failedUpdateUberJobData(ujPtr->getCzarId(), ujPtr->getQueryId(), ujPtr->getUberJobId());
+            respMsg->failedUpdateUberJobData(_czarId, _queryId, _uberJobId);
             // There's no point in re-sending as the czar got the message and didn't like
-            // it.
+            // it. Don't delete the result file, the czar may still want it.
             return;
         }
     } catch (exception const& ex) {
@@ -317,19 +323,19 @@ void UJTransmitCmd::action(util::CmdData* data) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit failed, adding to WorkerCzarComIssue");
         auto sPtr = _selfPtr;
         if (_foreman != nullptr && sPtr != nullptr) {
-            // Do not reset _selfPtr as re-queuing may be needed several times.
             LOGS(_log, LOG_LVL_WARN,
                  cName(__func__) << " no response for transmit, putting on failed transmit queue.");
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
-            // This will check if the czar is believed to be alive and try the queue the query to be tried
-            // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            if (wCzInfo->checkAlive(CLOCK::now())) {
-                auto wcComIssue = wCzInfo->getWorkerCzarComIssue();
-                // nullptr should be impossible
-                // Add this failed transmit to the list so the czar will try to
-                // handle it when it gets the WorkerCzarComIssue message.
-                wcComIssue->addFailedTransmit(_queryId, _uberJobId, _ujMsg);
+
+            // Add the failed transmit to the WorkerCzarComIssue message.
+            auto wcComIssue = wCzInfo->getWorkerCzarComIssue();
+            if (wcComIssue == nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to get WorkerCzarComIssue");
+                return;
             }
+            // Add this failed transmit to the list so the czar will try to
+            // handle it when it gets the WorkerCzarComIssue message.
+            wcComIssue->addFailedTransmit(_queryId, _uberJobId, _ujMsg);
         } else {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
         }

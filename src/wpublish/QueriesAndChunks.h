@@ -319,6 +319,8 @@ public:
     /// all Tasks associated with that czar.
     void killAllQueriesFromCzar(CzarId czarId);
 
+    unsigned int getMaxQueryAgeMinutes() const { return _maxQueryAgeMinutes; }
+
     friend std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc);
 
 private:
@@ -400,6 +402,8 @@ private:
     /// Maximum number of booted `Task`s allowed to be running at a given time.
     /// This should be set by the config with "scheduler.maxconcurrentbootedtasks"
     int _maxDarkTasks = 25;
+
+    unsigned int _maxQueryAgeMinutes = 0;  ///< Maximum age of a query in minutes, 0 means no limit.
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.

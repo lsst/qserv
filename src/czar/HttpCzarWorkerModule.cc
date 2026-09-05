@@ -82,7 +82,7 @@ json HttpCzarWorkerModule::_queryJobError() {
     debug(__func__);
     checkApiVersion(__func__, 34);
     auto ret = _handleJobError(__func__);
-    return json::object();
+    return ret;
 }
 
 json HttpCzarWorkerModule::_queryJobReady() {
