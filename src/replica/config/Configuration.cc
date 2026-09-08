@@ -81,8 +81,6 @@ bool Configuration::_databaseAllowReconnect = true;
 unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
 unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
-bool Configuration::_schemaUpgradeWait = true;
-unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
 string Configuration::_qservWorkerDbUrl = "mysql://qsmaster@localhost:3306/qservw_worker";
 replica::Mutex Configuration::_classMtx;
 
@@ -147,27 +145,6 @@ void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
 unsigned int Configuration::databaseTransactionTimeoutSec() {
     replica::Lock const lock(_classMtx, _context(__func__));
     return _databaseTransactionTimeoutSec;
-}
-
-bool Configuration::schemaUpgradeWait() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _schemaUpgradeWait;
-}
-
-void Configuration::setSchemaUpgradeWait(bool value) {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _schemaUpgradeWait = value;
-}
-
-unsigned int Configuration::schemaUpgradeWaitTimeoutSec() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _schemaUpgradeWaitTimeoutSec;
-}
-
-void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
-    _THROW_IF_ZERO(value);
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _schemaUpgradeWaitTimeoutSec = value;
 }
 
 Configuration::Ptr Configuration::load(ConfigurationSchema const& _configSchema, json const& obj) {
@@ -284,7 +261,7 @@ void Configuration::_loadFromMySQL(replica::Lock const& lock) {
             });
             break;
         } catch (ConfigVersionMismatch const& ex) {
-            if (Configuration::schemaUpgradeWait()) {
+            if (_get(lock, "database", "schema-upgrade-wait").get<unsigned int>() != 0) {
                 if (ex.version > ex.requiredVersion) {
                     LOGS(_log, LOG_LVL_ERROR,
                          _context(__func__) << "Database schema version is newer than"
@@ -292,11 +269,13 @@ void Configuration::_loadFromMySQL(replica::Lock const& lock) {
                     throw;
                 }
                 schemaUpgradeTimer.stop();
-                if (schemaUpgradeTimer.getElapsed() > Configuration::schemaUpgradeWaitTimeoutSec()) {
+                if (schemaUpgradeTimer.getElapsed() >
+                    _get(lock, "database", "schema-upgrade-wait-timeout").get<unsigned int>()) {
                     LOGS(_log, LOG_LVL_ERROR,
                          _context(__func__)
                                  << "The maximum duration of time ("
-                                 << Configuration::schemaUpgradeWaitTimeoutSec() << " seconds) has expired"
+                                 << _get(lock, "database", "schema-upgrade-wait-timeout").get<unsigned int>()
+                                 << " seconds) has expired"
                                  << " while waiting for the database schema upgrade. The schema version "
                                     "is still older than"
                                  << " the one required by the application, ex: " << ex.what());

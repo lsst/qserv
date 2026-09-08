@@ -68,8 +68,9 @@ map<string, set<string>> ConfigTestDataController::parameters() {
                "director-index-engine",
                "create-folders"}},
              {"database",
-              {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
-               "qserv-master-services-pool-size", "qserv-master-tmp-dir", "repl-db-conn", "czar-db-conn"}},
+              {"schema-upgrade-wait", "schema-upgrade-wait-timeout", "services-pool-size", "host", "port",
+               "user", "password", "name", "qserv-master-user", "qserv-master-services-pool-size",
+               "qserv-master-tmp-dir", "repl-db-conn", "czar-db-conn"}},
              {"xrootd",
               {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect",
                "reconnect-timeout"}}});
@@ -119,7 +120,9 @@ json ConfigTestDataController::data() {
                                              {"num-director-index-connections", 6},
                                              {"director-index-engine", "MyISAM"},
                                              {"create-folders", 1}});
-    generalObj["database"] = json::object({{"host", "localhost"},
+    generalObj["database"] = json::object({{"schema-upgrade-wait", 1},
+                                           {"schema-upgrade-wait-timeout", 10},
+                                           {"host", "localhost"},
                                            {"port", 13306},
                                            {"user", "qsreplica"},
                                            {"password", "changeme"},

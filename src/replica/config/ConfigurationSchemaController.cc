@@ -292,7 +292,25 @@ json const controllerSchemaJson = json::object(
              {"empty-allowed", 1},
              {"default", 1}}}}},
          {"database",
-          {{"services-pool-size",
+          {{"schema-upgrade-wait",
+            {{"description",
+              "If the value of the option is 0 and the schema version of the Replication/Ingest "
+              "system's database is either not available or is less than the one expected by the application"
+              " then the application will fail right away. Otherwise, the application will "
+              "keep tracking schema version for a duration specified by the option "
+              "--database-schema-upgrade-wait-timeout."
+              " Note that if the schema version found in the database is higher than the "
+              "expected one then the application will fail right away regardless of a value of either "
+              "option."},
+             {"empty-allowed", 1},
+             {"default", 1}}},
+           {"schema-upgrade-wait-timeout",
+            {{"description",
+              "The duration (in seconds) for which the application will keep tracking schema version "
+              "if the current schema version is less than the expected one and the "
+              "--database-schema-upgrade-wait option is set to a non-zero value."},
+             {"default", 3600}}},
+           {"services-pool-size",
             {{"description", "The pool size at the client database services connector."},
              {"default", max(8, num_threads)}}},
            {"host",

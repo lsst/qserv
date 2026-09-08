@@ -33,8 +33,9 @@ map<string, set<string>> ConfigTestDataWorker::parameters() {
              {"security", {"auth-key", "admin-auth-key", "http-user", "http-password", "instance-id"}},
              {"registry", {"host", "port", "heartbeat-ival-sec"}},
              {"database",
-              {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
-               "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
+              {"schema-upgrade-wait", "schema-upgrade-wait-timeout", "services-pool-size", "host", "port",
+               "user", "password", "name", "qserv-master-user", "qserv-master-services-pool-size",
+               "qserv-master-tmp-dir"}},
              {"worker",
               {"request-timeout-sec",
                "num-threads",
@@ -78,7 +79,9 @@ json ConfigTestDataWorker::data() {
                                            {"instance-id", "qserv-1"}});
     generalObj["registry"] =
             json::object({{"host", "127.0.0.1"}, {"port", 8081}, {"heartbeat-ival-sec", 10}});
-    generalObj["database"] = json::object({{"host", "localhost"},
+    generalObj["database"] = json::object({{"schema-upgrade-wait", 1},
+                                           {"schema-upgrade-wait-timeout", 10},
+                                           {"host", "localhost"},
                                            {"port", 13306},
                                            {"user", "qsreplica"},
                                            {"password", "changeme"},

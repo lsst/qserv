@@ -51,9 +51,7 @@ Application::Application(int argc, const char* const argv[], string const& descr
           _databaseAllowReconnect(Configuration::databaseAllowReconnect() ? 1 : 0),
           _databaseConnectTimeoutSec(Configuration::databaseConnectTimeoutSec()),
           _databaseMaxReconnects(Configuration::databaseMaxReconnects()),
-          _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-          _schemaUpgradeWait(Configuration::schemaUpgradeWait() ? 1 : 0),
-          _schemaUpgradeWaitTimeoutSec(Configuration::schemaUpgradeWaitTimeoutSec()) {
+          _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()) {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -87,24 +85,6 @@ int Application::run() {
                         "Change the default value limiting a duration of each attempt to execute"
                         " a database transaction before to fail.",
                         _databaseTransactionTimeoutSec);
-        parser().option("schema-upgrade-wait",
-                        "If the value of the option is 0 and the schema version of the Replication/Ingest "
-                        "system's"
-                        " database is either not available or is less than " +
-                                to_string(ConfigParserMySQL::expectedSchemaVersion) +
-                                " then the application will fail right away. Otherwise, the application will "
-                                "keep"
-                                " tracking schema version for a duration specified by the option "
-                                "--schema-upgrade-wait-timeout."
-                                " Note that if the schema version found in the database is higher than the "
-                                "expected one"
-                                " then the application will fail right away regardless of a value of either "
-                                "options.",
-                        _schemaUpgradeWait);
-        parser().option("schema-upgrade-wait-timeout",
-                        "This option specifies a duration of time to wait for the schema upgrade in case"
-                        " if this feature is enabled in the option --schema-upgrade-wait.",
-                        _schemaUpgradeWaitTimeoutSec);
 
         // Inject options for the general configuration parameters.
         for (auto&& itr : _configSchema.parameters()) {
@@ -144,8 +124,6 @@ int Application::run() {
         Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
         Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
         Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
-        Configuration::setSchemaUpgradeWait(_schemaUpgradeWait != 0);
-        Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
 
         // Create and initialze the configuration object.
         // Note that options specified by a user will have non-empty values.
