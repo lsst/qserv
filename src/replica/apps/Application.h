@@ -124,11 +124,6 @@ private:
     unsigned int _databaseMaxReconnects;
     unsigned int _databaseTransactionTimeoutSec;
 
-    // Schema upgrade waiting options
-
-    unsigned int _schemaUpgradeWait;
-    unsigned int _schemaUpgradeWaitTimeoutSec;
-
     /// General parameters
     std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
