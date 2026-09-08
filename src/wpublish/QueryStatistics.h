@@ -117,11 +117,6 @@ public:
         _tasksBooted += 1;
     }
 
-    QueryId getQueryId() {
-        std::lock_guard<std::mutex> lg(_qStatsMtx);
-        return queryId;
-    }
-
     /// Return a vector of all tasks considered running.
     std::vector<wbase::Task::Ptr> getRunningTasks() const;
 
@@ -169,6 +164,9 @@ public:
 
     TIMEPOINT const creationTime;
     QueryId const queryId;
+
+    /// Return the age of the query in seconds.
+    double getAgeSeconds() const;
 
     /// Return a json object containing high level data, such as histograms.
     nlohmann::json getJsonHist() const;

@@ -128,11 +128,6 @@ public:
     void setTaskCount(int taskCount);
     int getTaskCount() const { return _taskCount; }
 
-    /// @return true if this is the last task to call this
-    /// @param rowLimitComplete - true means enough rows for the result are
-    ///       already in the file, so other tasks can be ignored.
-    bool transmitTaskLast(bool rowLimitComplete);
-
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
 
@@ -147,6 +142,9 @@ public:
 
     /// Build and transmit a transmit data object indicating the errors in 'multiErr'.
     void buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    /// This method is for errors associated with the entire UberJob, not during a single Task.
+    void buildAndTransmitUJError(util::MultiError& multiErr, std::string const& idStr);
 
     /// Extract the SQL results and write them into the file and notify Czar after the last
     /// row of the result result set depending on theis channel has been processed.
@@ -169,9 +167,13 @@ private:
     /// Private constructor to protect shared pointer integrity.
     FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData);
 
-    /// @see wbase::SendChannel::kill
-    /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
-    bool _kill(std::lock_guard<std::mutex> const& streamMutexLock, std::string const& note);
+    /// @return true if this is the last task to call this
+    /// @param rowLimitComplete - true means enough rows for the result are
+    ///       already in the file, so other tasks can be ignored.
+    bool _transmitTaskLast(std::lock_guard<std::mutex> const& tMtxLock, bool rowLimitComplete);
+
+    void _buildAndTransmitError(std::lock_guard<std::mutex> const& tMtxLock, util::MultiError& multiErr,
+                                std::string const& idStr, int chunkId, int logLvl, bool cancelled);
 
     /**
      * Transfer rows of the result set into into the output file.
@@ -235,10 +237,6 @@ private:
 
     UberJobId const _uberJobId;  ///< The UberJobId
 
-    /// streamMutex is used to protect _lastCount and messages that are sent
-    /// using FileChannelShared.
-    std::mutex _streamMutex;
-
     // Metadata and response buffers should persist for the lifetime of the stream.
     std::string _metadataBuf;
     std::string _responseBuf;
@@ -265,8 +263,8 @@ private:
     // Counters reported to Czar in the only ("summary") message sent upon the completion
     // of all tasks of a query.
 
-    int64_t _rowcount = 0;       ///< The total numnber of rows in all result sets of a query.
-    uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
+    int64_t _rowcount = 0;       ///< The total number of rows in all result sets of a query.
+    uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of an UberJob.
 
     /// _rowLimitComplete indicates that there is a LIMIT clause in the user query that
     /// can be applied to the queries given to workers. It's important to apply it

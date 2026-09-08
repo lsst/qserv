@@ -109,6 +109,16 @@ void UserQueryInfo::cancelAllUberJobs() {
     }
 }
 
+void UserQueryInfo::fatalErrorForAllUberJobs(util::Error const& err) {
+    lock_guard<mutex> lockUq(_uberJobMapMtx);
+    for (auto const& [ujKey, weakUjPtr] : _uberJobMap) {
+        auto const ujPtr = weakUjPtr.lock();
+        if (ujPtr != nullptr) {
+            ujPtr->fatalError(err);
+        }
+    }
+}
+
 bool UserQueryInfo::isUberJobDead(UberJobId ujId) const {
     lock_guard<mutex> lockUq(_uberJobMapMtx);
     auto iter = _deadUberJobSet.find(ujId);

@@ -94,6 +94,8 @@ public:
     /// @return maximum number of tasks that can be booted from a single user query
     unsigned int getMaxConcurrentBootedTasks() const { return _maxConcurrentBootedTasks->getVal(); }
 
+    unsigned int getMaxQueryAgeMinutes() const { return _maxQueryAgeMinutes->getVal(); }
+
     /// @return maximum time for a user query to complete  all tasks on the fast scan
     unsigned int getScanMaxMinutesFast() const { return _scanMaxMinutesFast->getVal(); }
 
@@ -379,6 +381,9 @@ private:
             util::ConfigValTUInt::create(_configValMap, "czar", "DeadTimeSec", notReq, 180);
     CVTUIntPtr _czarComNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "czar", "ComNumHttpThreads", notReq, 40);
+
+    CVTUIntPtr _maxQueryAgeMinutes =
+            util::ConfigValTUInt::create(_configValMap, "query", "maxQueryAgeMinutes", notReq, 720);
 };
 
 }  // namespace lsst::qserv::wconfig

@@ -807,7 +807,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsg(
     qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN,
-             note << " null exec QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
+             note << " null exec QID=" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
         // This means the user query is done and the results on the worker won't be needed
         throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
                                to_string(queryId) + " czar=" + to_string(czarId));
@@ -816,7 +816,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsg(
     qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
     if (uj == nullptr) {
         LOGS(_log, LOG_LVL_WARN,
-             note << " null uj QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
+             note << " null uj QID=" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
         throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
                                to_string(queryId) + " ujId=" + to_string(uberJobId) +
                                " czar=" + to_string(czarId));
@@ -873,6 +873,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
     }
 
     uj->workerError(jrMsg->multiError, *execRespMsg);
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " done " << idMsg << " execRespMsg=" << *execRespMsg);
     return execRespMsg;
 }
 
