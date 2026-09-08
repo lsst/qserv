@@ -225,6 +225,8 @@ public:
      */
     void reload(nlohmann::json const& obj);
 
+    database::mysql::ConnectionParams replDbParams() const;
+
     /**
      * Return a connection object for the czar's MySQL service with the name of
      * a database optionally rewritten from the one stored in the corresponding URL.
@@ -237,7 +239,7 @@ public:
      * @throw ConfigNoSuchParameter If the parameter (database,czar-db-conn) doesn't exist
      *   in the configuration.
      */
-    database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string());
+    database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string()) const;
 
     /**
      * The directory method for locating categories and parameters within
