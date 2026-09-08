@@ -173,7 +173,12 @@ void Configuration::reload(json const& obj) {
     _loadFromJSON(lock, obj);
 }
 
-database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
+database::mysql::ConnectionParams Configuration::replDbParams() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return connectionParams(_get(lock, "database", "repl-db-conn").get<string>(), string());
+}
+
+database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) const {
     replica::Lock const lock(_mtx, _context(__func__));
     return connectionParams(_get(lock, "database", "czar-db-conn").get<string>(), database);
 }
