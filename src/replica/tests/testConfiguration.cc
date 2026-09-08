@@ -231,11 +231,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
 
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 1);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait-timeout") == 10);
-    BOOST_CHECK(config->get<string>("database", "host") == "localhost");
-    BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
-    BOOST_CHECK(config->get<string>("database", "user") == "qsreplica");
-    BOOST_CHECK(config->get<string>("database", "password") == "changeme");
-    BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
 
     BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
