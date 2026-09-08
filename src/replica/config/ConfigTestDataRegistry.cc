@@ -31,10 +31,7 @@ map<string, set<string>> ConfigTestDataRegistry::parameters() {
     return map<string, set<string>>(
             {{"common", {"asio-num-threads", "request-buf-size-bytes"}},
              {"security", {"auth-key", "admin-auth-key", "http-user", "http-password", "instance-id"}},
-             {"registry", {"host", "port", "max-listen-conn", "threads", "heartbeat-ival-sec"}},
-             {"database",
-              {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
-               "qserv-master-services-pool-size", "qserv-master-tmp-dir"}}});
+             {"registry", {"host", "port", "max-listen-conn", "threads", "heartbeat-ival-sec"}}});
 }
 
 json ConfigTestDataRegistry::data() {
@@ -51,14 +48,6 @@ json ConfigTestDataRegistry::data() {
                                            {"max-listen-conn", 512},
                                            {"threads", 4},
                                            {"heartbeat-ival-sec", 10}});
-    generalObj["database"] = json::object({{"host", "localhost"},
-                                           {"port", 13306},
-                                           {"user", "qsreplica"},
-                                           {"password", "changeme"},
-                                           {"name", "qservReplica"},
-                                           {"qserv-master-user", "qsmaster"},
-                                           {"services-pool-size", 2},
-                                           {"qserv-master-tmp-dir", "/qserv/data/ingest"}});
     obj["workers"] = json::array();
     obj["database_families"] = json::array();
     obj["databases"] = json::array();
