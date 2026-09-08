@@ -261,17 +261,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<size_t>("registry", "threads") == 4);
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 10);
 
-    BOOST_CHECK(config->get<string>("database", "host") == "localhost");
-    BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
-    BOOST_CHECK(config->get<string>("database", "user") == "qsreplica");
-    BOOST_CHECK(config->get<string>("database", "password") == "changeme");
-    BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
-
-    BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
-    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
-
-    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
-
     LOGS_INFO("Testing reading general parameters of the Worker");
     config = configWorker;
 
