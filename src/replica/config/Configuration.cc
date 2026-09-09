@@ -75,60 +75,9 @@ database::mysql::ConnectionParams connectionParams(string const& connectionUrl, 
 
 namespace lsst::qserv::replica {
 
-// These (static) data members are allowed to be changed, and they are set
-// globally for an application (process).
-bool Configuration::_databaseAllowReconnect = true;
-unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
-unsigned int Configuration::_databaseMaxReconnects = 1;
-unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
-replica::Mutex Configuration::_classMtx;
-
 // ---------------
 // The static API.
 // ---------------
-
-void Configuration::setDatabaseAllowReconnect(bool value) {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _databaseAllowReconnect = value;
-}
-
-bool Configuration::databaseAllowReconnect() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _databaseAllowReconnect;
-}
-
-void Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
-    _THROW_IF_ZERO(value);
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _databaseConnectTimeoutSec = value;
-}
-
-unsigned int Configuration::databaseConnectTimeoutSec() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _databaseConnectTimeoutSec;
-}
-
-void Configuration::setDatabaseMaxReconnects(unsigned int value) {
-    _THROW_IF_ZERO(value);
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _databaseMaxReconnects = value;
-}
-
-unsigned int Configuration::databaseMaxReconnects() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _databaseMaxReconnects;
-}
-
-void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
-    _THROW_IF_ZERO(value);
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _databaseTransactionTimeoutSec = value;
-}
-
-unsigned int Configuration::databaseTransactionTimeoutSec() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _databaseTransactionTimeoutSec;
-}
 
 Configuration::Ptr Configuration::load(ConfigurationSchema const& _configSchema, json const& obj) {
     Ptr const ptr(new Configuration(_configSchema));

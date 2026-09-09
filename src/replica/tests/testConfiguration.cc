@@ -70,27 +70,6 @@ Configuration::Ptr configWorker;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(ConfigTestStaticParams) {
-    LOGS_INFO("Testing static parameters");
-
-    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(true));
-    BOOST_CHECK(Configuration::databaseAllowReconnect() == true);
-    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(false));
-    BOOST_CHECK(Configuration::databaseAllowReconnect() == false);
-
-    BOOST_CHECK_THROW(Configuration::setDatabaseConnectTimeoutSec(0), invalid_argument);
-    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseConnectTimeoutSec(1));
-    BOOST_CHECK(Configuration::databaseConnectTimeoutSec() == 1);
-
-    BOOST_CHECK_THROW(Configuration::setDatabaseMaxReconnects(0), invalid_argument);
-    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseMaxReconnects(2));
-    BOOST_CHECK(Configuration::databaseMaxReconnects() == 2);
-
-    BOOST_CHECK_THROW(Configuration::setDatabaseTransactionTimeoutSec(0), invalid_argument);
-    BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseTransactionTimeoutSec(3));
-    BOOST_CHECK(Configuration::databaseTransactionTimeoutSec() == 3);
-}
-
 BOOST_AUTO_TEST_CASE(ConfigInitTestJSON) {
     LOGS_INFO("Testing JSON initialization");
 
@@ -227,6 +206,9 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("xrootd", "allow-reconnect") == 0);
     BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect-timeout") == 500);
 
+    BOOST_CHECK(config->get<unsigned int>("database", "allow-reconnect") == 1);
+    BOOST_CHECK(config->get<unsigned int>("database", "connect-timeout-sec") == 30);
+    BOOST_CHECK(config->get<unsigned int>("database", "max-reconnects") == 3);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 1);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait-timeout") == 10);
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
@@ -274,6 +256,9 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 10);
 
+    BOOST_CHECK(config->get<unsigned int>("database", "allow-reconnect") == 1);
+    BOOST_CHECK(config->get<unsigned int>("database", "connect-timeout-sec") == 30);
+    BOOST_CHECK(config->get<unsigned int>("database", "max-reconnects") == 3);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 1);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait-timeout") == 10);
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
@@ -519,6 +504,17 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "reconnect-timeout", 403));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "reconnect-timeout") == 403);
 
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "allow-reconnect", 0));
+    BOOST_CHECK(config->get<unsigned int>("database", "allow-reconnect") == 0);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("database", "connect-timeout-sec", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "connect-timeout-sec", 40));
+    BOOST_CHECK(config->get<unsigned int>("database", "connect-timeout-sec") == 40);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("database", "max-reconnects", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "max-reconnects", 4));
+    BOOST_CHECK(config->get<unsigned int>("database", "max-reconnects") == 4);
+
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "schema-upgrade-wait", 0));
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 0);
 
@@ -631,6 +627,17 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "allow-reconnect", 0));
+    BOOST_CHECK(config->get<unsigned int>("database", "allow-reconnect") == 0);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("database", "connect-timeout-sec", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "connect-timeout-sec", 40));
+    BOOST_CHECK(config->get<unsigned int>("database", "connect-timeout-sec") == 40);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("database", "max-reconnects", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "max-reconnects", 4));
+    BOOST_CHECK(config->get<unsigned int>("database", "max-reconnects") == 4);
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("database", "schema-upgrade-wait", 0));
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 0);
