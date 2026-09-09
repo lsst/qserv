@@ -75,7 +75,7 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, st
         : _serviceProvider(serviceProvider),
           _worker(worker),
           _connectionPool(database::mysql::ConnectionPool::create(
-                  Configuration::qservWorkerDbParams(),
+                  _serviceProvider->config()->qservWorkerDbParams(),
                   serviceProvider->config()->get<size_t>("database", "services-pool-size"))),
           _state(STATE_IS_STOPPED),
           _startTime(util::TimeUtils::now()) {}
