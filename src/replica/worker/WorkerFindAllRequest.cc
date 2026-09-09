@@ -97,17 +97,19 @@ bool WorkerFindAllRequest::execute() {
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
+        auto const config = _serviceProvider->config();
+
         // This operation is needed to support on-the-fly creation of the missing databases
         // at new workers joining the Qserv cluster. The cluster may already have existing
         // workers with prepopulated databases. A similar problem to be addressed here
         // is when a worker was down for a prolonged period of time and during that time
         // new databases were added to the cluster. In both cases the Replication system will
         // expect the worker to have all databases which are known to the Controller.
-        if (_serviceProvider->config()->get<unsigned int>("worker", "create-databases-on-scan")) {
-            WorkerUtils::createMissingDatabase(context(__func__), database());
+        if (config->get<unsigned int>("worker", "create-databases-on-scan")) {
+            WorkerUtils::createMissingDatabase(context(__func__), config, database());
         }
-        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
-                                 database::mysql::obj2fs(database());
+        fs::path const dataDir =
+                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =
                 errorContext ||
