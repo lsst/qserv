@@ -33,8 +33,8 @@ map<string, set<string>> ConfigTestDataWorker::parameters() {
              {"security", {"auth-key", "admin-auth-key", "http-user", "http-password", "instance-id"}},
              {"registry", {"host", "port", "heartbeat-ival-sec"}},
              {"database",
-              {"schema-upgrade-wait", "schema-upgrade-wait-timeout", "services-pool-size", "repl-db-conn",
-               "worker-db-conn"}},
+              {"allow-reconnect", "connect-timeout-sec", "max-reconnects", "schema-upgrade-wait",
+               "schema-upgrade-wait-timeout", "services-pool-size", "repl-db-conn", "worker-db-conn"}},
              {"worker",
               {"request-timeout-sec",
                "num-threads",
@@ -80,7 +80,10 @@ json ConfigTestDataWorker::data() {
     generalObj["registry"] =
             json::object({{"host", "127.0.0.1"}, {"port", 8081}, {"heartbeat-ival-sec", 10}});
     generalObj["database"] =
-            json::object({{"schema-upgrade-wait", 1},
+            json::object({{"allow-reconnect", 1},
+                          {"connect-timeout-sec", 30},
+                          {"max-reconnects", 3},
+                          {"schema-upgrade-wait", 1},
                           {"schema-upgrade-wait-timeout", 10},
                           {"services-pool-size", 2},
                           {"repl-db-conn", "mysql://qsreplica@host-A:13306/qservReplica"},

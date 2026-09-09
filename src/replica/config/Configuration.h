@@ -97,16 +97,8 @@ class Configuration {
 public:
     typedef std::shared_ptr<Configuration> Ptr;
 
-    // ----------------------------------------------------------------------
-    // The static API. It's designed to be used before loading the content of
-    // the Configuration object in order to bootstrap an application before
-    // the rest of the configuration will be known.
-    // Some parameters mentioned in this section also represent security
-    // context, therefore they can't be found in an external configuration.
-    // ----------------------------------------------------------------------
-
     /**
-     * The static factory method will create an object, initialize its state with
+     * The factory method will create an object, initialize its state with
      * the default values of the configuration parameters, then update the state
      * from the given JSON object.
      * @note Configuration objects created by this method won't have any persistent
@@ -121,63 +113,6 @@ public:
     static Ptr load(ConfigurationSchema const& configSchema,
                     nlohmann::json const& obj = nlohmann::json::object());
 
-    /// @return the default mode for database reconnects.
-    static bool databaseAllowReconnect();
-
-    /**
-     * Change the default value of a parameter defining a policy for handling
-     * automatic reconnects to a database server. Setting 'true' will enable
-     * reconnects.
-     * @param value The new value of the parameter.
-     */
-    static void setDatabaseAllowReconnect(bool value);
-
-    /// @return The default timeout for connecting to database servers.
-    static unsigned int databaseConnectTimeoutSec();
-
-    /**
-     * Change the default value of a parameter specifying delays between automatic
-     * reconnects (should those be enabled by the corresponding policy).
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setDatabaseConnectTimeoutSec(unsigned int value);
-
-    /**
-     * @return The default number of a maximum number of attempts to execute
-     *   a query due to database connection failures and subsequent reconnects.
-     */
-    static unsigned int databaseMaxReconnects();
-
-    /**
-     * Change the default value of a parameter specifying the maximum number
-     * of attempts to execute a query due to database connection failures and
-     * subsequent reconnects (should they be enabled by the corresponding policy).
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setDatabaseMaxReconnects(unsigned int value);
-
-    /// @return The default timeout for executing transactions at a presence
-    ///   of server reconnects.
-    static unsigned int databaseTransactionTimeoutSec();
-
-    /**
-     * Change the default value of a parameter specifying a timeout for executing
-     * transactions at a presence of server reconnects.
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setDatabaseTransactionTimeoutSec(unsigned int value);
-
-    /**
-     * Change the default value of a parameter specifying a timeout for tracking
-     * schema version status.
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setSchemaUpgradeWaitTimeoutSec(unsigned int value);
-
     // -----------------
     // The instance API.
     // -----------------
@@ -189,20 +124,30 @@ public:
     ConfigurationSchema const& configSchema() const { return _configSchema; }
 
     /**
-     * Reload non-static parameters of the Configuration from the persistent backend (MySQL).
+     * Reload non-general parameters of the Configuration from the persistent backend (MySQL).
      * @throws ConfigNoSuchParameter If the parameter (database,repl-db-conn) doesn't exist
      *   in the configuration.
      */
     void reload();
 
     /**
-     * Reload non-static parameters of the Configuration from the given JSON object.
+     * Reload parameters of the Configuration from the given JSON object.
      * @param obj The input configuration parameters.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with expectations of the transient schema.
      */
     void reload(nlohmann::json const& obj);
 
+    /**
+     * Return a connection object for the replication database with the name of
+     * a database optionally rewritten from the one stored in the corresponding URL.
+     * This is done for the sake of convenience of clients to ensure a specific
+     * database is set as the default context.
+     * @return The parsed connection object with the name of the database optionally
+     *   overwritten.
+     * @throw ConfigNoSuchParameter If the parameter (database,repl-db-conn) doesn't exist
+     *   in the configuration.
+     */
     database::mysql::ConnectionParams replDbParams() const;
 
     /**
@@ -798,16 +743,6 @@ private:
      * 'false' otherwise.
      */
     bool _updatePersistentState(replica::Lock const& lock) const { return _connectionPtr != nullptr; }
-
-    // Static parameters of the database connectors (read-write).
-
-    static bool _databaseAllowReconnect;
-    static unsigned int _databaseConnectTimeoutSec;
-    static unsigned int _databaseMaxReconnects;
-    static unsigned int _databaseTransactionTimeoutSec;
-    static std::string _qservWorkerDbUrl;
-
-    static replica::Mutex _classMtx;  ///< For implementing static synchronized methods.
 
     /// The schema against which the configuration will be validated.
     ConfigurationSchema const _configSchema;
