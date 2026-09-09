@@ -252,15 +252,15 @@ std::map<std::string, AreaRestrictorFactory> const AREA_RESTRICTOR_FACTORY_MAP =
 std::map<std::string, bool> const AGGREGATE_SUPPORT_MAP = {
         /* Supported: */
         {"avg", true},
+        {"bit_and", true},
+        {"bit_or", true},
+        {"bit_xor", true},
         {"count", true},
         {"max", true},
         {"min", true},
         {"sum", true},
 
         /* Unsupported: */
-        {"bit_and", false},
-        {"bit_or", false},
-        {"bit_xor", false},
         {"group_concat", false},
         {"json_arrayagg", false},
         {"json_objectagg", false},
@@ -357,13 +357,6 @@ std::shared_ptr<query::ValueFactor> buildValueFactor(hsql::Expr const* expr) {
             if (AREA_RESTRICTOR_FACTORY_MAP.contains(nameLower))
                 unsupported("qserv area restrictor function in this position");
 
-            // Nested aggregations are not allowed (for now)
-            if (!AGGREGATE_SUPPORT_MAP.contains(nameLower) && expr->exprList != nullptr) {
-                for (auto const* arg : *expr->exprList) {
-                    if (containsAggregateFunction(arg)) unsupported("aggregate function in this position");
-                }
-            }
-
             // Populate our function and its arguments.
             query::ValueExprPtrVector args;
             if (expr->exprList != nullptr) {
@@ -376,12 +369,10 @@ std::shared_ptr<query::ValueFactor> buildValueFactor(hsql::Expr const* expr) {
             // Check for supported/unsupported aggregations. Unknown functions/UDFs pass through unchanged.
             if (AGGREGATE_SUPPORT_MAP.contains(nameLower)) {
                 if (AGGREGATE_SUPPORT_MAP.at(nameLower) == true) {
-                    // Only allow a bare column reference or COUNT(*) for aggregations. This ensures we
-                    // maintain previous ANTLR behavior, but should be removed in the future once we expand
-                    // aggregation support.
-                    if (!(args.size() == 1 &&
-                          (args[0]->isColumnRef() || (nameLower == "count" && args[0]->isStar()))))
-                        unsupported("aggregate argument must be a column reference");
+                    if (args.size() != 1) unsupported(name + " takes exactly one argument");
+                    if (args[0]->isStar() && nameLower != "count") {
+                        unsupported(name + "(*); only COUNT(*) is supported");
+                    }
                     return query::ValueFactor::newAggFactor(func);
                 } else {
                     unsupported("aggregate function " + name);
@@ -611,6 +602,9 @@ std::shared_ptr<query::JoinSpec> buildJoinSpec(hsql::JoinDefinition const* join)
                 std::make_shared<query::ColumnRef>(nullToEmpty(join->namedColumns->front())));
     }
     if (join->condition != nullptr) {
+        if (containsAggregateFunction(join->condition)) {
+            unsupported("aggregate function in JOIN ... ON");
+        }
         return std::make_shared<query::JoinSpec>(buildBoolTerm(join->condition));
     }
     if (join->natural || join->type == hsql::kJoinNatural || join->type == hsql::kJoinCross) {
@@ -698,6 +692,10 @@ std::shared_ptr<query::WhereClause> buildWhereClause(hsql::SelectStatement const
     // Qserv area restrictors have specific placement requirements:
     validateAreaRestrictorPlacement(stmt.whereClause);
 
+    if (containsAggregateFunction(stmt.whereClause)) {
+        unsupported("aggregate function in WHERE (use HAVING)");
+    }
+
     // The parse tree for WHERE works similarly to table refs, see buildTableRefs
     // for a brief explanation.
     auto where = std::make_shared<query::WhereClause>();
@@ -738,6 +736,9 @@ std::shared_ptr<query::GroupByClause> buildGroupBy(hsql::SelectStatement const& 
 
     auto groupBy = std::make_shared<query::GroupByClause>();
     for (auto const* expr : *stmt.groupBy->columns) {
+        if (containsAggregateFunction(expr)) {
+            unsupported("aggregate function in GROUP BY");
+        }
         groupBy->addTerm(query::GroupByTerm(buildValueExpr(expr), std::string()));
     }
     return groupBy;
