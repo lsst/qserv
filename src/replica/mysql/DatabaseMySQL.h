@@ -80,14 +80,38 @@ public:
     static unsigned long max_allowed_packet();
 
     /**
+     * Change the default value of a parameter defining a policy for handling
+     * automatic reconnects to a database server. Setting 'true' will enable
+     * reconnects.
+     * @param value The new value of the parameter.
+     */
+    static void setDatabaseAllowReconnect(bool value);
+
+    /**
+     * Change the default value of a parameter specifying delays between automatic
+     * reconnects (should those be enabled by the corresponding policy).
+     * @param value The new value of the parameter (must be strictly greater than 0).
+     * @throws std::invalid_argument If the new value of the parameter is 0.
+     */
+    static void setDatabaseConnectTimeoutSec(unsigned int value);
+
+    /**
+     * Change the default value of a parameter specifying the maximum number
+     * of attempts to execute a query due to database connection failures and
+     * subsequent reconnects (should they be enabled by the corresponding policy).
+     * @param value The new value of the parameter (must be strictly greater than 0).
+     * @throws std::invalid_argument If the new value of the parameter is 0.
+     */
+    static void setDatabaseMaxReconnects(unsigned int value);
+
+    /**
      * Connect to the MySQL service with the specified parameters and if successfully
      * connected return a pointer to the Connection object. Otherwise an exception will
      * be thrown.
      *
-     * A behavior of a connector created by the method depends on default values
-     * of Configuration parameters returned by Configuration::databaseAllowReconnect()
-     * and Configuration::databaseConnectTimeoutSec(). If the automatic reconnect is
-     * allowed then multiple connection attempts to a database service can be made
+     * A behavior of a connector created by the method depends on default values of
+     * the static members _databaseAllowReconnect and _databaseConnectTimeoutSec. If the automatic
+     * reconnect is allowed then multiple connection attempts to a database service can be made
      * before the connection timeout expires or until some problem which can't be
      * resolved with the allowed connection retries happens.
      *
@@ -142,19 +166,19 @@ public:
      *
      * @throw Error - for any other database errors
      *
-     * @see Configuration::databaseAllowReconnect()
-     * @see Configuration::databaseConnectTimeoutSec()
+     * @see Connection::_databaseAllowReconnect
+     * @see Connection::_databaseConnectTimeoutSec
      * @see Connection::open2()
      */
     static Ptr open(ConnectionParams const& connectionParams);
 
     /**
      * The factory method allows to override default values of the corresponding
-     * connection management options of the Configuration.
+     * connection management options of the Connection class.
      *
      * @note If the timeout is set to 0 (the default value) and if reconnects are
      *   allowed then the method will assume a global value defined by
-     *   the Configuration parameter: Configuration::databaseConnectTimeoutSec()
+     *   the Connection class parameter: Connection::_databaseConnectTimeoutSec
      * @note The same value of the timeout would be also assumed if the connection
      *   is lost when executing queries or pulling the result sets.
      *
@@ -166,7 +190,7 @@ public:
      * @return a valid object if the connection attempt succeeded (no nullptr
      *  to be returned under any circumstances)
      *
-     * @see Configuration::databaseConnectTimeoutSec()
+     * @see Connection::_databaseConnectTimeoutSec
      * @see Connection::open()
      */
     static Ptr open2(ConnectionParams const& connectionParams, bool allowReconnects = false,
@@ -264,7 +288,7 @@ public:
      *
      * Example:
      * @code
-     *     Configuration::setDatabaseConnectTimeoutSec(60);
+     *     Connection::setDatabaseConnectTimeoutSec(60);
      *     ConnectionParams params = ... ;
      *     Connection::Ptr conn = Connection::open(params);
      *     try {
@@ -294,13 +318,13 @@ public:
      * @param script a user-provided function (the callable) to execute
      * @param maxReconnects (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
-     *   value corresponding configuration parameter will be
-     *   assumed: Configuration::databaseMaxReconnects().
+     *   value corresponding class parameter will be
+     *   assumed: Connection::_databaseMaxReconnects.
      * @param timeoutSec (optional) the maximum duration of time allowed for
      *   the procedure to wait before a connection will be established.
      *   If 0 is passed as a value pf the parameter then the default
-     *   value corresponding configuration parameter will be
-     *   assumed: Configuration::databaseConnectTimeoutSec().
+     *   value corresponding class parameter will be
+     *   assumed: Connection::_databaseConnectTimeoutSec.
      *
      * @throw std::invalid_argument if 'nullptr' is passed in place of 'script'
      * @throw ConnectError failed to establish a connection if connection was
@@ -319,10 +343,10 @@ public:
      * @return a pointer to the same connector against which the method was invoked
      *   in case of successful completion of the requested operation.
      *
-     * @see Configuration::databaseMaxReconnects()
-     * @see Configuration::setDatabaseMaxReconnects()
-     * @see Configuration::databaseConnectTimeoutSec()
-     * @see Configuration::setDatabaseConnectTimeoutSec()
+     * @see Connection::_databaseMaxReconnects
+     * @see Connection::setDatabaseMaxReconnects
+     * @see Connection::_databaseConnectTimeoutSec
+     * @see Connection::setDatabaseConnectTimeoutSec
      * @see Connection::open()
      */
     Connection::Ptr execute(std::function<void(Ptr)> const& script, unsigned int maxReconnects = 0,
@@ -338,13 +362,13 @@ public:
      *   (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
-     *   assumed: Configuration::databaseMaxReconnects().
+     *   assumed: Connection::_databaseMaxReconnects.
      * @param timeoutSec
      *   (optional) the maximum duration of time allowed for
      *   the procedure to wait before a connection will be established.
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
-     *   assumed: Configuration::databaseConnectTimeoutSec().
+     *   assumed: Connection::_databaseConnectTimeoutSec.
      * @param maxRetriesOnDeadLock (optional) the number of retries on exception
      *   LockDeadlock that may happen while two or many threads/processes were
      *   trying to update the same table.
@@ -367,13 +391,13 @@ public:
      *   (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
-     *   assumed: Configuration::databaseMaxReconnects().
+     *   assumed: Connection::_databaseMaxReconnects.
      * @param timeoutSec
      *   (optional) the maximum duration of time allowed for
      *   the procedure to wait before a connection will be established.
      *   If 0 is passed as a value pf the parameter then the default
      *   value corresponding configuration parameter will be
-     *   assumed: Configuration::databaseConnectTimeoutSec().
+     *   assumed: Connection::_databaseConnectTimeoutSec.
      * @param maxRetriesOnDeadLock (optional) the number of retries on exception
      *   LockDeadlock that may happen while two or many threads/processes were
      *   trying to update the same table.
@@ -577,6 +601,13 @@ private:
 
     friend class ConnectionPool;  // To allow access to the method _reset()
 
+    // Default values of parameters of the connection management which are shared by all instances
+    // of the class. The values can be overridden by the corresponding parameters of the factory
+    // methods open() and open2().
+    static std::atomic<bool> _databaseAllowReconnect;
+    static std::atomic<unsigned int> _databaseConnectTimeoutSec;
+    static std::atomic<unsigned int> _databaseMaxReconnects;
+
     static std::atomic<size_t>
             _nextId;   // The next available connector identifier in the generator's sequence
     size_t const _id;  // Unique identifier of this connector
@@ -607,7 +638,7 @@ private:
 /**
  * Class ConnectionPool manages a pool of the similarly configured persistent
  * database connection. The number of connections is determined by the corresponding
- * Configuration parameter. Connections will be added to the pool (up to that limit)
+ * parameter of the factory method. Connections will be added to the pool (up to that limit)
  * on demand. This ensures that the class constructor is not blocking in case if
  * (or while) the corresponding MySQL/MariaDB service is not responding.
  *
