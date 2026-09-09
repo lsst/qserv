@@ -120,56 +120,14 @@ json const workerSchemaJson = json::object(
            {"services-pool-size",
             {{"description", "The pool size at the client database services connector."},
              {"default", max(8, num_threads)}}},
-           {"host",
-            {{"description",
-              "The host name of the MySQL server where the Replication system maintains its persistent "
-              "state."
-              " Note that this parameter can't be updated through the Configuration service as it's"
-              " set up at the startup time of the Replication/Ingest system."},
-             {"read-only", 1},
-             {"default", "localhost"}}},
-           {"port",
-            {{"description",
-              "The port number of the MySQL server where the Replication maintains its persistent state."
-              " Note that this parameter can't be updated through the Configuration service as it's"
-              " set up at the startup time of the Replication/Ingest system."},
-             {"read-only", 1},
-             {"default", 3306}}},
-           {"user",
-            {{"description",
-              "The MySQL user account of a service where the Replication system maintains its persistent "
-              "state."
-              " Note that this parameter can't be updated through the Configuration service as it's"
-              " set up at the startup time of the Replication/Ingest system."},
-             {"read-only", 1},
-             {"default", "qsreplica"}}},
-           {"password",
-            {{"description",
-              "A password for the MySQL account where the Replication system maintains its persistent "
-              "state"},
-             {"read-only", 1},
+           {"repl-db-conn",
+            {{"description", "A connection URL for the MySQL service of the Replication system's database."},
              {"security-context", 1},
-             {"empty-allowed", 1},
-             {"default", ""}}},
-           {"name",
-            {{"description",
-              "The name of a MySQL database for a service where the Replication system maintains its"
-              " persistent state. Note that this parameter can't be updated through the Configuration"
-              "  service as it's set up at the startup time of the Replication/Ingest system."},
-             {"read-only", 1},
-             {"default", "qservReplica"}}},
-           {"qserv-master-services-pool-size",
-            {{"description",
-              "The pool size at the client database services connector for the Qserv Master database."},
-             {"default", 2}}},
-           {"qserv-master-user",
-            {{"description",
-              "The MySQL user account of a service where Qserv 'czar' maintains its persistent state."},
-             {"default", "qsmaster"}}},
-           {"qserv-master-tmp-dir",
-            {{"description",
-              "The temporary folder for exchanging data with the Qserv 'czar' database service."},
-             {"default", "/qserv/data/ingest"}}}}},
+             {"default", "mysql://qsreplica@localhost:3306/qservReplica"}}},
+           {"worker-db-conn",
+            {{"description", "A connection URL for the MySQL service of the Qserv worker database."},
+             {"security-context", 1},
+             {"default", "mysql://qsmaster@localhost:3306/qservw_worker"}}}}},
          {"worker",
           {{"request-timeout-sec",
             {{"description",
@@ -348,7 +306,14 @@ json const workerSchemaJson = json::object(
               " The database will be also be also registered as 'enabled' in the worker's"
               " persistent state. If the flag is set to 0 then missing databases will be ignored."},
              {"default", 1},
-             {"empty-allowed", 1}}}}}});
+             {"empty-allowed", 1}}},
+           {"create-folders",
+            {{"description",
+              "The flag (if it's not 0) tells the Worker to create missing folders used"
+              " by the Worker. It's suggested to disable this feature in the production deployments"
+              " of the Replication/Ingest system."},
+             {"empty-allowed", 1},
+             {"default", 1}}}}}});
 
 ConfigurationSchemaWorker::ConfigurationSchemaWorker() : ConfigurationSchema(workerSchemaJson) {}
 
