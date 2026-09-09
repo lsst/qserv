@@ -78,8 +78,10 @@ void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
 bool WorkerFindRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
+    auto const config = _serviceProvider->config();
+
     // The method will throw ConfigUnknownDatabase if the database is invalid.
-    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
+    DatabaseInfo const databaseInfo = config->databaseInfo(database());
 
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
@@ -108,11 +110,11 @@ bool WorkerFindRequest::execute() {
         // is when a worker was down for a prolonged period of time and during that time
         // new databases were added to the cluster. In both cases the Replication system will
         // expect the worker to have all databases which are known to the Controller.
-        if (_serviceProvider->config()->get<unsigned int>("worker", "create-databases-on-scan")) {
-            WorkerUtils::createMissingDatabase(context(__func__), database());
+        if (config->get<unsigned int>("worker", "create-databases-on-scan")) {
+            WorkerUtils::createMissingDatabase(context(__func__), config, database());
         }
-        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
-                                 database::mysql::obj2fs(database());
+        fs::path const dataDir =
+                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =
                 errorContext ||

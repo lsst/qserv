@@ -121,29 +121,6 @@ public:
     static Ptr load(ConfigurationSchema const& configSchema,
                     nlohmann::json const& obj = nlohmann::json::object());
 
-    /**
-     * Return a connection object for the worker's MySQL service with the name of
-     * a database optionally rewritten from the one stored in the corresponding URL.
-     * This is done for the sake of convenience of clients to ensure a specific
-     * database is set as the default context.
-     * @param database The optional name of a database to assume if a non-empty
-     *   string was provided.
-     * @return The parsed connection object with the name of the database optionally
-     *   overwritten.
-     */
-    static database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database = std::string());
-
-    /**
-     * This method is used by the Replication/Ingest system's workers when they need
-     * to connect directly to the corresponding MySQL/MariaDB service of the corresponding
-     * Qserv worker.
-     * @return A connection string for accessing Qserv worker's database.
-     */
-    static std::string qservWorkerDbUrl();
-
-    /// @param url The new connection URL to be set.
-    static void setQservWorkerDbUrl(std::string const& url);
-
     /// @return the default mode for database reconnects.
     static bool databaseAllowReconnect();
 
@@ -241,6 +218,18 @@ public:
      *   in the configuration.
      */
     database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string()) const;
+
+    /**
+     * Return a connection object for the worker's MySQL service with the name of
+     * a database optionally rewritten from the one stored in the corresponding URL.
+     * This is done for the sake of convenience of clients to ensure a specific
+     * database is set as the default context.
+     * @param database The optional name of a database to assume if a non-empty
+     *   string was provided.
+     * @return The parsed connection object with the name of the database optionally
+     *   overwritten.
+     */
+    database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database = std::string()) const;
 
     /**
      * The directory method for locating categories and parameters within

@@ -1034,7 +1034,7 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& database, bool a
     string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
-            database.name, config->get<string>("database", "qserv-master-user"), allWorkers, controller(),
+            database.name, config->get<string>("database", "qserv-mysql-user"), allWorkers, controller(),
             noParentJobId, nullptr, config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(SqlGrantAccessJob::typeName(), job, database.family);
@@ -1152,7 +1152,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
         // Statements for granting SELECT authorizations on all tables of
         // the new database to the configured Qserv account.
         string const query = g.grant("ALL", database.name,
-                                     config->get<string>("database", "qserv-master-user"), "localhost");
+                                     config->get<string>("database", "qserv-mysql-user"), "localhost");
         statements.push_back(query);
         h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
             for (auto const& query : statements) {

@@ -81,28 +81,11 @@ bool Configuration::_databaseAllowReconnect = true;
 unsigned int Configuration::_databaseConnectTimeoutSec = 3600;
 unsigned int Configuration::_databaseMaxReconnects = 1;
 unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
-string Configuration::_qservWorkerDbUrl = "mysql://qsmaster@localhost:3306/qservw_worker";
 replica::Mutex Configuration::_classMtx;
 
 // ---------------
 // The static API.
 // ---------------
-
-void Configuration::setQservWorkerDbUrl(string const& url) {
-    _THROW_IF_EMPTY(url);
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _qservWorkerDbUrl = url;
-}
-
-string Configuration::qservWorkerDbUrl() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _qservWorkerDbUrl;
-}
-
-database::mysql::ConnectionParams Configuration::qservWorkerDbParams(string const& database) {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return connectionParams(_qservWorkerDbUrl, database);
-}
 
 void Configuration::setDatabaseAllowReconnect(bool value) {
     replica::Lock const lock(_classMtx, _context(__func__));
@@ -181,6 +164,11 @@ database::mysql::ConnectionParams Configuration::replDbParams() const {
 database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) const {
     replica::Lock const lock(_mtx, _context(__func__));
     return connectionParams(_get(lock, "database", "czar-db-conn").get<string>(), database);
+}
+
+database::mysql::ConnectionParams Configuration::qservWorkerDbParams(string const& database) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return connectionParams(_get(lock, "database", "worker-db-conn").get<string>(), database);
 }
 
 map<string, set<string>> Configuration::parameters() const { return _configSchema.parameters(); }
