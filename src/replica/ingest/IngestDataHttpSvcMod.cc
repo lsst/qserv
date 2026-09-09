@@ -76,7 +76,7 @@ void IngestDataHttpSvcMod::process(shared_ptr<ServiceProvider> const& servicePro
 IngestDataHttpSvcMod::IngestDataHttpSvcMod(shared_ptr<ServiceProvider> const& serviceProvider,
                                            string const& workerName, httplib::Request const& req,
                                            httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp),
+        : http::ChttpModule(serviceProvider->config()->httpAuthContext(), req, resp),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestDataHttpSvcMod::context() const { return "INGEST-DATA-HTTP-SVC "; }

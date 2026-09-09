@@ -28,7 +28,7 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigParserMySQL.h"
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/proto/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -44,105 +44,34 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
 namespace lsst::qserv::replica {
 
 Application::Application(int argc, const char* const argv[], string const& description,
-                         bool const injectDatabaseOptions, bool const boostProtobufVersionCheck,
-                         bool const enableServiceProvider)
-        : _injectDatabaseOptions(injectDatabaseOptions),
-          _boostProtobufVersionCheck(boostProtobufVersionCheck),
-          _enableServiceProvider(enableServiceProvider),
+                         bool const enableServiceProvider, ConfigurationSchema const& configSchema)
+        : _enableServiceProvider(enableServiceProvider),
+          _configSchema(configSchema),
           _parser(argc, argv, description),
-          _debugFlag(false),
-          _config("mysql://qsreplica@localhost:3306/qservReplica"),
-          _databaseAllowReconnect(Configuration::databaseAllowReconnect() ? 1 : 0),
-          _databaseConnectTimeoutSec(Configuration::databaseConnectTimeoutSec()),
-          _databaseMaxReconnects(Configuration::databaseMaxReconnects()),
-          _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()),
-          _schemaUpgradeWait(Configuration::schemaUpgradeWait() ? 1 : 0),
-          _schemaUpgradeWaitTimeoutSec(Configuration::schemaUpgradeWaitTimeoutSec()) {
+          _debugFlag(false) {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
-    if (_boostProtobufVersionCheck) {
-        GOOGLE_PROTOBUF_VERIFY_VERSION;
-    }
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
 int Application::run() {
-    // Add extra options to the parser configuration
-    parser().option("instance-id",
-                    " A unique identifier of a Qserv instance served by the Replication System."
-                    " Its value will be passed along various internal communication lines of"
-                    " the system to ensure that all services are related to the same instance."
-                    " This mechanism also prevents 'cross-talks' between two (or many) Replication"
-                    " System's setups in case of an accidental mis-configuration.",
-                    _instanceId)
-            .option("http-user", "The login name of a user for connecting to the Replication service.",
-                    _httpAuthContext.user)
-            .option("http-password",
-                    "The login password of a user for connecting to the Replication service. The value of "
-                    "the password"
-                    " will be ignored if the user is not specified. The password will be used for"
-                    " authenticating the user. The password can't be empty if the user is specified.",
-                    _httpAuthContext.password)
-            .option("auth-key",
-                    "An authorization key for operations affecting the state of Qserv or"
-                    " the Replication/Ingest system.",
-                    _httpAuthContext.authKey)
-            .option("admin-auth-key",
-                    "An administrator-level authorization key for critical operations affecting"
-                    " the state of Qserv of the Replication/Ingest system.",
-                    _httpAuthContext.adminAuthKey)
-            .flag("debug",
+    // The standard option which is available to all applications.
+    parser().flag("debug",
                   "Change the minimum logging level from ERROR to DEBUG. Note that the Logger"
                   " is configured via a configuration file (if any) presented to the application via"
                   " environment variable LSST_LOG_CONFIG. If this variable is not set then some"
                   " default configuration of the Logger will be assumed.",
                   _debugFlag);
-    if (_injectDatabaseOptions) {
-        parser().option("db-allow-reconnect",
-                        "Change the default database connection handling node. Set 0 to disable"
-                        " automatic reconnects. Any other number would allow reconnects.",
-                        _databaseAllowReconnect)
-                .option("db-reconnect-timeout",
-                        "Change the default value limiting a duration of time for making automatic"
-                        " reconnects to a database server before failing and reporting error"
-                        " (if the server is not up, or if it's not reachable for some reason)",
-                        _databaseConnectTimeoutSec)
-                .option("db-max-reconnects",
-                        "Change the default value limiting a number of attempts to repeat a sequence"
-                        " of queries due to connection losses and subsequent reconnects before to fail.",
-                        _databaseMaxReconnects)
-                .option("db-transaction-timeout",
-                        "Change the default value limiting a duration of each attempt to execute"
-                        " a database transaction before to fail.",
-                        _databaseTransactionTimeoutSec)
-                .option("schema-upgrade-wait",
-                        "If the value of the option is 0 and the schema version of the Replication/Ingest "
-                        "system's"
-                        " database is either not available or is less than " +
-                                to_string(ConfigParserMySQL::expectedSchemaVersion) +
-                                " then the application will fail right away. Otherwise, the application will "
-                                "keep"
-                                " tracking schema version for a duration specified by the option "
-                                "--schema-upgrade-wait-timeout."
-                                " Note that if the schema version found in the database is higher than the "
-                                "expected one"
-                                " then the application will fail right away regardless of a value of either "
-                                "options.",
-                        _schemaUpgradeWait)
-                .option("schema-upgrade-wait-timeout",
-                        "This option specifies a duration of time to wait for the schema upgrade in case"
-                        " if this feature is enabled in the option --schema-upgrade-wait.",
-                        _schemaUpgradeWaitTimeoutSec);
-    }
+
     if (_enableServiceProvider) {
-        parser().option("config", "Configuration URL (a database connection string).", _config);
-        // Inject options for th egeneral configuration parameters.
-        for (auto&& itr : ConfigurationSchema::parameters()) {
+        // Inject options for the general configuration parameters.
+        for (auto&& itr : _configSchema.parameters()) {
             string const& category = itr.first;
             for (auto&& param : itr.second) {
                 // The read-only parameters can't be updated programmatically.
-                if (ConfigurationSchema::readOnly(category, param)) continue;
-                _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
-                parser().option(category + "-" + param, ConfigurationSchema::description(category, param),
+                if (_configSchema.readOnly(category, param)) continue;
+                _generalParams[category][param] = _configSchema.defaultValueAsString(category, param);
+                parser().option(category + "-" + param, _configSchema.description(category, param),
                                 _generalParams[category][param]);
             }
         }
@@ -157,7 +86,7 @@ int Application::run() {
     }
 
     // Change the default logging level if requested
-    if (not _debugFlag) {
+    if (!_debugFlag) {
         LOG_CONFIG_PROP(
                 "log4j.rootLogger=INFO, CONSOLE\n"
                 "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
@@ -167,19 +96,11 @@ int Application::run() {
                 "log4j.logger.lsst.qserv=INFO");
     }
 
-    // Change default parameters of the database connectors
-    if (_injectDatabaseOptions) {
-        Configuration::setDatabaseAllowReconnect(_databaseAllowReconnect != 0);
-        Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
-        Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
-        Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
-        Configuration::setSchemaUpgradeWait(_schemaUpgradeWait != 0);
-        Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
-    }
     if (_enableServiceProvider) {
-        _serviceProvider = ServiceProvider::create(_config, _instanceId, _httpAuthContext);
+        // Create and initialze the configuration object.
+        auto const config = Configuration::load(_configSchema);
 
-        // Update general configuration parameters.
+        // Apply user-specified values of the general configuration parameters to the configuration object.
         // Note that options specified by a user will have non-empty values.
         for (auto&& categoryItr : _generalParams) {
             string const& category = categoryItr.first;
@@ -187,10 +108,36 @@ int Application::run() {
                 string const& param = paramItr.first;
                 string const& value = paramItr.second;
                 if (!value.empty()) {
-                    _serviceProvider->config()->setFromString(category, param, value);
+                    config->setFromString(category, param, value);
                 }
             }
         }
+
+        if (config->exists("database")) {
+            // Change default parameters of the database connectors before loading the remaining
+            // configuration parameters from the database. This is needed to ensure that the connection
+            // attempts will be made with the user-specified values of the parameters.
+            database::mysql::Connection::setDatabaseAllowReconnect(
+                    config->get<unsigned int>("database", "allow-reconnect") != 0);
+            database::mysql::Connection::setDatabaseConnectTimeoutSec(
+                    config->get<unsigned int>("database", "connect-timeout-sec"));
+            database::mysql::Connection::setDatabaseMaxReconnects(
+                    config->get<unsigned int>("database", "max-reconnects"));
+
+            // This step is available only for the configuration loaded from the database. It will
+            // verify that the schema version of the database is compatible with the one expected by
+            // the application. If the schema version is older than the expected one then the method
+            // will throw an exception. If the schema version is newer than the expected one then
+            // the method will throw an exception if the option --schema-upgrade-wait is set to 0.
+            // Otherwise, the method will keep tracking the schema version for a duration of time
+            // specified by the option --schema-upgrade-wait-timeout.
+            if (config->exists("database", "repl-db-conn")) {
+                config->reload();
+            }
+        }
+
+        // Create the service provider instance and initialize the Configuration.
+        _serviceProvider = ServiceProvider::create(config);
 
         // Start the provider in its own thread pool before performing any asynchronous
         // operations via BOOST ASIO.
@@ -199,35 +146,25 @@ int Application::run() {
         _serviceProvider->run();
     }
 
-    // Let the user's code to do its job
+    // Let the subclass implementation do its job
     int const exitCode = runImpl();
 
     // Shutdown the provider and join with its threads
-    if (_enableServiceProvider) {
-        _serviceProvider->stop();
-    }
+    if (_enableServiceProvider) _serviceProvider->stop();
+
     return exitCode;
 }
 
 ServiceProvider::Ptr const& Application::serviceProvider() const {
-    _assertValidOption(__func__, _enableServiceProvider, " service provider options");
-    return _serviceProvider;
-}
-
-string const& Application::configUrl() const {
-    _assertValidOption(__func__, _enableServiceProvider, " service provider options");
-    return _config;
-}
-
-void Application::_assertValidOption(string const& func, bool option, string const& context) const {
-    string const context_ = "Application::" + func + " ";
+    string const context_ = "Application::" + string(__func__) + " ";
     if (_parser.status() != Parser::SUCCESS) {
         throw logic_error(context_ +
                           "calling this method isn't allowed before invoking the command-line parser.");
     }
-    if (!option) {
-        throw logic_error(context_ + "this application was not configured with " + context + ".");
+    if (!_enableServiceProvider) {
+        throw logic_error(context_ + "this application was not configured with the service provider.");
     }
+    return _serviceProvider;
 }
 
 }  // namespace lsst::qserv::replica

@@ -26,8 +26,8 @@
 
 // Qserv headers
 #include "global/stringUtil.h"
-#include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "util/String.h"
 
@@ -68,7 +68,8 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
                       "<conn-timeout-sec>.");
         } else {
             string const qservWorkerDbUrl = args[0];
-            Configuration::setQservWorkerDbUrl(qservWorkerDbUrl);
+            auto connectionParams = database::mysql::ConnectionParams::parse(qservWorkerDbUrl);
+            connectionParams.database = "qservw_worker";
             // Parameter 'maxReconnects' limits the total number of retries to execute the query in case
             // if the query fails during execution. If the parameter's value is set to 0 then the default
             // value of the parameter will be pulled by the query processor from the Replication
@@ -86,8 +87,7 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
             bool const allowReconnects = true;
             // Using the RAII-style connection handler to automatically close the connection and
             // release resources in case of exceptions.
-            ConnectionHandler const handler(Connection::open2(
-                    Configuration::qservWorkerDbParams("qservw_worker"), allowReconnects, timeoutSec));
+            ConnectionHandler const handler(Connection::open2(connectionParams, allowReconnects, timeoutSec));
             QueryGenerator const g(handler.conn);
             handler.conn->executeInOwnTransaction(
                     [&context, &vnId, &eDest, &g](decltype(handler.conn) conn) {

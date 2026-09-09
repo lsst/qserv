@@ -59,7 +59,7 @@ IngestFileHttpSvcMod::IngestFileHttpSvcMod(shared_ptr<ServiceProvider> const& se
                                            string const& workerName, httplib::Request const& req,
                                            httplib::Response& resp,
                                            httplib::ContentReader const& contentReader)
-        : http::FileUploadModule(serviceProvider->httpAuthContext(), req, resp, contentReader),
+        : http::FileUploadModule(serviceProvider->config()->httpAuthContext(), req, resp, contentReader),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestFileHttpSvcMod::context() const { return "INGEST-FILE-HTTP-SVC "; }

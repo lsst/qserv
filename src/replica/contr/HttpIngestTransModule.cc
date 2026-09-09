@@ -61,20 +61,17 @@ namespace lsst::qserv::replica {
 
 void HttpIngestTransModule::process(Controller::Ptr const& controller,
                                     NamedMutexRegistry& transactionMutexRegistry, string const& taskName,
-                                    HttpProcessorConfig const& processorConfig,
                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                     string const& subModuleName, http::AuthType const authType) {
-    HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, processorConfig, req, resp);
+    HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpIngestTransModule::HttpIngestTransModule(Controller::Ptr const& controller,
                                              NamedMutexRegistry& transactionMutexRegistry,
-                                             string const& taskName,
-                                             HttpProcessorConfig const& processorConfig,
-                                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp),
-          _transactionMutexRegistry(transactionMutexRegistry) {}
+                                             string const& taskName, qhttp::Request::Ptr const& req,
+                                             qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, req, resp), _transactionMutexRegistry(transactionMutexRegistry) {}
 
 json HttpIngestTransModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "TRANSACTIONS")

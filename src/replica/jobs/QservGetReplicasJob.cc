@@ -118,7 +118,7 @@ void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
 
     for (auto&& worker : workerNames) {
         _replicaData.workers[worker] = false;
-        auto const request = controller()->serviceProvider()->qservMgtServices()->getReplicas(
+        auto const request = controller()->qservMgtServices()->getReplicas(
                 databaseFamily(), worker, inUseOnly(), id(),
                 [self](GetReplicasQservMgtRequest::Ptr const& request) { self->_onRequestFinish(request); });
         if (not request) {

@@ -92,7 +92,7 @@ void ReplicationRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestReplicate message;
@@ -122,7 +122,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestTrack message;
@@ -135,7 +135,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
 void ReplicationRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<ReplicationRequest>();
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseReplicate>(
+    controller()->messenger()->send<ProtocolResponseReplicate>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseReplicate const& response) {
                 self->_analyze(success, response);

@@ -73,8 +73,8 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpIngestModule() = delete;
@@ -88,8 +88,7 @@ protected:
 
 private:
     HttpIngestModule(Controller::Ptr const& controller, std::string const& taskName,
-                     HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp);
+                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /// Get info on select databases
     nlohmann::json _getDatabases();

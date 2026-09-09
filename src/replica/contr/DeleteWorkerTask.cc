@@ -35,56 +35,52 @@ namespace lsst::qserv::replica {
 
 DeleteWorkerTask::Ptr DeleteWorkerTask::create(Controller::Ptr const& controller,
                                                Task::AbnormalTerminationCallbackType const& onTerminated,
-                                               string const& worker, bool permanentDelete) {
-    return Ptr(new DeleteWorkerTask(controller, onTerminated, worker, permanentDelete));
+                                               string const& worker) {
+    return Ptr(new DeleteWorkerTask(controller, onTerminated, worker));
 }
 
 DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
                                    Task::AbnormalTerminationCallbackType const& onTerminated,
-                                   string const& worker, bool permanentDelete)
-        : Task(controller, "EVICT-WORKER  ", onTerminated, 0),
-          _worker(worker),
-          _permanentDelete(permanentDelete) {}
+                                   string const& worker)
+        : Task(controller, "EVICT-WORKER  ", onTerminated, 0), _worker(worker) {}
 
 void DeleteWorkerTask::onStart() {
     info(DeleteWorkerJob::typeName());
 
+    auto const config = serviceProvider()->config();
     string const noParentJobId;
     atomic<size_t> numFinishedJobs{0};
     vector<DeleteWorkerJob::Ptr> jobs;
-    jobs.emplace_back(DeleteWorkerJob::create(
-            _worker, _permanentDelete, controller(), noParentJobId,
-            [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) { ++numFinishedJobs; },
-            serviceProvider()->config()->get<int>("controller", "worker-evict-priority-level")));
-    jobs[0]->start();
+    bool const permanentDelete = config->get<unsigned int>("controller", "permanent-worker-delete") != 0;
 
+    jobs.emplace_back(DeleteWorkerJob::create(
+            _worker, permanentDelete, controller(), noParentJobId,
+            [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) { ++numFinishedJobs; },
+            config->get<int>("controller", "worker-evict-priority-level")));
+    jobs[0]->start();
     _logStartedEvent(jobs[0]);
+
     track<DeleteWorkerJob>(DeleteWorkerJob::typeName(), jobs, numFinishedJobs);
+
     _logFinishedEvent(jobs[0]);
 }
 
 void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {
     ControllerEvent event;
-
     event.operation = job->typeName();
     event.status = "STARTED";
     event.jobId = job->id();
-
     event.kvInfo.emplace_back("worker", _worker);
-
     logEvent(event);
 }
 
 void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const {
     ControllerEvent event;
-
     event.operation = job->typeName();
     event.status = job->state2string();
     event.jobId = job->id();
-
     event.kvInfo = job->persistentLogData();
     event.kvInfo.emplace_back("worker", _worker);
-
     logEvent(event);
 }
 

@@ -38,18 +38,16 @@ namespace lsst::qserv::replica {
 using namespace database::mysql;
 
 void HttpDirectorIndexModule::process(Controller::Ptr const& controller, string const& taskName,
-                                      HttpProcessorConfig const& processorConfig,
                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                       string const& subModuleName, http::AuthType const authType) {
-    HttpDirectorIndexModule module(controller, taskName, processorConfig, req, resp);
+    HttpDirectorIndexModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpDirectorIndexModule::HttpDirectorIndexModule(Controller::Ptr const& controller, string const& taskName,
-                                                 HttpProcessorConfig const& processorConfig,
                                                  qhttp::Request::Ptr const& req,
                                                  qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpDirectorIndexModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "BUILD") return _buildDirectorIndex();

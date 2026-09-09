@@ -56,6 +56,11 @@
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
 
+// Forward declarations
+namespace lsst::qserv::http {
+class AuthContext;
+}  // namespace lsst::qserv::http
+
 // This header declarations
 namespace lsst::qserv::replica {
 namespace detail {
@@ -92,45 +97,58 @@ class Configuration {
 public:
     typedef std::shared_ptr<Configuration> Ptr;
 
-    // ----------------------------------------------------------------------
-    // The static API. It's designed to be used before loading the content of
-    // the Configuration object in order to bootstrap an application before
-    // the rest of the configuration will be known.
-    // Some parameters mentioned in this section also represent security
-    // context, therefore they can't be found in an external configuration.
-    // ----------------------------------------------------------------------
-
     /**
-     * The static factory method will create an object, initialize its state with
+     * The factory method will create an object, initialize its state with
      * the default values of the configuration parameters, then update the state
      * from the given JSON object.
      * @note Configuration objects created by this method won't have any persistent
      *   backend should any changes to the transient state be made.
+     * @param configSchema The schema against which the input configuration will be validated.
      * @param obj The input configuration parameters. The object is optional.
      *   If it's not given (the default value), or if it's empty then no changes
      *   will be made to the default transient state.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
-    static Ptr load(nlohmann::json const& obj = nlohmann::json::object());
+    static Ptr load(ConfigurationSchema const& configSchema,
+                    nlohmann::json const& obj = nlohmann::json::object());
+
+    // -----------------
+    // The instance API.
+    // -----------------
+
+    Configuration(Configuration const&) = delete;
+    Configuration& operator=(Configuration const&) = delete;
+    ~Configuration() = default;
+
+    ConfigurationSchema const& configSchema() const { return _configSchema; }
 
     /**
-     * The static factory method will create a new object and initialize its content
-     * from the following source:
-     * @code
-     *   mysql://[user][:password][@host][:port][/database]
-     * @endcode
-     * @note Configuration objects initialized from MySQL would rely on MySQL as
-     *   the persistent backend for any requests to update the state of the transient
-     *   parameters. A connection object to the MySQL service will be initialized
-     *   as the corresponding data member of the class.
-     * @param configUrl The configuration source.
-     * @throw std::invalid_argument If the URL has unsupported scheme or it
-     *   couldn't be parsed.
-     * @throw std::runtime_error If the input configuration is not consistent
-     *   with the transient schema.
+     * Reload non-general parameters of the Configuration from the persistent backend (MySQL).
+     * @throws ConfigNoSuchParameter If the parameter (database,repl-db-conn) doesn't exist
+     *   in the configuration.
      */
-    static Ptr load(std::string const& configUrl);
+    void reload();
+
+    /**
+     * Reload parameters of the Configuration from the given JSON object.
+     * @param obj The input configuration parameters.
+     * @throw std::runtime_error If the input configuration is not consistent
+     *   with expectations of the transient schema.
+     */
+    void reload(nlohmann::json const& obj);
+
+    /**
+     * Return a connection object for the replication database with the name of
+     * a database optionally rewritten from the one stored in the corresponding URL.
+     * This is done for the sake of convenience of clients to ensure a specific
+     * database is set as the default context.
+     * @return The parsed connection object with the name of the database optionally
+     *   overwritten.
+     * @throw ConfigNoSuchParameter If the parameter (database,repl-db-conn) doesn't exist
+     *   in the configuration.
+     */
+    database::mysql::ConnectionParams replDbParams() const;
 
     /**
      * Return a connection object for the czar's MySQL service with the name of
@@ -141,14 +159,10 @@ public:
      *   string was provided.
      * @return The parsed connection object with the name of the database optionally
      *   overwritten.
+     * @throw ConfigNoSuchParameter If the parameter (database,czar-db-conn) doesn't exist
+     *   in the configuration.
      */
-    static database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string());
-
-    /// @return A connection string for accessing Qserv czar's database.
-    static std::string qservCzarDbUrl();
-
-    /// @param url A connection string for accessing Qserv czar's database.
-    static void setQservCzarDbUrl(std::string const& url);
+    database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string()) const;
 
     /**
      * Return a connection object for the worker's MySQL service with the name of
@@ -160,147 +174,7 @@ public:
      * @return The parsed connection object with the name of the database optionally
      *   overwritten.
      */
-    static database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database = std::string());
-
-    /**
-     * This method is used by the Replication/Ingest system's workers when they need
-     * to connect directly to the corresponding MySQL/MariaDB service of the corresponding
-     * Qserv worker.
-     * @return A connection string for accessing Qserv worker's database.
-     */
-    static std::string qservWorkerDbUrl();
-
-    /// @param url The new connection URL to be set.
-    static void setQservWorkerDbUrl(std::string const& url);
-
-    /// @return the default mode for database reconnects.
-    static bool databaseAllowReconnect();
-
-    /**
-     * Change the default value of a parameter defining a policy for handling
-     * automatic reconnects to a database server. Setting 'true' will enable
-     * reconnects.
-     * @param value The new value of the parameter.
-     */
-    static void setDatabaseAllowReconnect(bool value);
-
-    /// @return The default timeout for connecting to database servers.
-    static unsigned int databaseConnectTimeoutSec();
-
-    /**
-     * Change the default value of a parameter specifying delays between automatic
-     * reconnects (should those be enabled by the corresponding policy).
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setDatabaseConnectTimeoutSec(unsigned int value);
-
-    /**
-     * @return The default number of a maximum number of attempts to execute
-     *   a query due to database connection failures and subsequent reconnects.
-     */
-    static unsigned int databaseMaxReconnects();
-
-    /**
-     * Change the default value of a parameter specifying the maximum number
-     * of attempts to execute a query due to database connection failures and
-     * subsequent reconnects (should they be enabled by the corresponding policy).
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setDatabaseMaxReconnects(unsigned int value);
-
-    /// @return The default timeout for executing transactions at a presence
-    ///   of server reconnects.
-    static unsigned int databaseTransactionTimeoutSec();
-
-    /**
-     * Change the default value of a parameter specifying a timeout for executing
-     * transactions at a presence of server reconnects.
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setDatabaseTransactionTimeoutSec(unsigned int value);
-
-    /**
-     * @brief This option, if set, allows tracking schema version status.
-     *
-     * If the tracking is enabled then an application will keep re-checking
-     * a state of the persistent store for a duration of time specified in
-     * the parameter Configuration::schemaUpgradeWaitTimeoutSec() up to a point
-     * where the schema gets upgraded to the expected version or the timeout
-     * expires.
-     * @return the state of the option.
-     */
-    static bool schemaUpgradeWait();
-
-    /**
-     * Change the default value of a parameter defining a policy for tracking
-     * schema version status. Setting 'true' will enable the tracking.
-     * @see Configuration::schemaUpgradeWaitTimeoutSec()
-     * @param value The new value of the parameter.
-     */
-    static void setSchemaUpgradeWait(bool value);
-
-    /**
-     * @return A duration of time to wait for the schema upgrade (if enabled
-     *   in option Configuration::schemaUpgradeWait()).
-     */
-    static unsigned int schemaUpgradeWaitTimeoutSec();
-
-    /**
-     * Change the default value of a parameter specifying a timeout for tracking
-     * schema version status.
-     * @param value The new value of the parameter (must be strictly greater than 0).
-     * @throws std::invalid_argument If the new value of the parameter is 0.
-     */
-    static void setSchemaUpgradeWaitTimeoutSec(unsigned int value);
-
-    // -----------------
-    // The instance API.
-    // -----------------
-
-    Configuration(Configuration const&) = delete;
-    Configuration& operator=(Configuration const&) = delete;
-    ~Configuration() = default;
-
-    /**
-     * Reload non-static parameters of the Configuration from the same source
-     * they were originally read before.
-     * @note If the object was initialized from a JSON object then
-     *   the method will do nothing.
-     */
-    void reload();
-
-    /**
-     * Reload non-static parameters of the Configuration from the given JSON object.
-     * @note If the previous state of the object was configured from a source having
-     *   a persistent back-end (such as MySQL) then the association with the backend
-     *   will be lost upon completion of the method.
-     * @param obj The input configuration parameters.
-     * @throw std::runtime_error If the input configuration is not consistent
-     *   with expectations of the transient schema.
-     */
-    void reload(nlohmann::json const& obj);
-
-    /**
-     * Reload non-static parameters of the Configuration from an external source.
-     * @param configUrl The configuration source,
-     * @throw std::invalid_argument If the URL has unsupported scheme or it couldn't
-     *   be parsed.
-     * @throw std::runtime_error If the input configuration is not consistent with
-     *   expectations of the transient schema.
-     */
-    void reload(std::string const& configUrl);
-
-    /**
-     * Construct the original (minus security-related info) path to
-     * the configuration source.
-     * @param showPassword If a value of the flag is 'false' then hash a password
-     *   in the result.
-     * @return The constructed path.
-     */
-    std::string configUrl(bool showPassword = false) const;
+    database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database = std::string()) const;
 
     /**
      * The directory method for locating categories and parameters within
@@ -316,11 +190,26 @@ public:
     std::map<std::string, std::set<std::string>> parameters() const;
 
     /**
+     * Check if a category exists.
+     * @param category The name of the category.
+     * @return True if the category exists, false otherwise.
+     */
+    bool exists(std::string const& category) const;
+
+    /**
+     * Check if a parameter exists within a given category.
+     * @param category The name of the parameter's category.
+     * @param param The name of the parameter within its category.
+     * @return True if the parameter exists, false otherwise.
+     */
+    bool exists(std::string const& category, std::string const& param) const;
+
+    /**
      * Return a value of the parameter found by its category and its name.
      * @param category The name of the parameter's category.
      * @param param The name of the parameter within its category.
      * @return A value of the parameter of the requested type.
-     * @throws std::invalid_argument If the parameter doesn't exist.
+     * @throws ConfigNoSuchParameter If the parameter doesn't exist.
      * @throws ConfigTypeMismatch If the parameter has unexpected type.
      */
     template <typename T>
@@ -356,15 +245,17 @@ public:
      */
     template <typename T>
     void set(std::string const& category, std::string const& param, T const& val) {
-        std::string const context_ =
-                _context(__func__) + " category='" + category + "' param='" + param + "' ";
+        auto const context_ = _context(__func__) + " category='" + category + "' param='" + param + "' ";
         replica::Lock const lock(_mtx, context_);
+
         // Some parameters can't be updated using this interface.
-        if (ConfigurationSchema::readOnly(category, param)) {
+        if (_configSchema.readOnly(category, param)) {
             throw std::logic_error(context_ + "the read-only parameters can't be updated via the API.");
         }
+
         // Validate the value in case if the schema enforces restrictions.
-        ConfigurationSchema::validate(category, param, val);
+        _configSchema.validate<T>(category, param, val);
+
         // Update transient states.
         try {
             nlohmann::json& obj = _get(lock, category, param);
@@ -381,6 +272,11 @@ public:
      * @see Configuration::set()
      */
     void setFromString(std::string const& category, std::string const& param, std::string const& val);
+
+    /**
+     * @return The security context of the Replication system.
+     */
+    http::AuthContext httpAuthContext() const;
 
     /**
      * Return the names of known workers as per the selection criteria.
@@ -743,35 +639,31 @@ private:
     static std::string _context(std::string const& func = std::string());
 
     /**
-     * The light weight c-tor to initialize the default state of the configuration.
-     * The rest of the state will get populated by specialized methods mentioned below.
+     * The light weight c-tor to initialize the default state of the configuration
+     * for the specified schema. The rest of the state will get populated by the specialized
+     * _load() methods explained below.
      */
-    Configuration();
+    Configuration(ConfigurationSchema const& configSchema);
 
     /**
      * Load from the transient JSON object. Parameters read from the object will
-     * be applying to the internal state.
+     * be applying to the internal state only. No changes to the persistent back-end will be made.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @param obj An object to be used as a source for updating the default values
      *   of the configuration parameters. Note that this source doesn't assume a presence
      *   of any persistent back-end for the configuration. If any such back-end existed
      *   then it would be disconnected upon the completion of the method.
-     * @param reset The flag (if set to 'true') will trigger the internal state reset
-     *   to the default values of the parameters before applying the input configuration.
      */
-    void _load(replica::Lock const& lock, nlohmann::json const& obj, bool reset);
+    void _loadFromJSON(replica::Lock const& lock, nlohmann::json const& obj);
 
     /**
      * Load from MySQL. Parameters read from the database will be applied
      * to the internal state.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
-     * @param configUrl The connection string to the MySQL database from which to read
-     *   the configuration parameters. The database will become the persistent back-end
-     *   for the configuration.
-     * @param reset The flag (if set to 'true') will trigger the internal state reset
-     *   to the default values of the parameters before applying the input configuration.
+     * @note The connection string to the MySQL database will be obtained from the
+     *   configuration parameters themselves.
      */
-    void _load(replica::Lock const& lock, std::string const& configUrl, bool reset);
+    void _loadFromMySQL(replica::Lock const& lock);
 
     /// @param lock The lock on '_mtx' to be acquired prior to calling the method.
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
@@ -784,7 +676,7 @@ private:
      * @param category The name of the parameter's category.
      * @param param The name of the parameter within its category.
      * @return A 'const' reference to a JSON object encapsulating the parameter's value and its type.
-     * @throws std::invalid_argument If the parameter doesn't exist.
+     * @throws ConfigNoSuchParameter If the parameter doesn't exist.
      */
     nlohmann::json const& _get(replica::Lock const& lock, std::string const& category,
                                std::string const& param) const;
@@ -852,22 +744,8 @@ private:
      */
     bool _updatePersistentState(replica::Lock const& lock) const { return _connectionPtr != nullptr; }
 
-    // Static parameters of the database connectors (read-write).
-
-    static bool _databaseAllowReconnect;
-    static unsigned int _databaseConnectTimeoutSec;
-    static unsigned int _databaseMaxReconnects;
-    static unsigned int _databaseTransactionTimeoutSec;
-    static bool _schemaUpgradeWait;
-    static unsigned int _schemaUpgradeWaitTimeoutSec;
-    static std::string _qservCzarDbUrl;
-    static std::string _qservWorkerDbUrl;
-
-    // For implementing static synchronized methods.
-    static replica::Mutex _classMtx;
-
-    // A source of the configuration.
-    std::string _configUrl;
+    /// The schema against which the configuration will be validated.
+    ConfigurationSchema const _configSchema;
 
     // These parameters  will be set for the MySQL back-end (if any).
     database::mysql::ConnectionParams _connectionParams;

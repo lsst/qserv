@@ -32,8 +32,9 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/proto/Protocol.h"
-#include "replica/util/FileUtils.h"
 #include "replica/services/ServiceProvider.h"
+#include "replica/util/FileUtils.h"
+#include "replica/worker/WorkerUtils.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -87,8 +88,10 @@ bool WorkerFindAllReplicasHttpRequest::execute() {
     replica::Lock lock(mtx, _CONTEXT);
     checkIfCancelling(lock, _CONTEXT);
 
+    auto const config = serviceProvider()->config();
+
     // The method will throw ConfigUnknownDatabase if the database is invalid.
-    DatabaseInfo const databaseInfo = serviceProvider()->config()->databaseInfo(_databaseName);
+    DatabaseInfo const databaseInfo = config->databaseInfo(_databaseName);
 
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number
@@ -96,8 +99,18 @@ bool WorkerFindAllReplicasHttpRequest::execute() {
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
         replica::Lock dataFolderLock(mtxDataFolderOperations, _CONTEXT);
-        fs::path const dataDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
-                                 database::mysql::obj2fs(_databaseName);
+
+        // This operation is needed to support on-the-fly creation of the missing databases
+        // at new workers joining the Qserv cluster. The cluster may already have existing
+        // workers with prepopulated databases. A similar problem to be addressed here
+        // is when a worker was down for a prolonged period of time and during that time
+        // new databases were added to the cluster. In both cases the Replication system will
+        // expect the worker to have all databases which are known to the Controller.
+        if (config->get<unsigned int>("worker", "create-databases-on-scan")) {
+            WorkerUtils::createMissingDatabase(_CONTEXT, config, _databaseName);
+        }
+        fs::path const dataDir =
+                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(_databaseName);
         fs::file_status const stat = fs::status(dataDir, ec);
         if (stat.type() == fs::file_type::none) {
             _SET_STATUS_FAILED(protocol::StatusExt::FOLDER_STAT,

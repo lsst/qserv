@@ -36,7 +36,9 @@
 #include "replica/config/ConfigCzar.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigWorker.h"
+#include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
+#include "replica/requests/Messenger.h"
 #include "replica/requests/Request.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -170,6 +172,11 @@ Controller::Controller(shared_ptr<ServiceProvider> const& serviceProvider)
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
 
+void Controller::stop() {
+    // Cancel all outstanding requests to workers (if any)
+    if (_messenger != nullptr) _messenger->stop();
+}
+
 string Controller::_context(string const& func) const {
     return "R-CONTR " + _identity.id + "  " + _identity.host + "[" + to_string(_identity.pid) + "]  " + func;
 }
@@ -178,6 +185,22 @@ void Controller::verifyFolders(bool createMissingFolders) const {
     vector<string> const folders = {
             serviceProvider()->config()->get<string>("database", "qserv-master-tmp-dir")};
     FileUtils::verifyFolders("CONTROLLER", folders, createMissingFolders);
+}
+
+shared_ptr<Messenger> const& Controller::messenger() const {
+    replica::Lock lock(_mtx, _context(__func__));
+    if (_messenger == nullptr) {
+        _messenger = Messenger::create(_serviceProvider->config(), _serviceProvider->io_service());
+    }
+    return _messenger;
+}
+
+shared_ptr<QservMgtServices> const& Controller::qservMgtServices() const {
+    replica::Lock lock(_mtx, _context(__func__));
+    if (_qservMgtServices == nullptr) {
+        _qservMgtServices = QservMgtServices::create(_serviceProvider);
+    }
+    return _qservMgtServices;
 }
 
 }  // namespace lsst::qserv::replica

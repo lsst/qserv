@@ -57,9 +57,8 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(Controller::Ptr const& controller, NamedMutexRegistry& transactionMutexRegistry,
-                        std::string const& taskName, HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName = std::string(),
+                        std::string const& taskName, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpIngestTransModule() = delete;
@@ -73,8 +72,8 @@ protected:
 
 private:
     HttpIngestTransModule(Controller::Ptr const& controller, NamedMutexRegistry& transactionMutexRegistry,
-                          std::string const& taskName, HttpProcessorConfig const& processorConfig,
-                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+                          std::string const& taskName, qhttp::Request::Ptr const& req,
+                          qhttp::Response::Ptr const& resp);
 
     /// Get info on super-transactions
     nlohmann::json _getTransactions();

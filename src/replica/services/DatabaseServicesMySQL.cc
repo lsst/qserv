@@ -78,11 +78,7 @@ using namespace database::mysql;
 DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
         : DatabaseServices(),
           _configuration(configuration),
-          _conn(Connection::open(ConnectionParams(configuration->get<string>("database", "host"),
-                                                  configuration->get<uint16_t>("database", "port"),
-                                                  configuration->get<string>("database", "user"),
-                                                  configuration->get<string>("database", "password"),
-                                                  configuration->get<string>("database", "name")))),
+          _conn(Connection::open(configuration->replDbParams())),
           _g(_conn) {}
 
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64_t startTime) {

@@ -61,7 +61,8 @@ void RegistryHttpSvc::registerServices() {
                                     json const info = json::object(
                                             {{"kind", "replication-registry"},
                                              {"id", ""},
-                                             {"instance_id", self->serviceProvider()->instanceId()}});
+                                             {"instance_id", self->serviceProvider()->config()->get<string>(
+                                                                     "security", "instance-id")}});
                                     http::MetaModule::process(context_, info, req, resp, "VERSION");
                                 }},
                                {"GET", "/services",

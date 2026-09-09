@@ -32,9 +32,12 @@
 
 // Qserv headers
 #include "replica/util/Common.h"
+#include "replica/util/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class Messenger;
+class QservMgtServices;
 class Request;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -97,6 +100,15 @@ public:
      */
     void verifyFolders(bool createMissingFolders = false) const;
 
+    /// @return a reference to worker messenger service (configured for controllers)
+    std::shared_ptr<Messenger> const& messenger() const;
+
+    /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
+    std::shared_ptr<QservMgtServices> const& qservMgtServices() const;
+
+    /// Stop outstanding requests (if any).
+    void stop();
+
 private:
     explicit Controller(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
@@ -111,6 +123,16 @@ private:
     /// The number of milliseconds since UNIX Epoch when an instance of
     /// the Controller was created.
     uint64_t const _startTime;
+
+    /// Worker messenger service (lazy instantiation on a first request)
+    mutable std::shared_ptr<Messenger> _messenger;
+
+    /// Qserv management services (lazy instantiation on a first request)
+    mutable std::shared_ptr<QservMgtServices> _qservMgtServices;
+
+    /// The mutex for enforcing thread safety of the class's public API
+    /// and internal operations.
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

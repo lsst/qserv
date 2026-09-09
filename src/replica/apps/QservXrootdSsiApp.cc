@@ -40,6 +40,7 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
+#include "replica/config/ConfigurationSchema.h"
 #include "global/ResourceUnit.h"
 #include "util/BlockPost.h"
 #include "util/TimeUtils.h"
@@ -54,8 +55,6 @@ string const description =
         "This application sends requests to Qserv workers over XROOTD/SSI for a purpose of testing"
         " the performance, scalability and stability of the message delivery services.";
 
-bool const injectDatabaseOptions = false;
-bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
 
 double const millisecondsInSecond = 1000.;
@@ -116,8 +115,7 @@ shared_ptr<QservXrootdSsiApp> QservXrootdSsiApp::create(int argc, char* argv[]) 
 }
 
 QservXrootdSsiApp::QservXrootdSsiApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
-                      ::enableServiceProvider) {
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchema()) {
     parser().required("url", "The connection URL for the XROOTD/SSI services.", _url)
             .option("num-threads", "The number of threads for running the test.", _numThreads)
             .option("report-interval-ms",
