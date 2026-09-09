@@ -176,8 +176,7 @@ commands = OrderedDict(
             "worker-repl",
             CommandInfo(
                 "qserv-replica-worker "
-                "--qserv-worker-db={{db_admin_uri}} "
-                "--repl-db={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}"
+                "{% for arg in extended_args %}{{arg}}  {% endfor %}"
             ),
         ),
         (
@@ -191,7 +190,6 @@ commands = OrderedDict(
             "replication-controller",
             CommandInfo(
                 "qserv-replica-master-http "
-                "--repl-db={{db_uri}} "
                 "{% for arg in extended_args %}{{arg}} {% endfor %}"
             ),
         ),
@@ -199,7 +197,6 @@ commands = OrderedDict(
             "replication-registry",
             CommandInfo(
                 "qserv-replica-registry "
-                "--repl-db={{db_uri}} "
                 "{% for arg in extended_args %}{{arg}} {% endfor %}"
             ),
         ),
