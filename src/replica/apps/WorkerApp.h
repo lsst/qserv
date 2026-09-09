@@ -71,12 +71,6 @@ private:
      *  write-enabled for the current user.
      */
     void _verifyCreateFolders() const;
-
-    std::string _qservWorkerDbUrl;  ///< A connection url for the MySQL service of the Qserv worker database.
-
-    /// The worker will create missing folders unless told not to do so by
-    /// passing the corresponding command-line flag.
-    bool _doNotCreateMissingFolders = false;
 };
 
 }  // namespace lsst::qserv::replica

@@ -209,7 +209,7 @@ Connection::Ptr WorkerSqlRequest::_connector() const {
     // queries require a client to explicitly provide the credentials.
     // Otherwise, using credentials from the worker's configuration.
     bool const clientCredentials = _request.type() == ProtocolRequestSql::QUERY;
-    auto connectionParams = Configuration::qservWorkerDbParams();
+    auto connectionParams = serviceProvider()->config()->qservWorkerDbParams();
     if (clientCredentials) {
         connectionParams.user = _request.user();
         connectionParams.password = _request.password();

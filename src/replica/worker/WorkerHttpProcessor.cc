@@ -86,7 +86,7 @@ WorkerHttpProcessor::WorkerHttpProcessor(shared_ptr<ServiceProvider> const& serv
         : _serviceProvider(serviceProvider),
           _worker(worker),
           _connectionPool(database::mysql::ConnectionPool::create(
-                  Configuration::qservWorkerDbParams(),
+                  _serviceProvider->config()->qservWorkerDbParams(),
                   serviceProvider->config()->get<size_t>("database", "services-pool-size"))),
           _state(protocol::ServiceState::SUSPENDED),
           _startTime(util::TimeUtils::now()) {}
