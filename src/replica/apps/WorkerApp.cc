@@ -66,29 +66,10 @@ shared_ptr<WorkerApp> WorkerApp::create(int argc, char* argv[]) {
 }
 
 WorkerApp::WorkerApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaWorker()),
-          _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
-    parser().option("qserv-worker-db",
-                    "A connection url for the MySQL service of the Qserv"
-                    " worker database.",
-                    _qservWorkerDbUrl);
-    parser().flag("do-not-create-folders",
-                  "Do not attempt creating missing folders used by the worker services."
-                  " Specify this flag in the production deployments of the Replication/Ingest"
-                  " system.",
-                  _doNotCreateMissingFolders);
-}
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaWorker()) {}
 
 int WorkerApp::runImpl() {
     string const context = "WorkerApp::" + string(__func__) + "  ";
-
-    if (!_qservWorkerDbUrl.empty()) {
-        // IMPORTANT: set the connector, then clear it up to avoid
-        // contaminating the log files when logging command line arguments
-        // parsed by the application.
-        Configuration::setQservWorkerDbUrl(_qservWorkerDbUrl);
-        _qservWorkerDbUrl = "******";
-    }
 
     // Read a unique identifier of the worker from Qserv's worker database.
     string worker;
@@ -96,7 +77,7 @@ int WorkerApp::runImpl() {
         // The RAII-style connection handler will rollback a transaction
         // and close the MySQL connection in case of exceptions.
         ConnectionHandler const handler(
-                Connection::open(Configuration::qservWorkerDbParams("qservw_worker")));
+                Connection::open(serviceProvider()->config()->qservWorkerDbParams("qservw_worker")));
         QueryGenerator const g(handler.conn);
         string const query = g.select("id") + g.from("Id");
         handler.conn->executeInOwnTransaction([&worker, &context, &query](auto conn) {
@@ -155,7 +136,7 @@ void WorkerApp::_verifyCreateFolders() const {
     vector<string> const folders = {config->get<string>("worker", "data-dir"),
                                     config->get<string>("worker", "exporter-tmp-dir"),
                                     config->get<string>("worker", "http-loader-tmp-dir")};
-    FileUtils::verifyFolders("WORKER", folders, !_doNotCreateMissingFolders);
+    FileUtils::verifyFolders("WORKER", folders, config->get<unsigned int>("worker", "create-folders") != 0);
 }
 
 }  // namespace lsst::qserv::replica

@@ -73,8 +73,6 @@ BOOST_AUTO_TEST_SUITE(Suite)
 BOOST_AUTO_TEST_CASE(ConfigTestStaticParams) {
     LOGS_INFO("Testing static parameters");
 
-    BOOST_CHECK_THROW(Configuration::setQservWorkerDbUrl(""), invalid_argument);
-
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(true));
     BOOST_CHECK(Configuration::databaseAllowReconnect() == true);
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(false));
@@ -231,10 +229,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
 
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 1);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait-timeout") == 10);
-
-    BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
-    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
-
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
     BOOST_CHECK(config->get<string>("database", "repl-db-conn") ==
                 "mysql://qsreplica@host-A:13306/qservReplica");
@@ -282,16 +276,11 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
 
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait") == 1);
     BOOST_CHECK(config->get<unsigned int>("database", "schema-upgrade-wait-timeout") == 10);
-    BOOST_CHECK(config->get<string>("database", "host") == "localhost");
-    BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
-    BOOST_CHECK(config->get<string>("database", "user") == "qsreplica");
-    BOOST_CHECK(config->get<string>("database", "password") == "changeme");
-    BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
-
-    BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
-    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
-
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
+    BOOST_CHECK(config->get<string>("database", "repl-db-conn") ==
+                "mysql://qsreplica@host-A:13306/qservReplica");
+    BOOST_CHECK(config->get<string>("database", "worker-db-conn") ==
+                "mysql://qsmaster@host-B:13306/qservw_worker");
 
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 122);
     BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
@@ -314,6 +303,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 10);
     BOOST_CHECK(config->get<size_t>("worker", "director-index-record-size") == 16 * 1024 * 1024);
     BOOST_CHECK(config->get<unsigned int>("worker", "create-databases-on-scan") == 1);
+    BOOST_CHECK(config->get<unsigned int>("worker", "create-folders") == 1);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
@@ -749,6 +739,9 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "create-databases-on-scan", 0));
     BOOST_CHECK(config->get<unsigned int>("worker", "create-databases-on-scan") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "create-folders", 0));
+    BOOST_CHECK(config->get<unsigned int>("worker", "create-folders") == 0);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {

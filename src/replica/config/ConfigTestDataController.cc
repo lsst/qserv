@@ -68,9 +68,8 @@ map<string, set<string>> ConfigTestDataController::parameters() {
                "director-index-engine",
                "create-folders"}},
              {"database",
-              {"schema-upgrade-wait", "schema-upgrade-wait-timeout", "services-pool-size",
-               "qserv-master-user", "qserv-master-services-pool-size", "qserv-master-tmp-dir", "repl-db-conn",
-               "czar-db-conn"}},
+              {"schema-upgrade-wait", "schema-upgrade-wait-timeout", "services-pool-size", "qserv-mysql-user",
+               "qserv-master-tmp-dir", "repl-db-conn", "czar-db-conn"}},
              {"xrootd",
               {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect",
                "reconnect-timeout"}}});
@@ -122,7 +121,7 @@ json ConfigTestDataController::data() {
                                              {"create-folders", 1}});
     generalObj["database"] = json::object({{"schema-upgrade-wait", 1},
                                            {"schema-upgrade-wait-timeout", 10},
-                                           {"qserv-master-user", "qsmaster"},
+                                           {"qserv-mysql-user", "qsmaster"},
                                            {"services-pool-size", 2},
                                            {"qserv-master-tmp-dir", "/qserv/data/ingest"},
                                            {"repl-db-conn", "mysql://qsreplica@host-A:13306/qservReplica"},
