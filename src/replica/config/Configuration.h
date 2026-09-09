@@ -280,6 +280,13 @@ public:
     std::map<std::string, std::set<std::string>> parameters() const;
 
     /**
+     * Check if a category exists.
+     * @param category The name of the category.
+     * @return True if the category exists, false otherwise.
+     */
+    bool exists(std::string const& category) const;
+
+    /**
      * Check if a parameter exists within a given category.
      * @param category The name of the parameter's category.
      * @param param The name of the parameter within its category.

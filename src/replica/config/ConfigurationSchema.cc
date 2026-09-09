@@ -69,6 +69,11 @@ map<string, set<string>> ConfigurationSchema::parameters() const {
     return result;
 }
 
+bool ConfigurationSchema::exists(string const& category) const {
+    auto const categoryItr = _schemaJson.find(category);
+    return categoryItr != _schemaJson.end();
+}
+
 bool ConfigurationSchema::exists(string const& category, string const& param) const {
     auto const categoryItr = _schemaJson.find(category);
     if (categoryItr != _schemaJson.end()) {

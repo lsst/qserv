@@ -203,6 +203,8 @@ database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const&
 
 map<string, set<string>> Configuration::parameters() const { return _configSchema.parameters(); }
 
+bool Configuration::exists(string const& category) const { return _configSchema.exists(category); }
+
 bool Configuration::exists(string const& category, string const& param) const {
     return _configSchema.exists(category, param);
 }
