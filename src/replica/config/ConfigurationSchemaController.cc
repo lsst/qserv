@@ -292,7 +292,24 @@ json const controllerSchemaJson = json::object(
              {"empty-allowed", 1},
              {"default", 1}}}}},
          {"database",
-          {{"schema-upgrade-wait",
+          {{"allow-reconnect",
+            {{"description",
+              "The flag controlling the behavior of the database connectors. If the value of the"
+              " parameter is not 0 then the connectors will attempt to reconnect to the database"
+              " service in case of a connection failure."},
+             {"empty-allowed", 1},
+             {"default", 1}}},
+           {"connect-timeout-sec",
+            {{"description",
+              "The maximum duration of time (in seconds) allowed for establishing a connection"
+              " to the database service."},
+             {"default", 3600}}},
+           {"max-reconnects",
+            {{"description",
+              "The maximum number of reconnects allowed for the database connectors."
+              " The limit is applied only if the option 'allow-reconnect' is set to a non-zero value."},
+             {"default", 1}}},
+           {"schema-upgrade-wait",
             {{"description",
               "If the value of the option is 0 and the schema version of the Replication/Ingest "
               "system's database is either not available or is less than the one expected by the application"
