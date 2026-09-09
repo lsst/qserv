@@ -117,14 +117,7 @@ private:
     /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;
 
-    // Database connector options (if enabled)
-
-    unsigned int _databaseAllowReconnect;
-    unsigned int _databaseConnectTimeoutSec;
-    unsigned int _databaseMaxReconnects;
-    unsigned int _databaseTransactionTimeoutSec;
-
-    /// General parameters
+    /// General parameters extracted from the command line and applied to the configuration object.
     std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
     /// The provider of the Configuration and other services
