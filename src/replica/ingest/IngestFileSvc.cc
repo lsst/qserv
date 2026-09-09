@@ -185,7 +185,8 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
     try {
         // The RAII connection handler automatically aborts the active transaction
         // should an exception be thrown within the block.
-        ConnectionHandler h(Connection::open(Configuration::qservWorkerDbParams(_database.name)));
+        ConnectionHandler h(
+                Connection::open(_serviceProvider->config()->qservWorkerDbParams(_database.name)));
         QueryGenerator const g(h.conn);
         vector<Query> tableMgtStatements;
 
