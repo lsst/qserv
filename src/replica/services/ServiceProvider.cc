@@ -54,6 +54,10 @@ ServiceProvider::ServiceProvider(shared_ptr<Configuration> const& config) : _con
 DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     replica::Lock lock(_mtx, _context() + __func__);
     if (_databaseServices == nullptr) {
+        if (!config()->exists("database")) {
+            throw invalid_argument(_context() + string(__func__) +
+                                   " the application is not configured to use the database services");
+        }
         _databaseServices = DatabaseServicesPool::create(_configuration);
     }
     return _databaseServices;

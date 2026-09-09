@@ -145,18 +145,32 @@ BOOST_AUTO_TEST_CASE(ConfigTestDir) {
     logParameters(config->parameters(), "Controller:actual");
     logParameters(ConfigTestDataController::parameters(), "Controller:expected");
     BOOST_CHECK(config->parameters() == ConfigTestDataController::parameters());
+    BOOST_CHECK(config->exists("common"));
+    BOOST_CHECK(config->exists("controller"));
+    BOOST_CHECK(config->exists("database"));
+    BOOST_CHECK(config->exists("registry"));
+    BOOST_CHECK(config->exists("security"));
+    BOOST_CHECK(config->exists("xrootd"));
 
     LOGS_INFO("Testing directory functions of the Registry");
     config = configRegistry;
     logParameters(config->parameters(), "Registry:actual");
     logParameters(ConfigTestDataRegistry::parameters(), "Registry:expected");
     BOOST_CHECK(config->parameters() == ConfigTestDataRegistry::parameters());
+    BOOST_CHECK(config->exists("common"));
+    BOOST_CHECK(config->exists("registry"));
+    BOOST_CHECK(config->exists("security"));
 
     LOGS_INFO("Testing directory functions of the Worker");
     config = configWorker;
     logParameters(config->parameters(), "Worker:actual");
     logParameters(ConfigTestDataWorker::parameters(), "Worker:expected");
     BOOST_CHECK(config->parameters() == ConfigTestDataWorker::parameters());
+    BOOST_CHECK(config->exists("common"));
+    BOOST_CHECK(config->exists("database"));
+    BOOST_CHECK(config->exists("registry"));
+    BOOST_CHECK(config->exists("security"));
+    BOOST_CHECK(config->exists("worker"));
 }
 
 BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
