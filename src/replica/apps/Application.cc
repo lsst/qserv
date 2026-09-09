@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigParserMySQL.h"
+#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/proto/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -47,11 +48,7 @@ Application::Application(int argc, const char* const argv[], string const& descr
         : _enableServiceProvider(enableServiceProvider),
           _configSchema(configSchema),
           _parser(argc, argv, description),
-          _debugFlag(false),
-          _databaseAllowReconnect(Configuration::databaseAllowReconnect() ? 1 : 0),
-          _databaseConnectTimeoutSec(Configuration::databaseConnectTimeoutSec()),
-          _databaseMaxReconnects(Configuration::databaseMaxReconnects()),
-          _databaseTransactionTimeoutSec(Configuration::databaseTransactionTimeoutSec()) {
+          _debugFlag(false) {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -66,26 +63,7 @@ int Application::run() {
                   " default configuration of the Logger will be assumed.",
                   _debugFlag);
 
-    // Add extra options if requested by an application.
     if (_enableServiceProvider) {
-        parser().option("db-allow-reconnect",
-                        "Change the default database connection handling node. Set 0 to disable"
-                        " automatic reconnects. Any other number would allow reconnects.",
-                        _databaseAllowReconnect);
-        parser().option("db-reconnect-timeout",
-                        "Change the default value limiting a duration of time for making automatic"
-                        " reconnects to a database server before failing and reporting error"
-                        " (if the server is not up, or if it's not reachable for some reason)",
-                        _databaseConnectTimeoutSec);
-        parser().option("db-max-reconnects",
-                        "Change the default value limiting a number of attempts to repeat a sequence"
-                        " of queries due to connection losses and subsequent reconnects before to fail.",
-                        _databaseMaxReconnects);
-        parser().option("db-transaction-timeout",
-                        "Change the default value limiting a duration of each attempt to execute"
-                        " a database transaction before to fail.",
-                        _databaseTransactionTimeoutSec);
-
         // Inject options for the general configuration parameters.
         for (auto&& itr : _configSchema.parameters()) {
             string const& category = itr.first;
@@ -119,16 +97,11 @@ int Application::run() {
     }
 
     if (_enableServiceProvider) {
-        // Change default parameters of the database connectors
-        Configuration::setDatabaseAllowReconnect(_databaseAllowReconnect != 0);
-        Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
-        Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
-        Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
-
         // Create and initialze the configuration object.
-        // Note that options specified by a user will have non-empty values.
         auto const config = Configuration::load(_configSchema);
 
+        // Apply user-specified values of the general configuration parameters to the configuration object.
+        // Note that options specified by a user will have non-empty values.
         for (auto&& categoryItr : _generalParams) {
             string const& category = categoryItr.first;
             for (auto&& paramItr : categoryItr.second) {
@@ -140,15 +113,27 @@ int Application::run() {
             }
         }
 
-        // This step is available only for the configuration loaded from the database. It will
-        // verify that the schema version of the database is compatible with the one expected by
-        // the application. If the schema version is older than the expected one then the method
-        // will throw an exception. If the schema version is newer than the expected one then
-        // the method will throw an exception if the option --schema-upgrade-wait is set to 0.
-        // Otherwise, the method will keep tracking the schema version for a duration of time
-        // specified by the option --schema-upgrade-wait-timeout.
-        if (config->exists("database", "repl-db-conn")) {
-            config->reload();
+        if (config->exists("database")) {
+            // Change default parameters of the database connectors before loading the remaining
+            // configuration parameters from the database. This is needed to ensure that the connection
+            // attempts will be made with the user-specified values of the parameters.
+            database::mysql::Connection::setDatabaseAllowReconnect(
+                    config->get<unsigned int>("database", "allow-reconnect") != 0);
+            database::mysql::Connection::setDatabaseConnectTimeoutSec(
+                    config->get<unsigned int>("database", "connect-timeout-sec"));
+            database::mysql::Connection::setDatabaseMaxReconnects(
+                    config->get<unsigned int>("database", "max-reconnects"));
+
+            // This step is available only for the configuration loaded from the database. It will
+            // verify that the schema version of the database is compatible with the one expected by
+            // the application. If the schema version is older than the expected one then the method
+            // will throw an exception. If the schema version is newer than the expected one then
+            // the method will throw an exception if the option --schema-upgrade-wait is set to 0.
+            // Otherwise, the method will keep tracking the schema version for a duration of time
+            // specified by the option --schema-upgrade-wait-timeout.
+            if (config->exists("database", "repl-db-conn")) {
+                config->reload();
+            }
         }
 
         // Create the service provider instance and initialize the Configuration.
