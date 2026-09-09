@@ -23,6 +23,12 @@
 
 // System headers
 #include <string>
+#include <memory>
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Configuration;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -47,9 +53,12 @@ public:
      *  up and running, and the operation will eventually succeed when the server
      *  becomes available.
      * @param context a human-readable context of the operation for logging purposes
+     * @param config a pointer to the configuration object
      * @param databaseName the name of the database to be created
      */
-    static void createMissingDatabase(std::string const& context, std::string const& databaseName);
+    static void createMissingDatabase(std::string const& context,
+                                      std::shared_ptr<Configuration> const& config,
+                                      std::string const& databaseName);
 };
 
 }  // namespace lsst::qserv::replica
