@@ -47,6 +47,7 @@
 #include "qproc/ChunkSpec.h"
 #include "qproc/DatabaseModels.h"
 #include "query/QueryTemplate.h"
+#include "query/ScanTableInfo.h"
 #include "query/typedefs.h"
 #include "sql/SqlConfig.h"
 
@@ -62,6 +63,8 @@ class QueryContext;
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::qproc {
+
+class SecondaryIndex;
 
 ///  QuerySession contains state and behavior for operating on user queries. It
 ///  contains much of the query analysis-side responsibility, including the text
@@ -107,6 +110,17 @@ public:
 
     void addChunk(ChunkSpec const& cs);
     void setDummy();
+
+    /// @return true if this query runs against the dummy chunk rather than real chunk coverage.
+    bool isDummy() const { return _isDummy; }
+
+    /**
+     * @brief Compute this query's chunk coverage.
+     *
+     * Uses the secondary index + restrictors to determine the set of chunks the query touches (empty chunks
+     * are filtered out). analyzeQuery() must be called first.
+     */
+    void setupChunking(std::shared_ptr<SecondaryIndex> const& secondaryIndex);
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 
@@ -186,6 +200,8 @@ public:
 
     void setScanInteractive();
     bool getScanInteractive() const { return _scanInteractive; }
+
+    query::ScanInfo getScanInfo() const;
 
     /**
      *  Print query session to stream.

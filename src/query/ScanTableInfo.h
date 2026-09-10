@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2016 LSST Corporation.
+ * Copyright 2016-2026 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,33 +21,20 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_PROTO_SCANTABLEINFO_H
-#define LSST_QSERV_PROTO_SCANTABLEINFO_H
+#ifndef LSST_QSERV_QUERY_SCANTABLEINFO_H
+#define LSST_QSERV_QUERY_SCANTABLEINFO_H
 
 // System headers
 #include <string>
 #include <vector>
 
-// Qserv headers
-#include "proto/worker.pb.h"
+namespace lsst::qserv::query {
 
-namespace lsst::qserv::proto {
-
-/// Structure to store shared scan information for a single table.
-///
+/// Shared scan information for a single table, produced by query analysis
 struct ScanTableInfo {
-    using ListOf = std::vector<ScanTableInfo>;
-
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
     ScanTableInfo(std::string const& db_, std::string const& table_, bool lockInMemory_, int scanRating_)
             : db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
-    ScanTableInfo(TaskMsg_ScanTable const& scanTbl)
-            : db{scanTbl.db()},
-              table{scanTbl.table()},
-              lockInMemory{scanTbl.lockinmemory()},
-              scanRating{scanTbl.scanrating()} {}
-
-    int compare(ScanTableInfo const& rhs) const;
 
     std::string db;
     std::string table;
@@ -55,21 +42,12 @@ struct ScanTableInfo {
     int scanRating{0};
 };
 
+/// This class stores information about database table ratings for a user query.
 struct ScanInfo {
-    /// Threshold priority values. Scan priorities are not limited to these values.
-    enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
-
-    ScanInfo() = default;
-    void sortTablesSlowestFirst();
-    int compareTables(ScanInfo const& rhs);
-
-    ScanTableInfo::ListOf infoTables;
-    int scanRating{Rating::FASTEST};
+    std::vector<ScanTableInfo> infoTables;
+    int scanRating{0};
 };
 
-std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl);
-std::ostream& operator<<(std::ostream& os, ScanInfo const& info);
+}  // namespace lsst::qserv::query
 
-}  // namespace lsst::qserv::proto
-
-#endif  // LSST_QSERV_PROTO_SCANTABLEINFO_H
+#endif  // LSST_QSERV_QUERY_SCANTABLEINFO_H
