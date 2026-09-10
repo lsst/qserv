@@ -67,6 +67,7 @@ from .opt import (
     option_do_build_image,
     option_dry,
     option_http_frontend_port,
+    option_mysql_frontend_port,
     option_itest_container_name,
     option_itest_file,
     option_itest_http_container_name,
@@ -827,6 +828,7 @@ def update_schema(
 @option_project()
 @option_dashboard_port()
 @option_http_frontend_port()
+@option_mysql_frontend_port()
 @option_dry()
 def up(
     yaml_file: str,
@@ -836,6 +838,7 @@ def up(
     mariadb_image: str,
     dashboard_port: int,
     http_frontend_port: int,
+    mysql_frontend_port: int,
 ) -> None:
     """Launch a docker compose cluster."""
     launch.up(
@@ -846,6 +849,7 @@ def up(
         mariadb_image=mariadb_image,
         dashboard_port=dashboard_port,
         http_frontend_port=http_frontend_port,
+        mysql_frontend_port=mysql_frontend_port,
     )
 
 

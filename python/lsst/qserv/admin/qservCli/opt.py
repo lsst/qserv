@@ -324,6 +324,7 @@ env_project = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
 env_outdir = FlagEnvVal("--outdir", "OUTDIR", "/tmp")
 env_dashboard_port = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", "25081")
 env_http_frontend_port = FlagEnvVal("--http-frontend-port", "QSERV_HTTP_FRONTEND_PORT", "4048")
+env_mysql_frontend_port = FlagEnvVal("--mysql-frontend-port", "QSERV_MYSQL_FRONTEND_PORT", "4040")
 env_ltd_user = EnvVal("QSERV_LTD_USERNAME", "CI only; the LSST The Docs user for pushing docs.")
 env_ltd_password = EnvVal(
     "QSERV_LTD_PASSWORD", "CI only; the LSST The Docs password for pushing docs.", private=True
@@ -531,6 +532,7 @@ qserv_env_vals = FlagEnvVals(
         env_project,
         env_dashboard_port,
         env_http_frontend_port,
+        env_mysql_frontend_port,
         env_ltd_user,
         env_ltd_password,
         env_gh_event_name,
@@ -676,6 +678,13 @@ option_http_frontend_port = partial(
     env_http_frontend_port.opt,
     help=env_http_frontend_port.help("The host port to use for the qserv HTTP frontend."),
     default=env_http_frontend_port.val(),
+)
+
+option_mysql_frontend_port = partial(
+    click.option,
+    env_mysql_frontend_port.opt,
+    help=env_mysql_frontend_port.help("The host port to use for the qserv MySQL frontend."),
+    default=env_mysql_frontend_port.val(),
 )
 
 
