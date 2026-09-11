@@ -56,9 +56,9 @@
 #include "cconfig/CzarConfig.h"
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/msgCode.h"
-#include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "czar/Czar.h"
+#include "czar/CzarFamilyMap.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "protojson/UberJobReadyMsg.h"
@@ -94,14 +94,16 @@ namespace lsst::qserv::qdisp {
 Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                      util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& queryProgress,
                      shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-                     shared_ptr<qproc::QuerySession> const& querySession, unsigned int jobMaxAttempts)
+                     shared_ptr<qproc::QuerySession> const& querySession, unsigned int jobMaxAttempts,
+                     int uberJobMaxChunks)
         : _messageStore(ms),
           _qdispPool(qdispPool),
           _queryProgress(queryProgress),
           _queryProgressHistory(queryProgressHistory),
           _secondsBetweenQMetaUpdates(chrono::seconds(secondsBetweenUpdates)),
           _querySession(querySession),
-          _jobMaxAttempts(jobMaxAttempts) {
+          _jobMaxAttempts(jobMaxAttempts),
+          _uberJobMaxChunks(uberJobMaxChunks) {
     _setupLimit();
     qdisp::CzarStats::get()->addQuery();
 }
@@ -131,13 +133,13 @@ Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::Messa
                                  shared_ptr<util::QdispPool> const& qdispPool,
                                  shared_ptr<qmeta::QProgress> const& queryProgress,
                                  shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-                                 shared_ptr<qproc::QuerySession> const& querySession,
+                                 shared_ptr<qproc::QuerySession> const& querySession, int uberJobMaxChunks,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
 
     auto czarConfig = cconfig::CzarConfig::instance();
     Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory,
-                                     querySession, czarConfig->jobMaxAttempts()));
+                                     querySession, czarConfig->jobMaxAttempts(), uberJobMaxChunks));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
@@ -187,6 +189,7 @@ void Executive::setQueryId(QueryId id) {
     }
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
+    _ttn = make_shared<TmpTableName>(_id, _querySession.lock()->getOriginal());
 
     // Insert into the global executive map.
     czar::Czar::getCzar()->insertExecutive(_id, shared_from_this());
@@ -324,13 +327,6 @@ string Executive::dumpUberJobCounts() const {
         os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
     }
     return os.str();
-}
-
-void Executive::assignJobsToUberJobs() {
-    auto uqs = _userQuerySelect.lock();
-    if (uqs != nullptr) {
-        uqs->buildAndSendUberJobs();
-    }
 }
 
 void Executive::addMultiError(int errorCode, int subError, std::string const& errorMsg, bool logLvlErr) {
@@ -911,6 +907,228 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlIn
     // It's difficult to relocate `checkLimitRowComplete()` safely due to timing issues
     // with cancelling UberJobs.
     checkLimitRowComplete();
+}
+
+bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,
+                     protojson::WorkerContactInfo::WCMapPtr const& wContactMap,
+                     qdisp::JobQuery::Ptr const& jqPtr,
+                     std::shared_ptr<czar::CzarFamilyMap> const& czFamilyMap) {
+    if (targetWorker == nullptr) return false;
+    auto iter = wContactMap->find(targetWorker->getWorkerId());
+    if (iter == wContactMap->end()) return false;
+    auto const wInfo = iter->second;
+    return wInfo == nullptr || jqPtr->isWorkerInAvoidMap(wInfo, czFamilyMap->getLastUpdateTime());
+}
+
+void Executive::buildAndSendUberJobs() {
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start " << _uberJobMaxChunks);
+
+    // Ensure `_monitor()` doesn't do anything until everything is ready.
+    if (!isAllJobsCreated()) {
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " executive isn't ready to generate UberJobs.");
+        return;
+    }
+
+    if (getSuperfluous()) {
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " executive superfluous, result already found.");
+        return;
+    }
+    if (getCancelled()) {
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " executive cancelled.");
+        return;
+    }
+
+    // Only one thread should be generating UberJobs for this user query at any given time.
+    lock_guard fcLock(_buildUberJobMtx);
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " totalJobs=" << getTotalJobs());
+
+    auto const uqs = _userQuerySelect.lock();
+    if (uqs == nullptr) {
+        // Should be impossible, no way to merge results without it.
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _userQuerySelect is NULL");
+        addMultiError(util::Error::INTERNAL, util::Error::NONE,
+                      "_userQuerySelect is NULL in Executive::buildAndSendUberJobs");
+        squash("Executive::_userQuerySelect is NULL");
+        return;
+    }
+
+    ChunkIdJobMapType unassignedChunks = unassignedChunksInQuery();
+    if (unassignedChunks.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " no unassigned Jobs");
+        return;
+    }
+
+    string const dbName = _queryDbName;
+
+    // Get czar info and the worker contactMap.
+    auto czarPtr = czar::Czar::getCzar();
+    auto czFamilyMap = czarPtr->getCzarFamilyMap();
+    auto czChunkMap = czFamilyMap->getChunkMap(dbName);
+    auto czRegistry = czarPtr->getCzarRegistry();
+    // wContactMap is constant and safe to access without mutex lock.
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();
+
+    if (czChunkMap == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no map found for queryDbName=" << dbName);
+        // Make an empty chunk map so all jobs are flagged as needing to be reassigned.
+        // There's a chance that a family will be replicated by the registry.
+        czChunkMap = czar::CzarChunkMap::create();
+    }
+
+    auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();
+    // Make a map of all jobs in the executive.
+    // TODO:DM-53239 Maybe a check should be made that all databases are in the same family?
+
+    // keep cycling through workers until no more chunks to place.
+    //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
+    //  - for chunkId in `unassignedChunks`
+    //     - use `chunkMapPtr` to find the shared scan workerId for chunkId
+    //     - if not existing in the map, make a new uberjob
+    //     - if existing uberjob at max jobs, create a new uberjob
+    //  - once all chunks in the query have been put in uberjobs, find contact info
+    //    for each worker
+    //      - add worker to each uberjob.
+    //  - For failures - If a worker cannot be contacted, that's an uberjob failure.
+    //      - uberjob failures (due to communications problems) will result in the uberjob
+    //        being broken up into multiple UberJobs going to different workers.
+    //        - If an UberJob fails, the UberJob is killed and all the Jobs it contained
+    //          are flagged as needing re-assignment and this function will be called
+    //          again to put those Jobs in new UberJobs. Correctly re-assigning the
+    //          Jobs requires accurate information from the registry about which workers
+    //          are alive or dead.
+    struct WInfoAndUJPtr {
+        using Ptr = shared_ptr<WInfoAndUJPtr>;
+        qdisp::UberJob::Ptr uberJobPtr;
+        protojson::WorkerContactInfo::Ptr wInf;
+    };
+    map<string, WInfoAndUJPtr::Ptr> workerJobMap;
+    vector<qdisp::Executive::ChunkIdType> missingChunks;
+    vector<qdisp::UberJob::Ptr> uberJobs;
+
+    int attemptCountIncreased = 0;
+    // unassignedChunks needs to be in numerical order so that UberJobs contain chunk numbers in
+    // numerical order. The workers run shared scans in numerical order of chunkId numbers.
+    // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
+    // and should minimize the time for the first UberJob on the worker to complete.
+    for (auto const& [chunkId, jqPtr] : unassignedChunks) {
+        bool const increaseAttemptCount = true;
+        jqPtr->getDescription()->incrAttemptCount(shared_from_this(), increaseAttemptCount);
+        attemptCountIncreased++;
+
+        // If too many workers are down, there will be a chunk that cannot be found.
+        // Just continuing should leave jobs `unassigned` with their attempt count
+        // increased. Either the chunk will be found and jobs assigned, or the jobs'
+        // attempt count will reach max and the query will be cancelled
+        auto lambdaMissingChunk = [&](string const& msg) {
+            missingChunks.push_back(chunkId);
+            auto logLvl = (missingChunks.size() % 1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
+            LOGS(_log, logLvl, msg);
+        };
+
+        auto iter = chunkMapPtr->find(chunkId);
+        if (iter == chunkMapPtr->end()) {
+            lambdaMissingChunk(cName(__func__) + " No chunkData for=" + to_string(chunkId));
+            continue;
+        }
+        czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
+        auto targetWorker = chunkData->getPrimaryScanWorker().lock();
+        bool avoidWorker = avoidThisWorker(targetWorker, wContactMap, jqPtr, czFamilyMap);
+        if (targetWorker == nullptr || targetWorker->isDead() || avoidWorker) {
+            LOGS(_log, LOG_LVL_WARN,
+                 cName(__func__) << " No primary scan worker for chunk=" + chunkData->dump()
+                                 << ((targetWorker == nullptr) ? " targ was null" : " targ was dead"));
+            // Try to assign a different worker to this job
+            auto workerHasThisChunkMap = chunkData->getWorkerHasThisMapCopy();
+            bool found = false;
+            for (auto wIter = workerHasThisChunkMap.begin(); wIter != workerHasThisChunkMap.end() && !found;
+                 ++wIter) {
+                auto maybeTarg = wIter->second.lock();
+                if (maybeTarg != nullptr && !maybeTarg->isDead()) {
+                    avoidWorker = avoidThisWorker(maybeTarg, wContactMap, jqPtr, czFamilyMap);
+                    if (!avoidWorker) {
+                        targetWorker = maybeTarg;
+                        found = true;
+                        LOGS(_log, LOG_LVL_WARN,
+                             cName(__func__) << " Alternate worker=" << targetWorker->getWorkerId()
+                                             << " found for chunk=" << chunkData->dump());
+                    }
+                }
+            }
+            if (!found) {
+                lambdaMissingChunk(cName(__func__) +
+                                   " No primary or alternate worker found for chunk=" + chunkData->dump());
+                continue;
+            }
+        }
+        // Add this job to the appropriate UberJob, making the UberJob if needed.
+        string workerId = targetWorker->getWorkerId();
+        WInfoAndUJPtr::Ptr& wInfUJ = workerJobMap[workerId];
+        if (wInfUJ == nullptr) {
+            wInfUJ = make_shared<WInfoAndUJPtr>();
+            auto iter = wContactMap->find(workerId);
+            if (iter == wContactMap->end()) {
+                // This should never happen. However, if the worker contact info isn't found in the DB,
+                // the attempt count for this job will eventually reach max and the job will cancel itself.
+                LOGS(_log, LOG_LVL_ERROR,
+                     cName(__func__) << " workerId=" << workerId << " could not be found in wContactMap.");
+                break;
+            }
+            wInfUJ->wInf = iter->second;
+        }
+
+        if (wInfUJ->uberJobPtr == nullptr) {
+            // Create a new UberJob for this worker.
+            auto ujId = _uberJobIdSeq++;  // keep ujId consistent
+            string uberResultName = _ttn->make(ujId);
+            auto respHandler = ccontrol::MergingHandler::Ptr(
+                    new ccontrol::MergingHandler(uqs->getInfileMerger(), shared_from_this()));
+            auto uJob = qdisp::UberJob::create(shared_from_this(), respHandler, ujId, uqs->getCzarId(),
+                                               wInfUJ->wInf, czFamilyMap->getLastUpdateTime());
+            uJob->setWorkerContactInfo(wInfUJ->wInf);
+            wInfUJ->uberJobPtr = uJob;
+        };
+
+        wInfUJ->uberJobPtr->addJob(jqPtr);
+
+        if (wInfUJ->uberJobPtr->getJobCount() >= _uberJobMaxChunks) {
+            // Queue the UberJob to be sent to a worker
+            addAndQueueUberJob(wInfUJ->uberJobPtr);
+
+            // Clear the pointer so a new UberJob is created later if needed.
+            wInfUJ->uberJobPtr = nullptr;
+        }
+    }
+
+    if (!missingChunks.empty()) {
+        string errStr = cName(__func__) + " a worker could not be found for these chunks ";
+        int maxList = 0;
+        for (auto const& chk : missingChunks) {
+            errStr += to_string(chk) + ",";
+            if (++maxList > 50) {
+                errStr += " too many to show all.";
+                break;
+            }
+        }
+        errStr += " All will be retried later. Total missing=" + to_string(missingChunks.size());
+        LOGS(_log, LOG_LVL_ERROR, errStr);
+    }
+
+    if (attemptCountIncreased > 0) {
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " increased attempt count for " << attemptCountIncreased << " Jobs");
+    }
+
+    // Queue unqued UberJobs, these have less than the max number of jobs.
+    for (auto const& [wIdKey, winfUjPtr] : workerJobMap) {
+        if (winfUjPtr != nullptr) {
+            auto& ujPtr = winfUjPtr->uberJobPtr;
+            if (ujPtr != nullptr) {
+                addAndQueueUberJob(ujPtr);
+            }
+        }
+    }
+
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " " << dumpUberJobCounts());
 }
 
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {

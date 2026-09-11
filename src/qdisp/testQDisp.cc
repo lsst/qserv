@@ -143,15 +143,16 @@ public:
     ExecutiveUT(int qmetaTimeBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                 util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& qProgress,
                 shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-                shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
+                shared_ptr<qproc::QuerySession> const& querySession, int uberJobMaxChunks,
+                TestInfo::Ptr const& testInfo_)
             : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qProgress, queryProgressHistory, querySession,
-                        5 /* jobMaxAttempts */),
+                        5 /* jobMaxAttempts */, uberJobMaxChunks),
               testInfo(testInfo_) {
         workerContactInfo =
                 protojson::WorkerContactInfo::create("wrkId", "10.0.0.1", "hosty", 3456, CLOCK::now());
     }
 
-    void assignJobsToUberJobs() override {
+    void buildAndSendUberJobs() override {
         vector<qdisp::UberJob::Ptr> ujVect;
         TIMEPOINT familyMapTimestamp = CLOCK::now();
 
@@ -230,7 +231,7 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(qdisp::ExecutiveUT::PtrUT const& 
         rv.push_back(mh);
     }
     auto ret = addMockRequests(ex, sequence, chunkId, msg, rv);
-    ex->assignJobsToUberJobs();
+    ex->buildAndSendUberJobs();
     LOGS(_log, LOG_LVL_INFO, "executiveTest end");
     return ret;
 }
@@ -264,6 +265,8 @@ public:
     util::QdispPool::Ptr qdispPool;
     qdisp::ExecutiveUT::PtrUT ex;
     std::shared_ptr<qdisp::JobQuery> jqTest;  // used only when needed
+    int uberJobMaxChunks = 10;
+    std::string queryDbName = "Mock";
     qdisp::TestInfo::Ptr testInfo = qdisp::TestInfo::Ptr(new qdisp::TestInfo());
 
     SetupTest(const char* request, util::QdispPool::Ptr const& qPool_) : qdispPool(qPool_) {
@@ -274,8 +277,9 @@ public:
         std::shared_ptr<qmeta::QProgress> qProgress;  // No updating QProgress, nullptr
         std::shared_ptr<qmeta::QProgressHistory>
                 queryProgressHistory;  // No updating QProgressHistory, nullptr
-        ex = qdisp::ExecutiveUT::PtrUT(new qdisp::ExecutiveUT(60, ms, qdispPool, qProgress,
-                                                              queryProgressHistory, nullptr, testInfo));
+        ex = qdisp::ExecutiveUT::PtrUT(new qdisp::ExecutiveUT(
+                60, ms, qdispPool, qProgress, queryProgressHistory, nullptr, uberJobMaxChunks, testInfo));
+        ex->setQueryDbName(queryDbName);
         LOGS(_log, LOG_LVL_INFO, "SetupTest end");
     }
     ~SetupTest() {}

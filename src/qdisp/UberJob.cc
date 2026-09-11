@@ -421,7 +421,7 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultError(bool shouldCancel, s
             ///   JobQueries are being handled by an UberJob.
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " reassigning jobs");
             _unassignJobs();
-            exec->assignJobsToUberJobs();
+            exec->buildAndSendUberJobs();
         }
     } else {
         LOGS(_log, LOG_LVL_INFO,

@@ -88,8 +88,7 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     std::shared_ptr<qmeta::QProgress> const& queryProgress, CzarId czarId,
-                    std::string const& errorExtra, bool async, std::string const& resultDb,
-                    int uberJobMaxChunks);
+                    std::string const& errorExtra, bool async, std::string const& resultDb);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
@@ -150,10 +149,9 @@ public:
     /// save the result query in the query metadata
     void saveResultQuery();
 
-    /// Use the query and jobs information in the executive to construct and run whatever
-    /// UberJobs are needed. This can be called multiple times by Czar::_monitor
-    /// to reassign failed jobs or jobs that were never assigned.
-    void buildAndSendUberJobs();
+    auto getInfileMerger() const { return _infileMerger; }
+
+    auto getCzarId() const { return _czarId; }
 
 private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
@@ -194,17 +192,6 @@ private:
     std::string _resultLoc;           ///< Result location
     std::string _resultDb;            ///< Result database
     bool _async;                      ///< true for async query
-
-    /// The maximum number of chunks allowed in an UberJob, set from config.
-    int const _uberJobMaxChunks;
-    std::atomic<int> _uberJobIdSeq{1};   ///< Sequence number for UberJobs in this query.
-    std::shared_ptr<TmpTableName> _ttn;  ///< Temporary table name generator.
-
-    /// Primary database name for the query.
-    std::string _queryDbName;
-
-    /// Only one thread should run buildAndSendUberJobs() for this query at a time.
-    std::mutex _buildUberJobMtx;
 };
 
 }  // namespace lsst::qserv::ccontrol

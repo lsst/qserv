@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_TMPTABLENAME_H
-#define LSST_QSERV_CCONTROL_TMPTABLENAME_H
+#ifndef LSST_QSERV_QDISP_TMPTABLENAME_H
+#define LSST_QSERV_QDISP_TMPTABLENAME_H
 
 // System headers
 #include <string>
@@ -32,7 +32,7 @@
 #include "global/intTypes.h"
 #include "util/StringHash.h"
 
-namespace lsst::qserv::ccontrol {
+namespace lsst::qserv::qdisp {
 
 /// TmpTableName : a generator for temporary table names for chunk results.
 /// All member variables must be immutable.
@@ -55,6 +55,6 @@ private:
     std::string const _prefix;
 };
 
-}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::qdisp
 
-#endif  // LSST_QSERV_CCONTROL_TMPTABLENAME_H
+#endif  // LSST_QSERV_QDISP_TMPTABLENAME_H

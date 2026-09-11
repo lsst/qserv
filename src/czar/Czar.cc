@@ -187,7 +187,7 @@ void Czar::_assignJobsToUberJobs() {
     }
     // Use the copy to create new UberJobs as needed
     for (auto&& [qIdKey, execVal] : execMap) {
-        execVal->assignJobsToUberJobs();
+        execVal->buildAndSendUberJobs();
     }
 }
 
