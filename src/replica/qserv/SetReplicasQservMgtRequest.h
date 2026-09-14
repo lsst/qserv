@@ -64,7 +64,7 @@ public:
      *   to leave a subset of replicas belonging to databases specified in
      *   the parameter 'databases' before this request is sent to the worker.
      * @param serviceProvider A reference to a provider of services for accessing
-     *   Configuration, saving the request's persistent state to the database.
+     *   Config, saving the request's persistent state to the database.
      * @param workerName The name of a worker to send the request to.
      * @param newReplicas A collection of new replicas (NOTE: useCount field is ignored).
      * @param databases A set of databases that defines a scope of a scope of the request.

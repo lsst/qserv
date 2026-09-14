@@ -34,7 +34,7 @@
 
 // Qserv headers
 #include "replica/config/ConfigCzar.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigWorker.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"

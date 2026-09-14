@@ -94,7 +94,7 @@ public:
      *   while validating the parameters or registering the request in the database.
      *
      * @param serviceProvider The provider is needed to access various services of
-     *   the Replication system's framework, such as the Configuration service,
+     *   the Replication system's framework, such as the Config service,
      *   the Database service, etc.
      * @param workerName The name of a worker this service is acting upon.
      * @return A newly created instance of the request object.
@@ -116,7 +116,7 @@ public:
      *   in the database.
      *
      * @param serviceProvider The provider is needed to access various services of
-     *   the Replication system's framework, such as the Configuration service,
+     *   the Replication system's framework, such as the Config service,
      *   the Database service, etc.
      * @param workerName The name of a worker this service is acting upon.
      * @param contribId A unique identifier of an existing contribution request.
@@ -151,7 +151,7 @@ public:
      *   And it will retain the original identifier.
      *
      * @param serviceProvider The provider is needed to access various services of
-     *   the Replication system's framework, such as the Configuration service,
+     *   the Replication system's framework, such as the Config service,
      *   the Database service, etc.
      * @param workerName The name of a worker this service is acting upon.
      * @param contribId A unique identifier of an existing contribution request.

@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/proto/protocol.pb.h"
@@ -44,7 +44,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
 namespace lsst::qserv::replica {
 
 Application::Application(int argc, const char* const argv[], string const& description,
-                         bool const enableServiceProvider, ConfigurationSchema const& configSchema)
+                         bool const enableServiceProvider, ConfigSchema const& configSchema)
         : _enableServiceProvider(enableServiceProvider),
           _configSchema(configSchema),
           _parser(argc, argv, description),
@@ -98,7 +98,7 @@ int Application::run() {
 
     if (_enableServiceProvider) {
         // Create and initialze the configuration object.
-        auto const config = Configuration::load(_configSchema);
+        auto const config = Config::load(_configSchema);
 
         // Apply user-specified values of the general configuration parameters to the configuration object.
         // Note that options specified by a user will have non-empty values.
@@ -136,7 +136,7 @@ int Application::run() {
             }
         }
 
-        // Create the service provider instance and initialize the Configuration.
+        // Create the service provider instance and initialize the Config.
         _serviceProvider = ServiceProvider::create(config);
 
         // Start the provider in its own thread pool before performing any asynchronous

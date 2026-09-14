@@ -29,8 +29,8 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
-#include "replica/config/ConfigurationSchemaWorker.h"
+#include "replica/config/Config.h"
+#include "replica/config/ConfigSchemaWorker.h"
 #include "replica/ingest/IngestHttpSvc.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
@@ -66,7 +66,7 @@ shared_ptr<WorkerApp> WorkerApp::create(int argc, char* argv[]) {
 }
 
 WorkerApp::WorkerApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaWorker()) {}
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigSchemaWorker()) {}
 
 int WorkerApp::runImpl() {
     string const context = "WorkerApp::" + string(__func__) + "  ";

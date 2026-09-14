@@ -33,7 +33,7 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigDatabaseFamily.h"
 #include "replica/config/ConfigWorker.h"
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigSchema.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -57,7 +57,7 @@ public:
      * @param databases The collection of the database descriptors.
      * @param czars The collection of Czar descriptors.
      */
-    ConfigParserJSON(ConfigurationSchema const& configSchema, nlohmann::json& data,
+    ConfigParserJSON(ConfigSchema const& configSchema, nlohmann::json& data,
                      std::map<std::string, ConfigWorker>& workers,
                      std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                      std::map<std::string, DatabaseInfo>& databases,
@@ -92,7 +92,7 @@ private:
 
     // Input parameters
 
-    ConfigurationSchema const& _configSchema;
+    ConfigSchema const& _configSchema;
     nlohmann::json& _data;
     std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;

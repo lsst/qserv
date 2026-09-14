@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/registry/Registry.h"
 #include "replica/services/ChunkMap.h"
 #include "replica/services/DatabaseServicesPool.h"
@@ -45,11 +45,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
 
 namespace lsst::qserv::replica {
 
-ServiceProvider::Ptr ServiceProvider::create(shared_ptr<Configuration> const& config) {
+ServiceProvider::Ptr ServiceProvider::create(shared_ptr<Config> const& config) {
     return ServiceProvider::Ptr(new ServiceProvider(config));
 }
 
-ServiceProvider::ServiceProvider(shared_ptr<Configuration> const& config) : _configuration(config) {}
+ServiceProvider::ServiceProvider(shared_ptr<Config> const& config) : _config(config) {}
 
 DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     replica::Lock lock(_mtx, _context() + __func__);
@@ -58,7 +58,7 @@ DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
             throw invalid_argument(_context() + string(__func__) +
                                    " the application is not configured to use the database services");
         }
-        _databaseServices = DatabaseServicesPool::create(_configuration);
+        _databaseServices = DatabaseServicesPool::create(_config);
     }
     return _databaseServices;
 }

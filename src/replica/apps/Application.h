@@ -29,7 +29,7 @@
 
 // Qserv headers
 #include "replica/apps/ApplicationTypes.h"
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigSchema.h"
 #include "replica/services/ServiceProvider.h"
 
 // This header declarations
@@ -72,12 +72,12 @@ protected:
      * @param description A description of an application as it will appear
      *  in the documentation string reported with option "--help".
      * @param enableServiceProvider A flag which will inject configuration
-     *  option "--repl-db=<url>", load the configuration into Configuration and initialize
+     *  option "--repl-db=<url>", load the configuration into Config and initialize
      *  the ServiceProvider with the configuration.
      * @param configSchema The configuration schema to be used by the application.
      */
     Application(int argc, const char* const argv[], std::string const& description,
-                bool const enableServiceProvider, ConfigurationSchema const& configSchema);
+                bool const enableServiceProvider, ConfigSchema const& configSchema);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -90,7 +90,7 @@ protected:
 
     /**
      * @return A reference to the ServiceProvider object.
-     * @throws std::logic_error If Configuration loading and ServiceProvider is
+     * @throws std::logic_error If Config loading and ServiceProvider is
      *  not enabled in the constructor of the class, or if the method gets called
      *  before Parser finishes processing command-line parameters.
      */
@@ -109,7 +109,7 @@ protected:
 private:
     // Input parameters
     bool const _enableServiceProvider;
-    ConfigurationSchema const _configSchema;
+    ConfigSchema const _configSchema;
 
     /// For parsing command-line parameters, options and flags
     Parser _parser;
@@ -120,7 +120,7 @@ private:
     /// General parameters extracted from the command line and applied to the configuration object.
     std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
-    /// The provider of the Configuration and other services
+    /// The provider of the Config and other services
     ServiceProvider::Ptr _serviceProvider;
 };
 

@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/config/ConfigurationSchemaWorker.h"
+#include "replica/config/ConfigSchemaWorker.h"
 
 // System headers
 #include <thread>
@@ -332,6 +332,6 @@ json const workerSchemaJson = json::object(
              {"empty-allowed", 1},
              {"default", 1}}}}}});
 
-ConfigurationSchemaWorker::ConfigurationSchemaWorker() : ConfigurationSchema(workerSchemaJson) {}
+ConfigSchemaWorker::ConfigSchemaWorker() : ConfigSchema(workerSchemaJson) {}
 
 }  // namespace lsst::qserv::replica

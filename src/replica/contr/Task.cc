@@ -27,7 +27,7 @@
 #include <thread>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/jobs/QservSyncJob.h"
 #include "replica/services/ServiceProvider.h"
 #include "util/BlockPost.h"

@@ -51,7 +51,7 @@ struct TaskSelector;
 namespace lsst::qserv::replica {
 class ConfigCzar;
 class ConfigWorker;
-class Configuration;
+class Config;
 class QservMgtRequest;
 }  // namespace lsst::qserv::replica
 
@@ -266,7 +266,7 @@ private:
      * @return nlohmann::json A collection of shared scan parameters for all partitioned tables
      *   packed into the dictionary: family->database->table-sharedScanParams.
      */
-    nlohmann::json _cssSharedScanParams(std::shared_ptr<Configuration> const& config,
+    nlohmann::json _cssSharedScanParams(std::shared_ptr<Config> const& config,
                                         std::shared_ptr<css::CssAccess> const& cssAccess) const;
     /**
      * @param chunks  collection of chunks numbers to be expanded

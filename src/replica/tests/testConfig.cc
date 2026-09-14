@@ -45,15 +45,15 @@
 #include "replica/config/ConfigTestDataController.h"
 #include "replica/config/ConfigTestDataRegistry.h"
 #include "replica/config/ConfigTestDataWorker.h"
-#include "replica/config/Configuration.h"
-#include "replica/config/ConfigurationSchemaController.h"
-#include "replica/config/ConfigurationSchemaRegistry.h"
-#include "replica/config/ConfigurationSchemaWorker.h"
+#include "replica/config/Config.h"
+#include "replica/config/ConfigSchemaController.h"
+#include "replica/config/ConfigSchemaRegistry.h"
+#include "replica/config/ConfigSchemaWorker.h"
 #include "replica/util/Common.h"
 #include "replica/util/ProtocolBuffer.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE Configuration
+#define BOOST_TEST_MODULE Config
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
@@ -63,9 +63,9 @@ using namespace lsst::qserv::replica;
 
 namespace {
 // The configurations are shared by all tests.
-Configuration::Ptr configController;
-Configuration::Ptr configRegistry;
-Configuration::Ptr configWorker;
+shared_ptr<Config> configController;
+shared_ptr<Config> configRegistry;
+shared_ptr<Config> configWorker;
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
@@ -73,27 +73,26 @@ BOOST_AUTO_TEST_SUITE(Suite)
 BOOST_AUTO_TEST_CASE(ConfigInitTestJSON) {
     LOGS_INFO("Testing JSON initialization");
 
-    BOOST_REQUIRE_NO_THROW(configController = Configuration::load(ConfigurationSchemaController(),
-                                                                  ConfigTestDataController::data()));
+    BOOST_REQUIRE_NO_THROW(configController =
+                                   Config::load(ConfigSchemaController(), ConfigTestDataController::data()));
     BOOST_CHECK(configController != nullptr);
     string const configJsonStr = configController->toJson().dump();
     BOOST_CHECK(!configJsonStr.empty());
 
-    BOOST_REQUIRE_NO_THROW(configRegistry = Configuration::load(ConfigurationSchemaRegistry(),
-                                                                ConfigTestDataRegistry::data()));
+    BOOST_REQUIRE_NO_THROW(configRegistry =
+                                   Config::load(ConfigSchemaRegistry(), ConfigTestDataRegistry::data()));
     BOOST_CHECK(configRegistry != nullptr);
     string const configJsonStrRegistry = configRegistry->toJson().dump();
     BOOST_CHECK(!configJsonStrRegistry.empty());
 
-    BOOST_REQUIRE_NO_THROW(
-            configWorker = Configuration::load(ConfigurationSchemaWorker(), ConfigTestDataWorker::data()));
+    BOOST_REQUIRE_NO_THROW(configWorker = Config::load(ConfigSchemaWorker(), ConfigTestDataWorker::data()));
     BOOST_CHECK(configWorker != nullptr);
     string const configJsonStrWorker = configWorker->toJson().dump();
     BOOST_CHECK(!configJsonStrWorker.empty());
 }
 
 BOOST_AUTO_TEST_CASE(ConfigTestDir) {
-    Configuration::Ptr config;
+    shared_ptr<Config> config;
     auto const logParameters = [](map<string, set<string>> const& parameters, string const& scope) {
         LOGS_INFO(scope << " config parameters");
         for (auto const& [key, values] : parameters) {
@@ -142,7 +141,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestDir) {
 }
 
 BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
-    Configuration::Ptr config;
+    shared_ptr<Config> config;
     lsst::qserv::http::AuthContext expectedAuthContext;
 
     LOGS_INFO("Testing reading general parameters of the Controller");
@@ -292,7 +291,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
 }
 
 BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
-    Configuration::Ptr config;
+    shared_ptr<Config> config;
     lsst::qserv::http::AuthContext expectedAuthContext;
 
     LOGS_INFO("Testing modifying general parameters of the Controller");
@@ -751,7 +750,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("worker", "create-folders") == 0);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {
+BOOST_AUTO_TEST_CASE(ConfigTestWorkerOperators) {
     LOGS_INFO("Testing worker comparison operators");
 
     ConfigWorker w1;

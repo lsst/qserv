@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/util/Performance.h"
 #include "replica/util/Mutex.h"

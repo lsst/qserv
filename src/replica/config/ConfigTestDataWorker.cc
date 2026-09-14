@@ -142,7 +142,7 @@ json ConfigTestDataWorker::data() {
     }
     {
         // This configuration is incomplete. An assumption is that the corresponding
-        // defaults will be loaded when the Configuration class will be processing
+        // defaults will be loaded when the Config class will be processing
         // this definition.
         json worker = json::object({{"name", "worker-B"},
                                     {"is-enabled", 1},
@@ -160,7 +160,7 @@ json ConfigTestDataWorker::data() {
     }
     {
         // This configuration is incomplete. An assumption is that the corresponding
-        // defaults will be loaded when the Configuration class will be processing
+        // defaults will be loaded when the Config class will be processing
         // this definition.
         json worker = json::object({{"name", "worker-C"},
                                     {"is-enabled", 0},

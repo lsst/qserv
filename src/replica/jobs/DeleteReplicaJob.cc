@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"

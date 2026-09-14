@@ -38,7 +38,7 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class ChunkMap;
-class Configuration;
+class Config;
 class DatabaseServices;
 class Registry;
 }  // namespace lsst::qserv::replica
@@ -64,7 +64,7 @@ public:
      * @param config  The configuration object used by the service provider. It must be already
      *  initialized and reloaded with the latest values for Qserv or the Replication/Ingest system.
      */
-    static ServiceProvider::Ptr create(std::shared_ptr<Configuration> const& config);
+    static ServiceProvider::Ptr create(std::shared_ptr<Config> const& config);
 
     ~ServiceProvider() = default;
 
@@ -90,7 +90,7 @@ public:
     void stop();
 
     /// @return a reference to the configuration service
-    std::shared_ptr<Configuration> const& config() const { return _configuration; }
+    std::shared_ptr<Config> const& config() const { return _config; }
 
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
@@ -142,7 +142,7 @@ public:
     std::shared_ptr<ChunkMap> const& chunkMap();
 
 private:
-    ServiceProvider(std::shared_ptr<Configuration> const& config);
+    ServiceProvider(std::shared_ptr<Config> const& config);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -153,9 +153,9 @@ private:
     std::unique_ptr<boost::asio::io_service::work> _work;
     std::vector<std::unique_ptr<std::thread>> _threads;
 
-    /// Configuration manager (constructed from the Configuration specification
+    /// Config manager (constructed from the Config specification
     /// URL passed into the constructor of the class).
-    std::shared_ptr<Configuration> const _configuration;
+    std::shared_ptr<Config> const _config;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.

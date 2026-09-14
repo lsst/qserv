@@ -32,7 +32,7 @@
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/jobs/SqlCreateIndexesJob.h"
 #include "replica/jobs/SqlDropIndexesJob.h"
 #include "replica/jobs/SqlGetIndexesJob.h"

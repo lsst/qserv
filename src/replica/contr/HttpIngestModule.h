@@ -101,7 +101,7 @@ private:
 
     /**
      * Delete a database. All relevant data, including databases and tables at workers,
-     * the "director" index (if any), the Replication System's Configuration, database entries
+     * the "director" index (if any), the Replication System's Config, database entries
      * at Qserv czar  will get deleted.
      * @note This operation requires administrator-level privileges for deleting
      *   published databases.
@@ -116,7 +116,7 @@ private:
 
     /**
      * Delete a table. All relevant data, including the tables at workers,
-     * the Replication System's Configuration, table entries at Qserv czar will get deleted.
+     * the Replication System's Config, table entries at Qserv czar will get deleted.
      * @note This operation requires administrator-level privileges for deleting
      *   tables of published databases.
      * @note The "director" tables can't be deleted with this method.
