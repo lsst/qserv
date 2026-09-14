@@ -36,8 +36,8 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
-#include "replica/config/Configuration.h"
-#include "replica/config/ConfigurationSchemaController.h"
+#include "replica/config/Config.h"
+#include "replica/config/ConfigSchemaController.h"
 #include "replica/contr/Controller.h"
 #include "replica/contr/DeleteWorkerTask.h"
 #include "replica/contr/HealthMonitorTask.h"
@@ -83,7 +83,7 @@ shared_ptr<MasterControllerHttpApp> MasterControllerHttpApp::create(int argc, ch
 }
 
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaController()) {}
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigSchemaController()) {}
 
 string MasterControllerHttpApp::_controllerName4log() const {
     auto const config = _controller->serviceProvider()->config();
@@ -153,7 +153,7 @@ void MasterControllerHttpApp::_evict(string const& worker) {
     _replicationTask->stop();
 
     // This thread will be allowed to run for as long as it's permitted by
-    // the corresponding timeouts set for Requests and Jobs in the Configuration,
+    // the corresponding timeouts set for Requests and Jobs in the Config,
     // or until a catastrophic failure occurs within any control thread (including
     // this one).
     auto self = shared_from_base<MasterControllerHttpApp>();

@@ -33,7 +33,7 @@
 // Qserv header
 #include "http/Auth.h"
 #include "http/Method.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/proto/Protocol.h"
 #include "replica/worker/WorkerHttpProcessor.h"
 #include "replica/services/ServiceProvider.h"

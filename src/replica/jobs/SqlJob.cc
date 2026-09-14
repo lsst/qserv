@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
@@ -154,7 +154,7 @@ void SqlJob::startImpl(replica::Lock const& lock) {
         _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     }
 
-    // In case if no workers or database are present in the Configuration
+    // In case if no workers or database are present in the Config
     // at this time.
     if (_requests.size() == 0) processResultAndFinish(lock, ExtendedState::SUCCESS);
 }

@@ -27,7 +27,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Configuration;
+class Config;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -56,8 +56,7 @@ public:
      * @param config a pointer to the configuration object
      * @param databaseName the name of the database to be created
      */
-    static void createMissingDatabase(std::string const& context,
-                                      std::shared_ptr<Configuration> const& config,
+    static void createMissingDatabase(std::string const& context, std::shared_ptr<Config> const& config,
                                       std::string const& databaseName);
 };
 

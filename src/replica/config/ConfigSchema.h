@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATIONSCHEMA_H
-#define LSST_QSERV_REPLICA_CONFIGURATIONSCHEMA_H
+#ifndef LSST_QSERV_REPLICA_CONFIGSCHEMA_H
+#define LSST_QSERV_REPLICA_CONFIGSCHEMA_H
 
 // System headers
 #include <map>
@@ -39,7 +39,7 @@ template <typename T>
 struct EmptyValueValidator {
     static void validate(T const& val) {
         if (val == 0) {
-            throw std::invalid_argument("ConfigurationSchema::EmptyValueValidator: 0 is not permited.");
+            throw std::invalid_argument("ConfigSchema::EmptyValueValidator: 0 is not permited.");
         }
     }
 };
@@ -48,30 +48,29 @@ template <>
 struct EmptyValueValidator<std::string> {
     static void validate(std::string const& val) {
         if (val.empty()) {
-            throw std::invalid_argument(
-                    "ConfigurationSchema::EmptyValueValidator: empty string is not permited.");
+            throw std::invalid_argument("ConfigSchema::EmptyValueValidator: empty string is not permited.");
         }
     }
 };
 }  // namespace detail
 
 /**
- * This base class ConfigurationSchema is a foundation for constructing JSON schemas of
- * the Configuration service.
+ * This base class ConfigSchema is a foundation for constructing JSON schemas of
+ * the Config service.
  */
-class ConfigurationSchema {
+class ConfigSchema {
 public:
-    ConfigurationSchema() = default;
-    ConfigurationSchema(ConfigurationSchema const&) = default;
-    ConfigurationSchema& operator=(ConfigurationSchema const&) = default;
-    ~ConfigurationSchema() = default;
+    ConfigSchema() = default;
+    ConfigSchema(ConfigSchema const&) = default;
+    ConfigSchema& operator=(ConfigSchema const&) = default;
+    ~ConfigSchema() = default;
 
     /// @return A documentation string for the specified parameter or the empty string
     ///   if none is available in the schema.
     std::string description(std::string const& category, std::string const& param) const;
 
     /// @return A 'true' if the parameter can't be modified via the 'set' methods
-    ///   of the Configuration class. This information is used by class Configuration
+    ///   of the Config class. This information is used by class Config
     ///   to validate the parameters.
     bool readOnly(std::string const& category, std::string const& param) const;
 
@@ -86,7 +85,7 @@ public:
     std::string defaultValueAsString(std::string const& category, std::string const& param) const;
 
     /// @return The default configuration data as per the current JSON schema to be loaded
-    ///   into the transient state of the class Configuration upon its initialization.
+    ///   into the transient state of the class Config upon its initialization.
     nlohmann::json defaultConfigData() const;
 
     /**
@@ -137,7 +136,7 @@ public:
         if (restrictor.is_null()) return;
         std::string const type = restrictor.at("type").get<std::string>();
         if (type != "set") {
-            throw std::runtime_error("ConfigurationSchema::" + std::string(__func__) +
+            throw std::runtime_error("ConfigSchema::" + std::string(__func__) +
                                      " unsupported restrictor type: '" + type + "', category: '" + category +
                                      "', param: '" + param + "'.");
         }
@@ -145,17 +144,17 @@ public:
             if (obj.get<T>() == val) return;
         }
         throw std::invalid_argument(
-                "ConfigurationSchema::" + std::string(__func__) +
+                "ConfigSchema::" + std::string(__func__) +
                 " a value of the parameter isn't allowed due to schema restrictions, category: '" + category +
                 "', param: '" + param + "'.");
     }
 
 protected:
     /**
-     * @brief Construct a ConfigurationSchema object with the given JSON schema.
+     * @brief Construct a ConfigSchema object with the given JSON schema.
      * @param schemaJson The JSON object representing the configuration schema.
      */
-    ConfigurationSchema(nlohmann::json const& schemaJson);
+    ConfigSchema(nlohmann::json const& schemaJson);
 
 private:
     /**
@@ -197,7 +196,7 @@ private:
 
     /// @return A 'true' if, depending on the actual type of the parameter, the empty
     ///   string (for strings) or zero value (for numeric parameters) is allowed.
-    ///   This information is used by class Configuration to validate input values
+    ///   This information is used by class Config to validate input values
     ///   of the parameters.
     bool _emptyAllowed(std::string const& category, std::string const& param) const;
 
@@ -208,19 +207,19 @@ private:
      * The schema definition is nested dictionary in which the top-level key reprsents
      * the so called "categories" of parameters. Each entry under a category defines
      * a single parameter. Values of these parameters are obtained and modified
-     * using the Configuration API methods 'get<T>` and 'set<T>`.
+     * using the Config API methods 'get<T>` and 'set<T>`.
      *
      * All parameters have two mandatory attributes:
      *  - The attribute "description" contains the documentation string explaining the attribute
      *  - The attribute "default" holds the default value of the attribute. The value's type depends
      *    on the attribute's role, and once it's defined here it's enforced through the rest of
-     *    the implementation. For instance, the type can't be changed via the method 'Configuration::set<T>'.
+     *    the implementation. For instance, the type can't be changed via the method 'Config::set<T>'.
      *
      * Some parameters are also allowed to have the optional attributes:
      *   - The attribute "read-only" set to 1 would indicate that the parameter's state
-     *     can't be changed via method 'Configuration::set<T>'.
+     *     can't be changed via method 'Config::set<T>'.
      *   - The attribute "empty-allowed" set to 1 would relax parameter value's validation
-     *     by method 'Configuration::set<T>' to allow 0 for numeric types and the empty string
+     *     by method 'Config::set<T>' to allow 0 for numeric types and the empty string
      *     fr strings.
      *   - The attribute "security-context" if set to 1 would indicate to the API user that
      *     the parameter has some the security-sensitive context (passwords, authorization keys,
@@ -233,4 +232,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_CONFIGURATIONSCHEMA_H
+#endif  // LSST_QSERV_REPLICA_CONFIGSCHEMA_H

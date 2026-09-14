@@ -26,7 +26,7 @@
 #include "css/CssAccess.h"
 #include "http/Auth.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/ServiceManagementJob.h"
@@ -152,7 +152,7 @@ DatabaseInfo HttpModule::getDatabaseFromParamOrThrow404(string const& func) {
         return controller()->serviceProvider()->config()->databaseInfo(databaseName);
     } catch (ConfigUnknownDatabase const&) {
         const string message =
-                "the database was not found in the Replication System's Configuration: " + databaseName;
+                "the database was not found in the Replication System's Config: " + databaseName;
         error(func, message);
         throw http::ErrorNotFound404(func, message);
     }
@@ -164,9 +164,8 @@ TableInfo HttpModule::getTableFromParamOrThrow404(string const& func, DatabaseIn
     try {
         return database.findTable(tableName);
     } catch (ConfigUnknownTable const&) {
-        const string message =
-                "the table was not found in the Replication System's Configuration: " + tableName +
-                " of the database: " + database.name;
+        const string message = "the table was not found in the Replication System's Config: " + tableName +
+                               " of the database: " + database.name;
         error(func, message);
         throw http::ErrorNotFound404(func, message);
     }

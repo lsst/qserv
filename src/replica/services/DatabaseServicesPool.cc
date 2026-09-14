@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -77,13 +77,13 @@ private:
 // == DatabaseServicesPool ==
 // ==========================
 
-DatabaseServicesPool::Ptr DatabaseServicesPool::create(Configuration::Ptr const& configuration) {
-    return DatabaseServicesPool::Ptr(new DatabaseServicesPool(configuration));
+DatabaseServicesPool::Ptr DatabaseServicesPool::create(shared_ptr<Config> const& config) {
+    return DatabaseServicesPool::Ptr(new DatabaseServicesPool(config));
 }
 
-DatabaseServicesPool::DatabaseServicesPool(Configuration::Ptr const& configuration) : DatabaseServices() {
-    for (size_t i = 0; i < configuration->get<size_t>("database", "services-pool-size"); ++i) {
-        _availableServices.push_back(DatabaseServices::create(configuration));
+DatabaseServicesPool::DatabaseServicesPool(shared_ptr<Config> const& config) : DatabaseServices() {
+    for (size_t i = 0; i < config->get<size_t>("database", "services-pool-size"); ++i) {
+        _availableServices.push_back(DatabaseServices::create(config));
     }
 }
 

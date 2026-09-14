@@ -41,7 +41,7 @@
 #include "qmeta/UserTables.h"
 #include "qmeta/UserTableIngestRequest.h"
 #include "qmeta/types.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigCzar.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigWorker.h"
@@ -892,7 +892,7 @@ json HttpQservMonitorModule::_userTables() {
     return json::object({{"requests", requestsJson}});
 }
 
-json HttpQservMonitorModule::_cssSharedScanParams(shared_ptr<Configuration> const& config,
+json HttpQservMonitorModule::_cssSharedScanParams(shared_ptr<Config> const& config,
                                                   shared_ptr<css::CssAccess> const& cssAccess) const {
     json resultSharedScan;
     for (string const& familyName : config->databaseFamilies()) {

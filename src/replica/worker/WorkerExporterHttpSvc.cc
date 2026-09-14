@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "http/ChttpMetaModule.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLTypes.h"
 #include "replica/services/ServiceProvider.h"

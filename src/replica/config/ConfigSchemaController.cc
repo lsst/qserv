@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/config/ConfigurationSchemaController.h"
+#include "replica/config/ConfigSchemaController.h"
 
 // System headers
 #include <thread>
@@ -376,6 +376,6 @@ json const controllerSchemaJson = json::object(
               " (if the server is not up, or if it's not reachable for some reason)"},
              {"default", 3600}}}}}});
 
-ConfigurationSchemaController::ConfigurationSchemaController() : ConfigurationSchema(controllerSchemaJson) {}
+ConfigSchemaController::ConfigSchemaController() : ConfigSchema(controllerSchemaJson) {}
 
 }  // namespace lsst::qserv::replica

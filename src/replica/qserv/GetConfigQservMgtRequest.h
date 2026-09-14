@@ -57,7 +57,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * @param serviceProvider A reference to a provider of services for accessing
-     *   Configuration, saving the request's persistent state to the database.
+     *   Config, saving the request's persistent state to the database.
      * @param workerName The name of a worker to send the request to.
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.

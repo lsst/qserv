@@ -29,7 +29,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
@@ -60,7 +60,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider A provider is needed to access the Configuration of a setup.
+     * @param serviceProvider A provider is needed to access the Config of a setup.
      * @param processor A processor for long (queued) requests.
      * @param io_service An endpoint for network I/O, timers, etc.
      *
