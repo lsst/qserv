@@ -45,7 +45,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Configuration;
+class Config;
 class ControllerIdentity;
 class Job;
 class NamedMutexRegistry;
@@ -381,17 +381,14 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DatabaseServices> Ptr;
 
-    /// Forward declaration for the smart reference to Job objects
-    typedef std::shared_ptr<Configuration> ConfigurationPtr;
-
     /**
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param configuration - the configuration service
+     * @param config The configuration service
      * @return pointer to the created object
      */
-    static Ptr create(ConfigurationPtr const& configuration);
+    static Ptr create(std::shared_ptr<Config> const& config);
 
     // Copy semantics is prohibited
 
@@ -506,7 +503,7 @@ public:
      * @param replica a reference to an object to be initialized
      * @param maxReplicas (optional) the maximum number of replicas to be returned
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
-     *   workers which are enabled in the Configuration
+     *   workers which are enabled in the Config
      * @param allDatabases (optional) a flag which if set to 'true' will include into the search all
      *   known database entries regardless of their PUBLISHED status. Otherwise
      *   a subset of databases as determined by the second flag 'isPublished'
@@ -528,7 +525,7 @@ public:
      * @param chunk a chunk whose replicas will be looked for
      * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
-     *   workers which are enabled in the Configuration
+     *   workers which are enabled in the Config
      * @param includeFileInfo a flag will instructs the method wether to provide
      *   the detailed file info for each replica as well.
      *
@@ -548,8 +545,7 @@ public:
      * @param replicas a collection of replicas (if any found)
      * @param chunks a collection chunk numbers whose replicas will be looked for
      * @param databaseName the name of a database limiting a scope of the lookup operation
-     * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
-     *   workers which are enabled in the Configuration
+     *   workers which are enabled in the Config
      * @param includeFileInfo a flag will instructs the method wether to provide
      *   the detailed file info for each replica as well.
      *
@@ -650,7 +646,7 @@ public:
      * @param replicas a collection of replicas (if any found)
      * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
-     *   workers which are enabled in the Configuration
+     *   workers which are enabled in the Config
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
@@ -666,7 +662,7 @@ public:
      * @param chunks a collection of chunk numbers (if any found)
      * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
-     *   workers which are enabled in the Configuration
+     *   workers which are enabled in the Config
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */

@@ -29,7 +29,7 @@
 // Qserv headers
 #include "http/Auth.h"
 #include "http/MetaModule.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/util/Common.h"
 
 // LSST headers

@@ -38,7 +38,7 @@
 #include "http/Auth.h"
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLExceptions.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"

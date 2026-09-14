@@ -64,7 +64,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider A reference to a provider of services for accessing
-     *   Configuration, saving the request's persistent state to the database.
+     *   Config, saving the request's persistent state to the database.
      * @param workerName The name of a worker to send the request to.
      * @param databaseFamily The name of a database family.
      * @param inUseOnly (optional) return replicas which are presently in use.

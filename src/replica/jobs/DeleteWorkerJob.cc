@@ -28,7 +28,7 @@
 #include <tuple>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/requests/ServiceManagementRequest.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
@@ -218,7 +218,7 @@ void DeleteWorkerJob::_disableWorker(replica::Lock const& lock) {
     _numSuccess = 0;
     for (auto&& databaseFamily : controller()->serviceProvider()->config()->databaseFamilies()) {
         ReplicateJob::Ptr const job = ReplicateJob::create(
-                databaseFamily, 0, /* numReplicas -- pull from Configuration */
+                databaseFamily, 0, /* numReplicas -- pull from Config */
                 controller(), id(),
                 [self = shared_from_base<DeleteWorkerJob>()](ReplicateJob::Ptr job) {
                     self->_onJobFinish(job);

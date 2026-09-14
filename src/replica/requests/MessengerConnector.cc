@@ -26,7 +26,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/util/ProtocolBuffer.h"
 
 // LSST headers
@@ -59,14 +59,14 @@ string MessengerConnector::_state2string(MessengerConnector::State state) {
     throw logic_error("MessengerConnector::" + string(__func__) + "  incomplete implementation");
 }
 
-MessengerConnector::Ptr MessengerConnector::create(shared_ptr<Configuration> const& config,
+MessengerConnector::Ptr MessengerConnector::create(shared_ptr<Config> const& config,
                                                    boost::asio::io_service& io_service,
                                                    string const& workerName) {
     return MessengerConnector::Ptr(new MessengerConnector(config, io_service, workerName));
 }
 
-MessengerConnector::MessengerConnector(shared_ptr<Configuration> const& config,
-                                       boost::asio::io_service& io_service, string const& workerName)
+MessengerConnector::MessengerConnector(shared_ptr<Config> const& config, boost::asio::io_service& io_service,
+                                       string const& workerName)
         : _config(config),
           _workerName(workerName),
           _bufferCapacityBytes(config->get<size_t>("common", "request-buf-size-bytes")),

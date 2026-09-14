@@ -75,7 +75,7 @@ public:
      *
      * @param timeoutSec maximum number of seconds that (all) requests are allowed to wait
      *   before finish or expire. If the parameter is set to 0 then
-     *   the corresponding default timeout (for requests) from the Configuration service
+     *   the corresponding default timeout (for requests) from the Config service
      *   will be assumed. Be aware that the default timeout could be quite lengthy.
      *   So, if the job is being launched for worker monitoring purposes
      *   from the time-constrained environment then it's better to be set to same
@@ -102,7 +102,7 @@ public:
 
     /// @return an actual value for the maximum number of seconds that (all) requests
     ///   are allowed to wait before finish or expire after a possible adjustment of
-    ///   the parameter's value from the Configuration
+    ///   the parameter's value from the Config
     unsigned int timeoutSec() const { return _timeoutSec; }
 
     /// @return 'true' if the job probes all known workers

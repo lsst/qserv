@@ -29,7 +29,7 @@
 #include "http/QhttpModule.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/EventLogger.h"
 
 // Forward declarations
@@ -83,7 +83,7 @@ protected:
     std::shared_ptr<css::CssAccess> qservCssAccess(bool readOnly = false) const;
 
     /**
-     * This method will tell all (or a subset of) workers to reload cache Configuration
+     * This method will tell all (or a subset of) workers to reload cache Config
      * parameters. The operation is needed after significant changes in the Replication
      * system's configuration occur, such as creating new databases or tables.
      * This is to implement an explicit model of making workers aware about changes

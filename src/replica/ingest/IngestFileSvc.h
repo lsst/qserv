@@ -27,7 +27,7 @@
 #include <memory>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/ingest/TransactionContrib.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"

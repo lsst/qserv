@@ -18,27 +18,27 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATIONSCHEMAWORKER_H
-#define LSST_QSERV_REPLICA_CONFIGURATIONSCHEMAWORKER_H
+#ifndef LSST_QSERV_REPLICA_CONFIGSCHEMACONTROLLER_H
+#define LSST_QSERV_REPLICA_CONFIGSCHEMACONTROLLER_H
 
 // Qserv headers
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigSchema.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
 
 /**
- * This class ConfigurationSchemaWorker is a specialization of ConfigurationSchema for
- * constructing JSON schemas of the Configuration service.
+ * This class ConfigSchemaController is a specialization of ConfigSchema for
+ * constructing JSON schemas of the Config service.
  */
-class ConfigurationSchemaWorker : public ConfigurationSchema {
+class ConfigSchemaController : public ConfigSchema {
 public:
-    ConfigurationSchemaWorker();
-    ConfigurationSchemaWorker(ConfigurationSchemaWorker const&) = default;
-    ConfigurationSchemaWorker& operator=(ConfigurationSchemaWorker const&) = default;
-    ~ConfigurationSchemaWorker() = default;
+    ConfigSchemaController();
+    ConfigSchemaController(ConfigSchemaController const&) = default;
+    ConfigSchemaController& operator=(ConfigSchemaController const&) = default;
+    ~ConfigSchemaController() = default;
 };
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_CONFIGURATIONSCHEMAWORKER_H
+#endif  // LSST_QSERV_REPLICA_CONFIGSCHEMACONTROLLER_H
