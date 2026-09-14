@@ -115,7 +115,7 @@ protected:
      * @param allWorkers A flag for engaging all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
      *   in the 'READ-ONLY' sub-state will be involved into the operation.
-     * @param controller Is needed launching requests and accessing the Configuration.
+     * @param controller Is needed launching requests and accessing the Config.
      * @param parentJobId An optional identifier of a parent job.
      * @param jobName The name of a job in the persistent state of the Replication system.
      * @param priority The priority level of the job.
@@ -174,7 +174,7 @@ protected:
 
     /**
      * Find out which tables corresponding to the name are expected to exist
-     * at the worker as per the Configuration and persistent records for
+     * at the worker as per the Config and persistent records for
      * the replicas (for the partitioned tables only). Normally this method
      * is expected to return a single entry for the regular tables, and
      * multiple entries for the partitioned tables (which includes prototype
@@ -259,7 +259,7 @@ protected:
 
 private:
     /**
-     * Verify if the database and the table are known to the Configuration,
+     * Verify if the database and the table are known to the Config,
      * and obtain the partitioning status of the table.
      *
      * @return A value of 'true' if this is the partitioned table.

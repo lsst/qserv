@@ -28,7 +28,7 @@
 #include "qhttp/Response.h"
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/contr/HttpCatalogsModule.h"
-#include "replica/contr/HttpConfigurationModule.h"
+#include "replica/contr/HttpConfigModule.h"
 #include "replica/contr/HttpControllersModule.h"
 #include "replica/contr/HttpExportModule.h"
 #include "replica/contr/HttpIngestChunksModule.h"
@@ -155,67 +155,63 @@ void HttpProcessor::registerServices() {
                              });
     httpServer()->addHandler("GET", "/replication/config",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req,
-                                                                  resp);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp);
                              });
     httpServer()->addHandler("PUT", "/replication/config/general",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "UPDATE-GENERAL", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "UPDATE-GENERAL", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("PUT", "/replication/config/worker/:worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "UPDATE-WORKER", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "UPDATE-WORKER", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/worker/:worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "DELETE-WORKER", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "DELETE-WORKER", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "ADD-WORKER", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "ADD-WORKER", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/family/:family",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "DELETE-DATABASE-FAMILY",
-                                                                  http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "DELETE-DATABASE-FAMILY",
+                                                           http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/family",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "ADD-DATABASE-FAMILY",
-                                                                  http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "ADD-DATABASE-FAMILY", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/database/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "DELETE-DATABASE",
-                                                                  http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "DELETE-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "ADD-DATABASE", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "ADD-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("PUT", "/replication/config/database/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "[UN-]PUBLISH-DATABASE",
-                                                                  http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "[UN-]PUBLISH-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/table/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "DELETE-TABLE", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "DELETE-TABLE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(), req, resp,
-                                                                  "ADD-TABLE", http::AuthType::REQUIRED);
+                                 HttpConfigModule::process(self->controller(), self->name(), req, resp,
+                                                           "ADD-TABLE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/replication/qserv/worker/status",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {

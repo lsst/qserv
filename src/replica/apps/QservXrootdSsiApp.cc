@@ -40,7 +40,7 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigSchema.h"
 #include "global/ResourceUnit.h"
 #include "util/BlockPost.h"
 #include "util/TimeUtils.h"
@@ -115,7 +115,7 @@ shared_ptr<QservXrootdSsiApp> QservXrootdSsiApp::create(int argc, char* argv[]) 
 }
 
 QservXrootdSsiApp::QservXrootdSsiApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchema()) {
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigSchema()) {
     parser().required("url", "The connection URL for the XROOTD/SSI services.", _url)
             .option("num-threads", "The number of threads for running the test.", _numThreads)
             .option("report-interval-ms",

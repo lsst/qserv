@@ -200,7 +200,7 @@ protected:
 
     /**
      * The normal constructor of the class.
-     * @param serviceProvider provider is needed to access the Configuration of
+     * @param serviceProvider provider is needed to access the Config of
      *   a setup and for validating the input parameters
      * @param worker the name of a worker. It must be the same worker as the one
      *   where the request is going to be processed.

@@ -41,7 +41,7 @@
 #include "css/DbInterfaceMySql.h"
 #include "global/constants.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/QservSyncJob.h"
@@ -268,7 +268,7 @@ json HttpIngestModule::_addDatabase() {
     string error = ::jobCompletionErrorIfAny(job, "database creation failed");
     if (!error.empty()) throw http::Error(__func__, error);
 
-    // Register the new database in the Configuration.
+    // Register the new database in the Config.
     // Note, this operation will fail if the database with the name
     // already exists. Also, the new database won't have any tables
     // until they will be added as a separate step.
@@ -366,7 +366,7 @@ json HttpIngestModule::_publishDatabase() {
     json result;
     result["database"] = config->publishDatabase(database.name).toJson();
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
     auto const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
@@ -475,11 +475,11 @@ json HttpIngestModule::_deleteDatabase() {
     string error = ::jobCompletionErrorIfAny(deleteDbJob, "database deletion failed");
     if (!error.empty()) throw http::Error(__func__, error);
 
-    // Remove database entry from the Configuration. This will also eliminate all
+    // Remove database entry from the Config. This will also eliminate all
     // dependent metadata, such as replicas info
     config->deleteDatabase(database.name);
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
     error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
@@ -604,7 +604,7 @@ json HttpIngestModule::_addTable() {
         table.columns.emplace_back(colName, colType);
     }
 
-    // Register table in the Configuration
+    // Register table in the Config
     json result;
     database = config->addTable(table);
     result["database"] = database.toJson();
@@ -657,7 +657,7 @@ json HttpIngestModule::_addTable() {
         }
     }
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
     string const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
@@ -733,11 +733,11 @@ json HttpIngestModule::_deleteTable() {
     string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
     if (!error.empty()) throw http::Error(__func__, error);
 
-    // Remove table entry from the Configuration. This will also eliminate all
+    // Remove table entry from the Config. This will also eliminate all
     // dependent metadata, such as replicas info
     config->deleteTable(database.name, table.name);
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
     error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);

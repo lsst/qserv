@@ -24,7 +24,7 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/jobs/DirectorIndexJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/services/DatabaseServices.h"

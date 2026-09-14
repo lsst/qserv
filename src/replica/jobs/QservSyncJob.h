@@ -77,7 +77,7 @@ public:
      *
      * @param databaseFamily the name of a database family
      * @param requestExpirationIvalSec override the default value of the corresponding parameter
-     *  from the Configuration.
+     *  from the Config.
      * @param force proceed with the operation even if some replicas affected by
      *  the operation are in use.
      * @param controller for launching requests

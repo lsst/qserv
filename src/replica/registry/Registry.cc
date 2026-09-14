@@ -27,7 +27,7 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "qmeta/types.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigWorker.h"
 #include "util/common.h"
 

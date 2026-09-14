@@ -32,7 +32,7 @@
 #include "css/CssAccess.h"
 #include "css/DbInterfaceMySql.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/jobs/SqlAlterTablesJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"

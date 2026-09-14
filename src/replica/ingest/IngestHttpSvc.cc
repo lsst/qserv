@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "http/ChttpMetaModule.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/ingest/IngestDataHttpSvcMod.h"
 #include "replica/ingest/IngestFileHttpSvcMod.h"
 #include "replica/ingest/IngestHttpSvcMod.h"

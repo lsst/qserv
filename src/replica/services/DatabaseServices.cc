@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/services/DatabaseServicesMySQL.h"
 #include "util/TimeUtils.h"
@@ -268,7 +268,7 @@ json TableRowStats::toJson() const {
     return result;
 }
 
-DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& config) {
+DatabaseServices::Ptr DatabaseServices::create(shared_ptr<Config> const& config) {
     try {
         return DatabaseServices::Ptr(new DatabaseServicesMySQL(config));
     } catch (exception const& ex) {

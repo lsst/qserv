@@ -100,7 +100,7 @@ replica_tests(
     testSqlSchemaUtils
     testTaskSelector
     testTypes
-    testConfiguration
+    testConfig
     testProtocolRequestParams
 )
 

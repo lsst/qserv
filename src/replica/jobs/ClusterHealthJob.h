@@ -117,7 +117,7 @@ public:
      * low-level pointers).
      * @param timeoutSec  The maximum number of seconds that (all) requests are allowed
      *   to wait before finish or expire. If the parameter is set to 0 then
-     *   the corresponding timeout (for requests) from the Configuration service
+     *   the corresponding timeout (for requests) from the Config service
      *   will be assumed. ARTTENTION: this timeout could be quite lengthy.
      * @param allWorkers  The flag that if 'true' then send probes to all workers,
      *   otherwise the enabled workers will be considered only.

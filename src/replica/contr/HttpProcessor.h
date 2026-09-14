@@ -39,7 +39,7 @@ namespace lsst::qserv::replica {
  * Class HttpProcessor processes requests from the built-in HTTP server.
  *
  * @note The class's implementation starts its own collection of BOOST ASIO
- *   service threads as configured in Configuration.
+ *   service threads as configured in Config.
  */
 class HttpProcessor : public HttpSvc, public EventLogger {
 public:

@@ -30,7 +30,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/config/ConfigDatabaseFamily.h"
-#include "replica/config/ConfigurationExceptions.h"
+#include "replica/config/ConfigExceptions.h"
 #include "replica/util/Performance.h"
 #include "util/TimeUtils.h"
 
