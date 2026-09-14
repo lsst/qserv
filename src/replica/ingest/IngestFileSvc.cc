@@ -271,8 +271,8 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
         }
         LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << dataLoadQuery);
 
-        unsigned int maxReconnects = 0;  // pull the default value from the Configuration
-        unsigned int timeoutSec = 0;     // pull the default value from the Configuration
+        unsigned int maxReconnects = 0;  // pull the default value from the Config
+        unsigned int timeoutSec = 0;     // pull the default value from the Config
 
         // Allow retries for the table management statements in case of deadlocks.
         // Deadlocks may happen when two or many threads are attempting to create
