@@ -66,17 +66,29 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm);
 
 /// This class is used to log how long it takes to lock a mutex
 /// and how long the mutex is held.
+void LockGuardLog(time_t timeToLock, time_t timeHeld, std::string const& note);
+template <typename MutexType>
 class LockGuardTimed {
 public:
-    LockGuardTimed(std::mutex& mtx, std::string const& note);
     LockGuardTimed() = delete;
     LockGuardTimed(LockGuardTimed const&) = delete;
-    ~LockGuardTimed();
+    LockGuardTimed(MutexType& mtx, std::string const& note) : _mtx(mtx), _note(note) {
+        timeToLock.start();
+        _mtx.lock();
+        timeToLock.stop();
+        timeHeld.start();
+    }
+
+    ~LockGuardTimed() {
+        _mtx.unlock();
+        timeHeld.stop();
+        LockGuardLog(timeToLock.getElapsed(), timeHeld.getElapsed(), _note);
+    }
 
     LockGuardTimed& operator=(LockGuardTimed const&) = delete;
 
 private:
-    std::mutex& _mtx;
+    MutexType& _mtx;
     std::string _note;
     Timer timeToLock;
     Timer timeHeld;

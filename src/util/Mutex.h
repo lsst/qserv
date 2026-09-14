@@ -32,15 +32,24 @@
 
 #include "util/Bug.h"
 
+/// Complicated preprocessor logic to allow VMutex to be enabled for unit testing,
+/// and disabled for production, while not producing compiler warnings.
+#ifdef NOT_USING_VMUTEX
+#define USING_VMUTEX_VAL 0
+#else
+#define USING_VMUTEX_VAL 1
+#endif
+
 #ifdef MUTEX_UNITTEST
 #undef USING_VMUTEX
 #define USING_VMUTEX 1
 #else
-#define USING_VMUTEX 0
+#define USING_VMUTEX USING_VMUTEX_VAL
 #endif
 
-#if USING_VMUTEX
+#if USING_VMUTEX != 0
 
+#define VMUTEX util::VMutex
 #define MUTEX util::Mutex
 
 /// Used to verify a mutex is locked before accessing a protected variable.
@@ -51,13 +60,29 @@
 #define VMUTEX_NOT_HELD(vmtx) \
     if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not unlocked!");
 
+/// Define a lock_guard for a VMutex, verifying that the VMutex is not already locked
+/// by this thread. This also helps avoid "lock_guard (vmtx);" which compiles but
+/// does not hold the mutex past that statement.
+#define VLOCK(vmtx, lName)                                                                     \
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex already locked!"); \
+    std::lock_guard<lsst::qserv::util::VMutex> const lName(vmtx);
+
+/// Define a unique_lock for a VMutex, verifying that the VMutex is not already locked
+/// by this thread.
+#define VLOCKUNIQUE(vmtx, lName)                                                               \
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex already locked!"); \
+    std::unique_lock<lsst::qserv::util::VMutex> lName(vmtx);
+
 #else  // not USING_VMUTEX
 
+#define VMUTEX std::mutex
 #define MUTEX std::mutex
 
 #define VMUTEX_HELD(vmtx) ;
 
 #define VMUTEX_NOT_HELD(vmtx) ;
+
+#define VLOCK(vmtx, lName) std::lock_guard<std::mutex> const lName(vmtx);
 
 #endif  // USING_VMUTEX
 
@@ -71,8 +96,7 @@ namespace lsst::qserv::util {
 /// Making VMutex a wrapper around std::mutex instead of a child causes lines
 /// like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
 /// which is desirable.
-/// Unfortunately, VMutex won't work with condition_variable as those explicitly
-/// expect std::mutex.
+/// VMutex does work with std::condition_variable_any.
 class VMutex {
 public:
     explicit VMutex() {}
@@ -109,13 +133,15 @@ private:
 
 /**
  * Class Mutex extends the standard class std::mutex with extra methods.
+ * Note: This class adds a second mutex lock and an O log n operation
+ *       to the lock/unlock methods. n can be large.
  */
 class Mutex : public VMutex {
 public:
     /// @return identifiers of locked mutexes
-    static std::set<unsigned int> lockedId() {
+    static std::set<uint64_t> lockedId() {
         // make a consistent snapshot of the collection to be returned
-        std::set<unsigned int> result;
+        std::set<uint64_t> result;
         std::lock_guard<std::mutex> lg(_lockedIdMtx);
         result = _lockedId;
         return result;
@@ -144,12 +170,12 @@ public:
     }
 
     /// @return unique identifier of a lock
-    unsigned int id() const { return _id; }
+    uint64_t id() const { return _id; }
 
 private:
     /// @return next identifier in a global series
-    static unsigned int nextId() {
-        static std::atomic<unsigned int> id{0};
+    static uint64_t nextId() {
+        static std::atomic<uint64_t> id{0};
         return id++;
     }
 
@@ -167,9 +193,9 @@ private:
 
 private:
     static std::mutex _lockedIdMtx;
-    static std::set<unsigned int> _lockedId;
+    static std::set<uint64_t> _lockedId;
 
-    unsigned int _id;
+    uint64_t _id;  ///< This could get very large. Wrapping could cause false positives.
 };
 
 /**
