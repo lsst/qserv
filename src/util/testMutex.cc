@@ -144,10 +144,30 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
 
     // The mutex will be locked by the current thread
     VMutex mtx2;
-    lock_guard<VMutex> const lockGuard2(mtx2);
+    VLOCK(mtx2, lockGuard2);
     BOOST_CHECK(mtx2.lockedByThread());
     BOOST_REQUIRE_NO_THROW(VMUTEX_HELD(mtx2));
     BOOST_CHECK_THROW(VMUTEX_NOT_HELD(mtx2), lsst::qserv::util::Bug);
+
+    // This should throw as lockGuard2 is already holding the lock on mtx2.
+    try {
+        VLOCK(mtx2, tmpLck);
+        BOOST_FAIL("VLOCK should have thrown an exception");
+    } catch (lsst::qserv::util::Bug const& e) {
+        LOGS_INFO("Caught expected exception: " << e.what());
+    } catch (...) {
+        BOOST_FAIL("VLOCK threw an unexpected exception type");
+    }
+
+    // Same test for VLOCKUNIQUE
+    try {
+        VLOCKUNIQUE(mtx2, tmpLckU);
+        BOOST_FAIL("VLOCKUNIQUE should have thrown an exception");
+    } catch (lsst::qserv::util::Bug const& e) {
+        LOGS_INFO("Caught expected exception: " << e.what());
+    } catch (...) {
+        BOOST_FAIL("VLOCKUNIQUE threw an unexpected exception type");
+    }
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before
