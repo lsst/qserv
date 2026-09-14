@@ -20,34 +20,34 @@
  */
 
 // Class header
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigSchema.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-ConfigurationSchema::ConfigurationSchema(nlohmann::json const& schemaJson) : _schemaJson(schemaJson) {}
+ConfigSchema::ConfigSchema(nlohmann::json const& schemaJson) : _schemaJson(schemaJson) {}
 
-string ConfigurationSchema::description(string const& category, string const& param) const {
+string ConfigSchema::description(string const& category, string const& param) const {
     return _attributeValue<string>(category, param, "description", "");
 }
 
-bool ConfigurationSchema::readOnly(string const& category, string const& param) const {
+bool ConfigSchema::readOnly(string const& category, string const& param) const {
     return _attributeValue<unsigned int>(category, param, "read-only", 0) != 0;
 }
 
-bool ConfigurationSchema::securityContext(string const& category, string const& param) const {
+bool ConfigSchema::securityContext(string const& category, string const& param) const {
     return _attributeValue<unsigned int>(category, param, "security-context", 0) != 0;
 }
 
-string ConfigurationSchema::defaultValueAsString(string const& category, string const& param) const {
-    return json2string("ConfigurationSchema::" + string(__func__) + " category: '" + category + "' param: '" +
-                               param + "' ",
-                       _attributeValueJson(category, param, "default"));
+string ConfigSchema::defaultValueAsString(string const& category, string const& param) const {
+    return json2string(
+            "ConfigSchema::" + string(__func__) + " category: '" + category + "' param: '" + param + "' ",
+            _attributeValueJson(category, param, "default"));
 }
 
-json ConfigurationSchema::defaultConfigData() const {
+json ConfigSchema::defaultConfigData() const {
     json result = json::object();
     for (auto const& [category, inParametersJson] : _schemaJson.items()) {
         json& outParametersJson = result[category];
@@ -58,7 +58,7 @@ json ConfigurationSchema::defaultConfigData() const {
     return result;
 }
 
-map<string, set<string>> ConfigurationSchema::parameters() const {
+map<string, set<string>> ConfigSchema::parameters() const {
     map<string, set<string>> result;
     json const data = defaultConfigData();
     for (auto const& [category, inParametersJson] : data.items()) {
@@ -69,12 +69,12 @@ map<string, set<string>> ConfigurationSchema::parameters() const {
     return result;
 }
 
-bool ConfigurationSchema::exists(string const& category) const {
+bool ConfigSchema::exists(string const& category) const {
     auto const categoryItr = _schemaJson.find(category);
     return categoryItr != _schemaJson.end();
 }
 
-bool ConfigurationSchema::exists(string const& category, string const& param) const {
+bool ConfigSchema::exists(string const& category, string const& param) const {
     auto const categoryItr = _schemaJson.find(category);
     if (categoryItr != _schemaJson.end()) {
         auto const paramItr = categoryItr->find(param);
@@ -83,7 +83,7 @@ bool ConfigurationSchema::exists(string const& category, string const& param) co
     return false;
 }
 
-string ConfigurationSchema::json2string(string const& context, json const& obj) const {
+string ConfigSchema::json2string(string const& context, json const& obj) const {
     if (obj.is_string()) return obj.get<string>();
     if (obj.is_boolean()) return obj.get<bool>() ? "1" : "0";
     if (obj.is_number_unsigned()) return to_string(obj.get<uint64_t>());
@@ -92,28 +92,28 @@ string ConfigurationSchema::json2string(string const& context, json const& obj) 
     throw invalid_argument(context + "unsupported data type of the value: " + obj.dump());
 }
 
-bool ConfigurationSchema::_emptyAllowed(string const& category, string const& param) const {
+bool ConfigSchema::_emptyAllowed(string const& category, string const& param) const {
     return _attributeValue<unsigned int>(category, param, "empty-allowed", 0) != 0;
 }
 
-json ConfigurationSchema::_restrictor(string const& category, string const& param) const {
+json ConfigSchema::_restrictor(string const& category, string const& param) const {
     return _attributeValue<json>(category, param, "restricted", json());
 }
 
-json ConfigurationSchema::_attributeValueJson(string const& category, string const& param,
-                                              string const& attr) const {
+json ConfigSchema::_attributeValueJson(string const& category, string const& param,
+                                       string const& attr) const {
     auto const categoryItr = _schemaJson.find(category);
     if (categoryItr != _schemaJson.end()) {
         auto const paramItr = categoryItr->find(param);
         if (paramItr != categoryItr->end()) {
             auto const attrItr = paramItr->find(attr);
             if (attrItr != paramItr->end()) return *attrItr;
-            throw invalid_argument("ConfigurationSchema::" + string(__func__) + " unknown attribute " + attr +
+            throw invalid_argument("ConfigSchema::" + string(__func__) + " unknown attribute " + attr +
                                    " of parameter " + category + "." + param + ".");
         }
     }
-    throw invalid_argument("ConfigurationSchema::" + string(__func__) + " unknown parameter " + category +
-                           "." + param + ".");
+    throw invalid_argument("ConfigSchema::" + string(__func__) + " unknown parameter " + category + "." +
+                           param + ".");
 }
 
 }  // namespace lsst::qserv::replica

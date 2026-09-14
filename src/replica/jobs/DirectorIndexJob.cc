@@ -32,7 +32,7 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/ingest/TransactionContrib.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/requests/StopRequest.h"
@@ -275,7 +275,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
         }
     }
 
-    // In case if no workers or database are present in the Configuration
+    // In case if no workers or database are present in the Config
     // at this time.
     if (_inFlightRequests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 

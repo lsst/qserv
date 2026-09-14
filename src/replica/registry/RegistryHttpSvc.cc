@@ -26,7 +26,7 @@
 #include "http/MetaModule.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/registry/RegistryHttpSvcMod.h"
 #include "replica/registry/RegistryServices.h"
 

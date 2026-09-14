@@ -18,13 +18,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATION_H
-#define LSST_QSERV_REPLICA_CONFIGURATION_H
+#ifndef LSST_QSERV_REPLICA_CONFIG_H
+#define LSST_QSERV_REPLICA_CONFIG_H
 
 /**
- * This header defines the class Configuration and a number of
+ * This header defines the class Config and a number of
  * other relevant classes, which represent a public interface to
- * the Configuration service of the Replication System.
+ * the Config service of the Replication System.
  */
 
 // System headers
@@ -48,8 +48,8 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigDatabaseFamily.h"
 #include "replica/config/ConfigWorker.h"
-#include "replica/config/ConfigurationExceptions.h"
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigExceptions.h"
+#include "replica/config/ConfigSchema.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLTypes.h"
@@ -85,7 +85,7 @@ struct TypeConversionTrait<std::string> {
 }  // namespace detail
 
 /**
- * Class Configuration is the main API class that provide configuration services
+ * Class Config is the main API class that provide configuration services
  * for the components of the Replication system.
  * @note Exceptions mentioned in the documentation of the class's methods may not be
  *   complete. Additional exceptions may be thrown depending on a presence of a persistent
@@ -93,15 +93,13 @@ struct TypeConversionTrait<std::string> {
  *   mostly related to incorrect/inconsistent values that are detected directly by in
  *   the implementation of the methods.
  */
-class Configuration {
+class Config {
 public:
-    typedef std::shared_ptr<Configuration> Ptr;
-
     /**
      * The factory method will create an object, initialize its state with
      * the default values of the configuration parameters, then update the state
      * from the given JSON object.
-     * @note Configuration objects created by this method won't have any persistent
+     * @note Config objects created by this method won't have any persistent
      *   backend should any changes to the transient state be made.
      * @param configSchema The schema against which the input configuration will be validated.
      * @param obj The input configuration parameters. The object is optional.
@@ -110,28 +108,28 @@ public:
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
-    static Ptr load(ConfigurationSchema const& configSchema,
-                    nlohmann::json const& obj = nlohmann::json::object());
+    static std::shared_ptr<Config> load(ConfigSchema const& configSchema,
+                                        nlohmann::json const& obj = nlohmann::json::object());
 
     // -----------------
     // The instance API.
     // -----------------
 
-    Configuration(Configuration const&) = delete;
-    Configuration& operator=(Configuration const&) = delete;
-    ~Configuration() = default;
+    Config(Config const&) = delete;
+    Config& operator=(Config const&) = delete;
+    ~Config() = default;
 
-    ConfigurationSchema const& configSchema() const { return _configSchema; }
+    ConfigSchema const& configSchema() const { return _configSchema; }
 
     /**
-     * Reload non-general parameters of the Configuration from the persistent backend (MySQL).
+     * Reload non-general parameters of the Config from the persistent backend (MySQL).
      * @throws ConfigNoSuchParameter If the parameter (database,repl-db-conn) doesn't exist
      *   in the configuration.
      */
     void reload();
 
     /**
-     * Reload parameters of the Configuration from the given JSON object.
+     * Reload parameters of the Config from the given JSON object.
      * @param obj The input configuration parameters.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with expectations of the transient schema.
@@ -230,7 +228,7 @@ public:
 
     /**
      * Get a value of a parameter as a string.
-     * @see Configuration::get()
+     * @see Config::get()
      */
     std::string getAsString(std::string const& category, std::string const& name) const;
 
@@ -269,7 +267,7 @@ public:
     /**
      * Parse and set parameter value from a string. The string will be converted
      * into the same type of the parameter stored in the transient state of the configuration.
-     * @see Configuration::set()
+     * @see Config::set()
      */
     void setFromString(std::string const& category, std::string const& param, std::string const& val);
 
@@ -429,7 +427,7 @@ public:
 
     /**
      * @param databaseName The name of a database.
-     * @return 'true' if the specified database is known in the Configuration.
+     * @return 'true' if the specified database is known in the Config.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter.
      */
     bool isKnownDatabase(std::string const& databaseName) const;
@@ -486,7 +484,7 @@ public:
      * Register a new table with a database.
      * @param table_ The prototype table descriptor whose parameters are going to
      *   be evaluated and corrected if needed before registering the table in
-     *   the Configuration.
+     *   the Config.
      * @return A database descriptor of the updated database.
      * @throw std::invalid_argument If the attributes of the table aren't complete,
      *   or if there are any ambiguity in the values of the attributes.
@@ -538,7 +536,7 @@ public:
     ConfigWorker worker(std::string const& workerName) const;
 
     /**
-     * Register a new worker in the Configuration.
+     * Register a new worker in the Config.
      * @param worker The worker description.
      * @return A worker descriptor.
      * @throw std::invalid_argument If either worker name is empty.
@@ -547,7 +545,7 @@ public:
     ConfigWorker addWorker(ConfigWorker const& worker);
 
     /**
-     * Completely remove the specified worker from the Configuration.
+     * Completely remove the specified worker from the Config.
      * @param workerName The name of a worker affected by the operation.
      * @throw std::invalid_argument If either worker name is empty.
      * @throws ConfigUnknownWorker if the worker is unknown.
@@ -555,7 +553,7 @@ public:
     void deleteWorker(std::string const& workerName);
 
     /**
-     * Disable the specified worker in the Configuration to exclude it from using
+     * Disable the specified worker in the Config to exclude it from using
      * in any subsequent replication operations.
      * @param workerName The name of a worker affected by the operation.
      * @throw std::invalid_argument If either worker name is empty.
@@ -565,7 +563,7 @@ public:
 
     /**
      * Update parameters of an existing worker in the transient store, and in
-     * the persistent back-end as well (if any is associated with the Configuration object).
+     * the persistent back-end as well (if any is associated with the Config object).
      * @param worker The modified worker descriptor.
      * @return An updated worker descriptor.
      * @throw std::invalid_argument If either worker name is empty.
@@ -595,7 +593,7 @@ public:
     ConfigCzar czar(std::string const& czarName) const;
 
     /**
-     * Register a new Czar in the Configuration.
+     * Register a new Czar in the Config.
      * @param czar The Czar description.
      * @return A Czar descriptor.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter.
@@ -604,7 +602,7 @@ public:
     ConfigCzar addCzar(ConfigCzar const& czar);
 
     /**
-     * Completely remove the specified Czar from the Configuration.
+     * Completely remove the specified Czar from the Config.
      * @param czarName The name of a Czar.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter.
      * @throw ConfigUnknownCzar if the specified Czar was not found in the configuration.
@@ -643,7 +641,7 @@ private:
      * for the specified schema. The rest of the state will get populated by the specialized
      * _load() methods explained below.
      */
-    Configuration(ConfigurationSchema const& configSchema);
+    Config(ConfigSchema const& configSchema);
 
     /**
      * Load from the transient JSON object. Parameters read from the object will
@@ -712,7 +710,7 @@ private:
 
     DatabaseFamilyInfo const& _databaseFamilyInfo(replica::Lock const& lock,
                                                   std::string const& familyName) const {
-        return const_cast<Configuration*>(this)->_databaseFamilyInfo(lock, familyName);
+        return const_cast<Config*>(this)->_databaseFamilyInfo(lock, familyName);
     }
 
     /**
@@ -724,7 +722,7 @@ private:
     DatabaseInfo& _databaseInfo(replica::Lock const& lock, std::string const& databaseName);
 
     DatabaseInfo const& _databaseInfo(replica::Lock const& lock, std::string const& databaseName) const {
-        return const_cast<Configuration*>(this)->_databaseInfo(lock, databaseName);
+        return const_cast<Config*>(this)->_databaseInfo(lock, databaseName);
     }
 
     /**
@@ -745,7 +743,7 @@ private:
     bool _updatePersistentState(replica::Lock const& lock) const { return _connectionPtr != nullptr; }
 
     /// The schema against which the configuration will be validated.
-    ConfigurationSchema const _configSchema;
+    ConfigSchema const _configSchema;
 
     // These parameters  will be set for the MySQL back-end (if any).
     database::mysql::ConnectionParams _connectionParams;
@@ -765,4 +763,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_CONFIGURATION_H
+#endif  // LSST_QSERV_REPLICA_CONFIG_H

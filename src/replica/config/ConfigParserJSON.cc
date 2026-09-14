@@ -26,14 +26,14 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/ConfigurationExceptions.h"
+#include "replica/config/ConfigExceptions.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-ConfigParserJSON::ConfigParserJSON(ConfigurationSchema const& configSchema, json& data,
+ConfigParserJSON::ConfigParserJSON(ConfigSchema const& configSchema, json& data,
                                    map<string, ConfigWorker>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
                                    map<string, DatabaseInfo>& databases, map<string, ConfigCzar>& czars)

@@ -58,7 +58,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider It's needed to access the Configuration of a setup
+     * @param serviceProvider It's needed to access the Config of a setup
      *   and for validating the input parameters
      * @param worker The name of a worker. The name must match the worker which
      *   is going to execute the request.
@@ -69,7 +69,7 @@ public:
      * @param (optional) requestExpirationIvalSec request expiration interval.
      *   If 0 is passed into the method then a value of the corresponding
      *   parameter for the Controller-side requests will be pulled from
-     *   the Configuration.
+     *   the Config.
      * @param request The ProtoBuf body of the original request
      * @return A pointer to the created object
      */

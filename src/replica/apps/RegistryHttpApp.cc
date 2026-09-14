@@ -23,7 +23,7 @@
 #include "replica/apps/RegistryHttpApp.h"
 
 // Qserv headers
-#include "replica/config/ConfigurationSchemaRegistry.h"
+#include "replica/config/ConfigSchemaRegistry.h"
 #include "replica/registry/RegistryHttpSvc.h"
 
 using namespace std;
@@ -46,7 +46,7 @@ shared_ptr<RegistryHttpApp> RegistryHttpApp::create(int argc, char* argv[]) {
 }
 
 RegistryHttpApp::RegistryHttpApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaRegistry()) {}
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigSchemaRegistry()) {}
 
 int RegistryHttpApp::runImpl() {
     auto const svc = RegistryHttpSvc::create(serviceProvider());

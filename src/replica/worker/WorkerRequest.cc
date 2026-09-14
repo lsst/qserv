@@ -29,7 +29,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/SuccessRateGenerator.h"
 #include "util/BlockPost.h"

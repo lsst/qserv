@@ -103,7 +103,7 @@ public:
     /**
      * The factory method for instantiating the manager.
      * @param serviceProvider The provider is needed to access various services of
-     *   the Replication system's framework, such as the Configuration service,
+     *   the Replication system's framework, such as the Config service,
      *   the Database service, etc.
      * @param workerName The name of a worker this service is acting upon.
      * @return A newly created instance of the manager.

@@ -72,15 +72,14 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
             connectionParams.database = "qservw_worker";
             // Parameter 'maxReconnects' limits the total number of retries to execute the query in case
             // if the query fails during execution. If the parameter's value is set to 0 then the default
-            // value of the parameter will be pulled by the query processor from the Replication
-            // system's Configuration.
+            // value of the parameter will be pulled by the query processor from the connector class.
             unsigned int maxReconnects = lsst::qserv::stoui(args[1]);
             // Parameter 'timeoutSec' is used both while connecting to the database server and for executing
             // the query. If the MySQl service won't respond to the connection attempts beyond a period of
             // time specified by the parameter then the operation will fail. Similarly, if the query execution
             // will take longer than it's specified in the parameter then the query will fail. If the
-            // parameter's value is set to 0 then the default value of the parameter will be pulled by the
-            // query processor from the Replication system's Configuration.
+            // parameter's value is set to 0 then the default value of the parameter set at the connector
+            // class will be used.
             unsigned int timeoutSec = lsst::qserv::stoui(args[2]);
             // This parameter allows the database connector to make reconnects if the MySQL service
             // won't be responding (or not be up) at the initial connection attempt.
