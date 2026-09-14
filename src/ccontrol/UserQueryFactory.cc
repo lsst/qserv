@@ -431,18 +431,17 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto messageStore = std::make_shared<qmeta::MessageStore>();
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
+        auto czarConfig = cconfig::CzarConfig::instance();
+        int const uberJobMaxChunks = czarConfig->getUberJobMaxChunks();
         if (sessionValid) {
             executive = qdisp::Executive::create(_qmetaSecondsBetweenUpdates, messageStore, qdispPool,
                                                  _userQuerySharedResources->queryProgress,
                                                  _userQuerySharedResources->queryProgressHistory, qs,
-                                                 _asioIoService);
+                                                 uberJobMaxChunks, _asioIoService);
             infileMergerConfig =
                     std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;
         }
-
-        auto czarConfig = cconfig::CzarConfig::instance();
-        int uberJobMaxChunks = czarConfig->getUberJobMaxChunks();
 
         // This, effectively invalid, UserQuerySelect object should report errors from both `errorExtra`
         // and errors that the QuerySession `qs` has stored internally.
@@ -450,7 +449,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
                 _userQuerySharedResources->queryProgress, _userQuerySharedResources->czarId, errorExtra,
-                async, resultDb, uberJobMaxChunks);
+                async, resultDb);
 
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
