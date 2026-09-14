@@ -37,6 +37,11 @@
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/Common.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class Config;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -57,10 +62,10 @@ public:
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      *
-     * @param configuration the configuration service
+     * @param config the configuration service
      * @return pointer to the created object
      */
-    static Ptr create(ConfigurationPtr const& configuration);
+    static Ptr create(std::shared_ptr<Config> const& config);
 
     DatabaseServicesPool() = delete;
     DatabaseServicesPool(DatabaseServicesPool const&) = delete;
@@ -214,9 +219,9 @@ public:
 
 private:
     /**
-     * @param configuration the configuration service
+     * @param config the configuration service
      */
-    explicit DatabaseServicesPool(ConfigurationPtr const& configuration);
+    explicit DatabaseServicesPool(std::shared_ptr<Config> const& config);
 
     /**
      * Allocate the next available service object.

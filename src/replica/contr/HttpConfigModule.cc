@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/contr/HttpConfigurationModule.h"
+#include "replica/contr/HttpConfigModule.h"
 
 // System headers
 #include <stdexcept>
@@ -31,11 +31,11 @@
 // Qserv headers
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigWorker.h"
-#include "replica/config/ConfigurationExceptions.h"
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigExceptions.h"
+#include "replica/config/ConfigSchema.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -46,7 +46,7 @@ using namespace lsst::qserv::replica;
 namespace {
 
 /// @return A JSON object with metadata for the general parameters.
-json meta4general(Configuration::Ptr const& config) {
+json meta4general(shared_ptr<Config> const& config) {
     json result;
     auto const& configSchema = config->configSchema();
     for (auto&& itr : configSchema.parameters()) {
@@ -64,19 +64,18 @@ json meta4general(Configuration::Ptr const& config) {
 
 namespace lsst::qserv::replica {
 
-void HttpConfigurationModule::process(Controller::Ptr const& controller, string const& taskName,
-                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                      string const& subModuleName, http::AuthType const authType) {
-    HttpConfigurationModule module(controller, taskName, req, resp);
+void HttpConfigModule::process(Controller::Ptr const& controller, string const& taskName,
+                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                               string const& subModuleName, http::AuthType const authType) {
+    HttpConfigModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpConfigurationModule::HttpConfigurationModule(Controller::Ptr const& controller, string const& taskName,
-                                                 qhttp::Request::Ptr const& req,
-                                                 qhttp::Response::Ptr const& resp)
+HttpConfigModule::HttpConfigModule(Controller::Ptr const& controller, string const& taskName,
+                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
-json HttpConfigurationModule::executeImpl(string const& subModuleName) {
+json HttpConfigModule::executeImpl(string const& subModuleName) {
     if (subModuleName.empty())
         return _get();
     else if (subModuleName == "UPDATE-GENERAL")
@@ -105,7 +104,7 @@ json HttpConfigurationModule::executeImpl(string const& subModuleName) {
                            subModuleName + "'");
 }
 
-json HttpConfigurationModule::_get() {
+json HttpConfigModule::_get() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
@@ -117,7 +116,7 @@ json HttpConfigurationModule::_get() {
     return result;
 }
 
-json HttpConfigurationModule::_updateGeneral() {
+json HttpConfigModule::_updateGeneral() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
@@ -137,7 +136,7 @@ json HttpConfigurationModule::_updateGeneral() {
     return result;
 }
 
-json HttpConfigurationModule::_updateWorker() {
+json HttpConfigModule::_updateWorker() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
@@ -168,7 +167,7 @@ json HttpConfigurationModule::_updateWorker() {
     }
 }
 
-json HttpConfigurationModule::_deleteWorker() {
+json HttpConfigModule::_deleteWorker() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
@@ -181,7 +180,7 @@ json HttpConfigurationModule::_deleteWorker() {
     return {};
 }
 
-json HttpConfigurationModule::_addWorker() {
+json HttpConfigModule::_addWorker() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
@@ -200,7 +199,7 @@ json HttpConfigurationModule::_addWorker() {
     return result;
 }
 
-json HttpConfigurationModule::_deleteFamily() {
+json HttpConfigModule::_deleteFamily() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
@@ -218,7 +217,7 @@ json HttpConfigurationModule::_deleteFamily() {
     return {};
 }
 
-json HttpConfigurationModule::_addFamily() {
+json HttpConfigModule::_addFamily() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
@@ -254,7 +253,7 @@ json HttpConfigurationModule::_addFamily() {
     return result;
 }
 
-json HttpConfigurationModule::_deleteDatabase() {
+json HttpConfigModule::_deleteDatabase() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
@@ -263,7 +262,7 @@ json HttpConfigurationModule::_deleteDatabase() {
     return {};
 }
 
-json HttpConfigurationModule::_addDatabase() {
+json HttpConfigModule::_addDatabase() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
@@ -279,7 +278,7 @@ json HttpConfigurationModule::_addDatabase() {
     return result;
 }
 
-json HttpConfigurationModule::_unpublishDatabase() {
+json HttpConfigModule::_unpublishDatabase() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
@@ -293,7 +292,7 @@ json HttpConfigurationModule::_unpublishDatabase() {
     auto const config = controller()->serviceProvider()->config();
     database = publish ? config->publishDatabase(database.name) : config->unPublishDatabase(database.name);
 
-    // This step is needed to get workers' Configuration in-sync with its persistent state.
+    // This step is needed to get workers' Config in-sync with its persistent state.
     bool const allWorkers = true;
     string const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
@@ -302,7 +301,7 @@ json HttpConfigurationModule::_unpublishDatabase() {
     return result;
 }
 
-json HttpConfigurationModule::_deleteTable() {
+json HttpConfigModule::_deleteTable() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
@@ -314,7 +313,7 @@ json HttpConfigurationModule::_deleteTable() {
     return result;
 }
 
-json HttpConfigurationModule::_addTable() {
+json HttpConfigModule::_addTable() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 

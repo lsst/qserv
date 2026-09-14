@@ -5,7 +5,7 @@ target_sources(replica_contr PRIVATE
     EventLogger.cc
     HealthMonitorTask.cc
     HttpCatalogsModule.cc
-    HttpConfigurationModule.cc
+    HttpConfigModule.cc
     HttpControllersModule.cc
     HttpDirectorIndexModule.cc
     HttpExportModule.cc

@@ -29,7 +29,7 @@
 #include "global/stringUtil.h"  // for qserv::stoui
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigWorker.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/DatabaseServices.h"
@@ -207,7 +207,7 @@ json HttpExportModule::_getTableLocations() {
         bool const isEnabled = true;
         auto const workerNames = config->workers(isEnabled);
         if (workerNames.empty()) {
-            throw http::Error(__func__, "no workers found in the Configuration of the system.");
+            throw http::Error(__func__, "no workers found in the Config of the system.");
         }
         for (auto const& workerName : workerNames) {
             result["locations"].push_back(workerLocation(workerName));

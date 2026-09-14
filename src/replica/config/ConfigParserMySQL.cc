@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/ConfigurationExceptions.h"
+#include "replica/config/ConfigExceptions.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 
 using namespace std;

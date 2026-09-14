@@ -26,7 +26,7 @@
 #include "http/Auth.h"
 #include "http/Exceptions.h"
 #include "http/Method.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
 #include "replica/ingest/IngestUtils.h"

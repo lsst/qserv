@@ -29,7 +29,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/contr/EventLogger.h"
 #include "replica/jobs/Job.h"

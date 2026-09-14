@@ -33,7 +33,7 @@
 namespace lsst::qserv::replica {
 
 /**
- * This utility class ConfigTestDataController provides inputs for testing the Configuration
+ * This utility class ConfigTestDataController provides inputs for testing the Config
  * service used by the Controller.
  */
 class ConfigTestDataController {

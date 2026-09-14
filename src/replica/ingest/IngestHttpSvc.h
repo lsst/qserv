@@ -49,7 +49,7 @@ namespace lsst::qserv::replica {
  * in its own thread.
  *
  * @note The class's implementation starts its own collection of BOOST ASIO
- *   service threads as configured in Configuration.
+ *   service threads as configured in Config.
  * @note The implementation of the class is not thread-safe.
  */
 class IngestHttpSvc : public ChttpSvc {

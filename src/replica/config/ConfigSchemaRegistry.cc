@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/config/ConfigurationSchemaRegistry.h"
+#include "replica/config/ConfigSchemaRegistry.h"
 
 // System headers
 #include <thread>
@@ -108,6 +108,6 @@ json const registrySchemaJson = json::object(
               "than 0."},
              {"default", 5}}}}}});
 
-ConfigurationSchemaRegistry::ConfigurationSchemaRegistry() : ConfigurationSchema(registrySchemaJson) {}
+ConfigSchemaRegistry::ConfigSchemaRegistry() : ConfigSchema(registrySchemaJson) {}
 
 }  // namespace lsst::qserv::replica

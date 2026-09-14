@@ -32,7 +32,7 @@
 #include <system_error>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"

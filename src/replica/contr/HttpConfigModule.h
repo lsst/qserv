@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPCONFIGURATIONMODULE_H
-#define LSST_QSERV_HTTPCONFIGURATIONMODULE_H
+#ifndef LSST_QSERV_HTTPCONFIGMODULE_H
+#define LSST_QSERV_HTTPCONFIGMODULE_H
 
 // System headers
 #include <memory>
@@ -35,28 +35,28 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class HttpConfigurationModule implements a handler for reporting
- * various info on or modifying Configuration of the Replication system.
+ * Class HttpConfigModule implements a handler for reporting
+ * various info on or modifying Config of the Replication system.
  */
-class HttpConfigurationModule : public HttpModule {
+class HttpConfigModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpConfigurationModule> Ptr;
+    typedef std::shared_ptr<HttpConfigModule> Ptr;
 
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   the empty string        for reporting the current state of the Configuration
+     *   the empty string        for reporting the current state of the Config
      *   UPDATE-GENERAL          for updating one or many general configuration parameters
      *   UPDATE-WORKER           for updating configuration parameters of a worker
-     *   DELETE-WORKER           for removing a known worker from the Configuration
-     *   ADD-WORKER              for adding a new worker to the Configuration
-     *   DELETE-DATABASE-FAMILY  for removing a known database family from the Configuration
-     *   ADD-DATABASE-FAMILY     for adding a new database family to the Configuration
-     *   DELETE-DATABASE         for removing a known database from the Configuration
-     *   ADD-DATABASE            for adding a new database to the Configuration
+     *   DELETE-WORKER           for removing a known worker from the Config
+     *   ADD-WORKER              for adding a new worker to the Config
+     *   DELETE-DATABASE-FAMILY  for removing a known database family from the Config
+     *   ADD-DATABASE-FAMILY     for adding a new database family to the Config
+     *   DELETE-DATABASE         for removing a known database from the Config
+     *   ADD-DATABASE            for adding a new database to the Config
      *   [UN-]PUBLISH-DATABASE   for temporary change of the database status to be unpublished/published
-     *   DELETE-TABLE            for removing a known database table from the Configuration
-     *   ADD-TABLE               for adding a new database table to the Configuration
+     *   DELETE-TABLE            for removing a known database table from the Config
+     *   ADD-TABLE               for adding a new database table to the Config
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -65,70 +65,70 @@ public:
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
-    HttpConfigurationModule() = delete;
-    HttpConfigurationModule(HttpConfigurationModule const&) = delete;
-    HttpConfigurationModule& operator=(HttpConfigurationModule const&) = delete;
+    HttpConfigModule() = delete;
+    HttpConfigModule(HttpConfigModule const&) = delete;
+    HttpConfigModule& operator=(HttpConfigModule const&) = delete;
 
-    ~HttpConfigurationModule() final = default;
+    ~HttpConfigModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpConfigurationModule(Controller::Ptr const& controller, std::string const& taskName,
-                            qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpConfigModule(Controller::Ptr const& controller, std::string const& taskName,
+                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /**
-     * Return the current Configuration of the system.
+     * Return the current Config of the system.
      */
     nlohmann::json _get();
 
     /**
-     * Process a request which updates the Configuration of the Replication
+     * Process a request which updates the Config of the Replication
      * system and reports back its new state.
      */
     nlohmann::json _updateGeneral();
 
     /**
      * Process a request which updates parameters of an existing worker in
-     * the Configuration of the Replication system and reports back the new
+     * the Config of the Replication system and reports back the new
      * state of the system
      */
     nlohmann::json _updateWorker();
 
     /**
-     * Process a request which removes an existing worker from the Configuration
+     * Process a request which removes an existing worker from the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _deleteWorker();
 
     /**
-     * Process a request which adds a new worker into the Configuration
+     * Process a request which adds a new worker into the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _addWorker();
 
     /**
      * Process a request which removes an existing database family from
-     * the Configuration of the Replication system and reports back the new
+     * the Config of the Replication system and reports back the new
      * state of the system
      */
     nlohmann::json _deleteFamily();
 
     /**
-     * Process a request which adds a new database family into the Configuration
+     * Process a request which adds a new database family into the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _addFamily();
 
     /**
-     * Process a request which removes an existing database from the Configuration
+     * Process a request which removes an existing database from the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _deleteDatabase();
 
     /**
-     * Process a request which adds a new database into the Configuration
+     * Process a request which adds a new database into the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _addDatabase();
@@ -137,13 +137,13 @@ private:
     nlohmann::json _unpublishDatabase();
 
     /**
-     * Process a request which removes an existing table from the Configuration
+     * Process a request which removes an existing table from the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _deleteTable();
 
     /**
-     * Process a request which adds a new database table into the Configuration
+     * Process a request which adds a new database table into the Config
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _addTable();
@@ -151,4 +151,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_HTTPCONFIGURATIONMODULE_H
+#endif  // LSST_QSERV_HTTPCONFIGMODULE_H
