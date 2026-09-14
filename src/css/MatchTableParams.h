@@ -31,18 +31,23 @@ namespace lsst::qserv::css {
 /// A container for match-table metadata.
 struct MatchTableParams {
     MatchTableParams() : angSep(0.0) {}
-    MatchTableParams(std::string const& dirTable1_, std::string const& dirColName1_,
+    MatchTableParams(std::string const& dirDb1_, std::string const& dirTable1_,
+                     std::string const& dirColName1_, std::string const& dirDb2_,
                      std::string const& dirTable2_, std::string const& dirColName2_,
                      std::string const& flagColName_, double angSep_)
-            : dirTable1(dirTable1_),
+            : dirDb1(dirDb1_),
+              dirTable1(dirTable1_),
               dirColName1(dirColName1_),
+              dirDb2(dirDb2_),
               dirTable2(dirTable2_),
               dirColName2(dirColName2_),
               flagColName(flagColName_),
               angSep(angSep_) {}
 
+    std::string dirDb1;       ///< First director database involved in match. Empty if same db as this table.
     std::string dirTable1;    ///< First director-table involved in match.
     std::string dirColName1;  ///< The column used to join with dirTable1.
+    std::string dirDb2;       ///< Second director database involved in match. Empty if same db as this table.
     std::string dirTable2;    ///< Second director-table involved in match.
     std::string dirColName2;  ///< The column used to join with dirTable2.
     std::string flagColName;  ///< Match-flags column name.
