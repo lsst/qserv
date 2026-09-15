@@ -44,7 +44,7 @@ namespace lsst::qserv::util {
 
 void CommandQueue::queCmd(vector<Command::Ptr> const& cmds) {
     {
-        VLOCK(_mx, lock);
+        VLOCK(lock, _mx);
         _qu.insert(_qu.end(), cmds.begin(), cmds.end());
     }
     notify(cmds.size() > 1);  // notify all if more than 1 command, otherwise notify 1.
@@ -105,7 +105,7 @@ void EventThreadJoiner::shutdownJoin() {
 void EventThreadJoiner::joinLoop() {
     EventThread::Ptr pet;
     while (true) {
-        VLOCKUNIQUE(_mtxJoiner, ulock);
+        VLOCKUNIQUE(ulock, _mtxJoiner);
         if (!_eventThreads.empty()) {
             pet = _eventThreads.front();
             _eventThreads.pop();
@@ -125,7 +125,7 @@ void EventThreadJoiner::joinLoop() {
 
 void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {
     if (eventThread == nullptr) return;
-    VLOCK(_mtxJoiner, lg);
+    VLOCK(lg, _mtxJoiner);
     ++_count;
     _eventThreads.push(eventThread);
 }

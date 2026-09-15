@@ -82,7 +82,7 @@ public:
     /// waiting on the queue that a command is available.
     virtual void queCmd(Command::Ptr const& cmd) {
         {
-            std::lock_guard lock(_mx);
+            VLOCK(lock, _mx);
             _qu.push_back(cmd);
         }
         notify(false);  // notify all=false
@@ -94,8 +94,7 @@ public:
     /// Get a command off the queue.
     /// If wait is true, wait until a message is available.
     virtual Command::Ptr getCmd(bool wait = true) {
-        //&&&std::unique_lock lock(_mx);
-        VLOCKUNIQUE(_mx, lock);
+        VLOCKUNIQUE(lock, _mx);
         if (wait) {
             _cv.wait(lock, [this]() { return !_qu.empty(); });
         }
@@ -108,8 +107,7 @@ public:
     };
 
     virtual size_t size() {
-        //&&&std::lock_guard lock(_mx);
-        VLOCK(_mx, lock);
+        VLOCK(lock, _mx);
         return _qu.size();
     }
 
@@ -126,9 +124,9 @@ public:
     virtual void commandFinish(Command::Ptr const&) {};  //< Derived methods must be thread safe.
 
 protected:
-    std::deque<Command::Ptr> _qu{};
-    std::condition_variable_any _cv{};
-    mutable VMUTEX _mx{};
+    std::deque<Command::Ptr> _qu;
+    std::condition_variable_any _cv;
+    mutable VMUTEX _mx;
 };
 
 /// An event driven thread, the event loop is in handleCmds().

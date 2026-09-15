@@ -54,24 +54,26 @@
 
 /// Used to verify a mutex is locked before accessing a protected variable.
 #define VMUTEX_HELD(vmtx) \
-    if (!vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not locked!");
+    if (!vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "not locked!");
 
 /// Used to verify a mutex is not locked by this thread before locking a related mutex.
 #define VMUTEX_NOT_HELD(vmtx) \
-    if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not unlocked!");
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "not held!");
 
 /// Define a lock_guard for a VMutex, verifying that the VMutex is not already locked
 /// by this thread. This also helps avoid "lock_guard (vmtx);" which compiles but
 /// does not hold the mutex past that statement.
-#define VLOCK(vmtx, lName)                                                                     \
-    if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex already locked!"); \
-    std::lock_guard<lsst::qserv::util::VMutex> const lName(vmtx);
+#define VLOCK(lName, vmtx)                                                                               \
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "already locked!"); \
+    std::lock_guard<lsst::qserv::util::VMutex> const lName(vmtx);                                        \
+    vmtx.setTag(__func__, #lName);
 
 /// Define a unique_lock for a VMutex, verifying that the VMutex is not already locked
 /// by this thread.
-#define VLOCKUNIQUE(vmtx, lName)                                                               \
-    if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex already locked!"); \
-    std::unique_lock<lsst::qserv::util::VMutex> lName(vmtx);
+#define VLOCKUNIQUE(lName, vmtx)                                                                         \
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "already locked!"); \
+    std::unique_lock<lsst::qserv::util::VMutex> lName(vmtx);                                             \
+    vmtx.setTag(__func__, #lName);
 
 #else  // not USING_VMUTEX
 
@@ -82,7 +84,9 @@
 
 #define VMUTEX_NOT_HELD(vmtx) ;
 
-#define VLOCK(vmtx, lName) std::lock_guard<std::mutex> const lName(vmtx);
+#define VLOCK(lName, vmtx) std::lock_guard<std::mutex> const lName(vmtx);
+
+#define VLOCKUNIQUE(lName, vmtx) std::unique_lock<lsst::qserv::util::VMutex> lName(vmtx);
 
 #endif  // USING_VMUTEX
 
@@ -99,17 +103,23 @@ namespace lsst::qserv::util {
 /// VMutex does work with std::condition_variable_any.
 class VMutex {
 public:
-    explicit VMutex() {}
+    VMutex() {}
+    VMutex(VMutex const&) = delete;
+    ~VMutex() = default;
 
     /// Lock the mutex (replaces the corresponding method of the base class)
     void lock() {
         _mutex.lock();
         _holder = std::this_thread::get_id();
+        // Note that wait() can lock and unlock the mutex and setTag() will not be called.
+        _tag += "!";
     }
 
     /// Release the mutex (replaces the corresponding method of the base class)
     void unlock() {
         _holder = std::thread::id();
+        // Note that wait() can lock and unlock the mutex and setTag() will not be called.
+        _tag += "~";
         _mutex.unlock();
     }
 
@@ -117,18 +127,37 @@ public:
         bool res = _mutex.try_lock();
         if (res) {
             _holder = std::this_thread::get_id();
+            _tag = "#";
         }
         return res;
     }
 
-    /// @return true if the mutex is locked by this thread.
+    /// Return true if the mutex is locked by this thread.
     bool lockedByThread() const { return _holder == std::this_thread::get_id(); }
+
+    /// This should only be called when _mutex is locked.
+    void setTag(std::string const& funcName, std::string const& lockName) {
+        _tag = funcName + ":" + lockName;
+    }
+
+    /** Return the tag for this mutex, note that '?', '~', '#', and '!' can have
+     *  special meaning. wait() can lock and unlock the mutex and setTag() will
+     *  not be called, but the special characters will be appended to the tag.
+     */
+    std::string const& getTag() const { return _tag; }
 
 protected:
     std::atomic<std::thread::id> _holder;
 
 private:
+    /// While functioning as a mutex for the caller, this also protects the members of this class.
     std::mutex _mutex;
+    std::string _tag{"?"};  ///< Optional for debugging.
+};
+
+class VMtxException : public util::Issue {
+public:
+    explicit VMtxException(util::Issue::Context const& ctx, VMutex const& vmtx, std::string const& msg);
 };
 
 /**
