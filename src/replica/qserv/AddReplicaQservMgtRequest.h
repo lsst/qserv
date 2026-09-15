@@ -65,7 +65,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider A reference to a provider of services for accessing
-     *   Configuration, saving the request's persistent state to the database.
+     *   Config, saving the request's persistent state to the database.
      * @param workerName The name of a worker to send the request to.
      * @param chunk The chunk number.
      * @param databases The names of databases.

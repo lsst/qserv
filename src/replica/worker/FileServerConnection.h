@@ -71,7 +71,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider Is needed to access Configuration, etc.
+     * @param serviceProvider Is needed to access Config, etc.
      * @param workerName The name of a worker this service is acting upon (used
      *   for checking a consistency of the protocol)
      * @param io_service A service object for the network I/O operations

@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/worker/WorkerDeleteRequest.h"
@@ -75,7 +75,7 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, st
         : _serviceProvider(serviceProvider),
           _worker(worker),
           _connectionPool(database::mysql::ConnectionPool::create(
-                  Configuration::qservWorkerDbParams(),
+                  _serviceProvider->config()->qservWorkerDbParams(),
                   serviceProvider->config()->get<size_t>("database", "services-pool-size"))),
           _state(STATE_IS_STOPPED),
           _startTime(util::TimeUtils::now()) {}

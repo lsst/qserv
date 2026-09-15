@@ -7,10 +7,15 @@ target_sources(replica_config PRIVATE
     ConfigParserJSON.cc
     ConfigParserMySQL.cc
     ConfigTable.cc
-    ConfigTestData.cc
+    ConfigTestDataController.cc
+    ConfigTestDataRegistry.cc
+    ConfigTestDataWorker.cc
     ConfigWorker.cc
-    Configuration.cc
-    ConfigurationSchema.cc
+    Config.cc
+    ConfigSchema.cc
+    ConfigSchemaController.cc
+    ConfigSchemaRegistry.cc
+    ConfigSchemaWorker.cc
 )
 target_link_libraries(replica_config PUBLIC
     log

@@ -18,11 +18,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H
-#define LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H
+#ifndef LSST_QSERV_REPLICA_CONFIGEXCEPTIONS_H
+#define LSST_QSERV_REPLICA_CONFIGEXCEPTIONS_H
 
 /**
- * This header defines classes thrown as exceptions on Configuration-specific
+ * This header defines classes thrown as exceptions on Config-specific
  * failures.
  */
 
@@ -34,7 +34,7 @@
 namespace lsst::qserv::replica {
 /**
  * The class ConfigError is the base class representing exceptions thrown by
- * the Configuration service.
+ * the Config service.
  */
 class ConfigError : public std::runtime_error {
 public:
@@ -130,6 +130,15 @@ public:
             : ConfigError(msg), czarName(czarName_) {}
 };
 
+/**
+ * The class ConfigNoSuchParameter represents exceptions thrown when an operation
+ * is attempted on a configuration object with a parameter that does not exist.
+ */
+class ConfigNoSuchParameter : public ConfigError {
+public:
+    using ConfigError::ConfigError;
+};
+
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H
+#endif  // LSST_QSERV_REPLICA_CONFIGEXCEPTIONS_H

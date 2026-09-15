@@ -34,7 +34,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 
 // Third party headers
 #include "boost/asio.hpp"
@@ -183,7 +183,7 @@ private:
     /// Cached connection string for error reporting an debugging
     std::string const _workerHostPort;
 
-    /// Cached database descriptors obtained from the Configuration
+    /// Cached database descriptors obtained from the Config
     DatabaseInfo const _databaseInfo;
 
     /// The cached identifier of a Qserv instance (obtained from the ServiceProvider)

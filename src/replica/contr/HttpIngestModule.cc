@@ -41,7 +41,7 @@
 #include "css/DbInterfaceMySql.h"
 #include "global/constants.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/QservSyncJob.h"
@@ -127,17 +127,15 @@ string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
 void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
-                               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp, string const& subModuleName,
-                               http::AuthType const authType) {
-    HttpIngestModule module(controller, taskName, processorConfig, req, resp);
+                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                               string const& subModuleName, http::AuthType const authType) {
+    HttpIngestModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller, string const& taskName,
-                                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "DATABASES")
@@ -270,7 +268,7 @@ json HttpIngestModule::_addDatabase() {
     string error = ::jobCompletionErrorIfAny(job, "database creation failed");
     if (!error.empty()) throw http::Error(__func__, error);
 
-    // Register the new database in the Configuration.
+    // Register the new database in the Config.
     // Note, this operation will fail if the database with the name
     // already exists. Also, the new database won't have any tables
     // until they will be added as a separate step.
@@ -285,7 +283,7 @@ json HttpIngestModule::_addDatabase() {
                                       to_string(enableAutoBuildDirectorIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
-    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     json result;
@@ -368,9 +366,9 @@ json HttpIngestModule::_publishDatabase() {
     json result;
     result["database"] = config->publishDatabase(database.name).toJson();
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
-    auto const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    auto const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
@@ -477,13 +475,13 @@ json HttpIngestModule::_deleteDatabase() {
     string error = ::jobCompletionErrorIfAny(deleteDbJob, "database deletion failed");
     if (!error.empty()) throw http::Error(__func__, error);
 
-    // Remove database entry from the Configuration. This will also eliminate all
+    // Remove database entry from the Config. This will also eliminate all
     // dependent metadata, such as replicas info
     config->deleteDatabase(database.name);
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
-    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     // Notify Czars about the database removal event.
@@ -606,7 +604,7 @@ json HttpIngestModule::_addTable() {
         table.columns.emplace_back(colName, colType);
     }
 
-    // Register table in the Configuration
+    // Register table in the Config
     json result;
     database = config->addTable(table);
     result["database"] = database.toJson();
@@ -659,9 +657,9 @@ json HttpIngestModule::_addTable() {
         }
     }
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
-    string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    string const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     return result;
@@ -735,13 +733,13 @@ json HttpIngestModule::_deleteTable() {
     string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
     if (!error.empty()) throw http::Error(__func__, error);
 
-    // Remove table entry from the Configuration. This will also eliminate all
+    // Remove table entry from the Config. This will also eliminate all
     // dependent metadata, such as replicas info
     config->deleteTable(database.name, table.name);
 
-    // This step is needed to get workers' Configuration in-sync with its
+    // This step is needed to get workers' Config in-sync with its
     // persistent state.
-    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
 
     // Notify Czars about the table removal event.
@@ -1036,7 +1034,7 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& database, bool a
     string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
-            database.name, config->get<string>("database", "qserv-master-user"), allWorkers, controller(),
+            database.name, config->get<string>("database", "qserv-mysql-user"), allWorkers, controller(),
             noParentJobId, nullptr, config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(SqlGrantAccessJob::typeName(), job, database.family);
@@ -1154,7 +1152,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
         // Statements for granting SELECT authorizations on all tables of
         // the new database to the configured Qserv account.
         string const query = g.grant("ALL", database.name,
-                                     config->get<string>("database", "qserv-master-user"), "localhost");
+                                     config->get<string>("database", "qserv-mysql-user"), "localhost");
         statements.push_back(query);
         h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
             for (auto const& query : statements) {
@@ -1376,11 +1374,12 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     string const context = "database=" + database.name;
     debug(__func__, context);
 
+    auto const config = controller()->serviceProvider()->config();
     bool const saveReplicaInfo = true;
     string const noParentJobId;
-    auto const findAlljob = FindAllJob::create(
-            database.family, saveReplicaInfo, allWorkers, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
+    auto const findAlljob =
+            FindAllJob::create(database.family, saveReplicaInfo, allWorkers, controller(), noParentJobId,
+                               nullptr, config->get<int>("controller", "ingest-priority-level"));
     findAlljob->start();
     logJobStartedEvent(FindAllJob::typeName(), findAlljob, database.family);
     findAlljob->wait();
@@ -1394,8 +1393,8 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     }
 
     bool const force = false;
-    auto const qservSyncJob =
-            QservSyncJob::create(database.family, force, qservSyncTimeoutSec(), controller());
+    auto const qservSyncJob = QservSyncJob::create(
+            database.family, force, config->get<int>("controller", "qserv-sync-timeout"), controller());
     qservSyncJob->start();
     logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
     qservSyncJob->wait();
@@ -1410,7 +1409,8 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
 }
 
 void HttpIngestModule::_notifyCzars(cconfig::DataManagementEvent const& event) const {
-    if (qservChunkMapUpdate()) {
+    auto const config = controller()->serviceProvider()->config();
+    if (config->get<unsigned int>("controller", "chunk-map-update") != 0) {
         // The replica disposition map neeeds to be updated in the database before sending
         // the notification to the czars.
         controller()->serviceProvider()->chunkMap()->update();
