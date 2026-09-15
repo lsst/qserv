@@ -81,9 +81,8 @@ namespace lsst::qserv::qana {
 TableInfo const* TableInfoPool::get(std::string const& db, std::string const& table) {
     std::string const& db_ = db.empty() ? _defaultDb : db;
 
-    // Note that t.kind is irrelevant to the search,
-    // and is set to an arbitrary value.
-    std::unique_ptr<TableInfo const> t(new TableInfo(db, table, TableInfo::DIRECTOR));
+    // Note that t.kind is irrelevant to the search, and is set to an arbitrary value.
+    std::unique_ptr<TableInfo const> t(new TableInfo(db_, table, TableInfo::DIRECTOR));
     auto range = std::equal_range(_pool.begin(), _pool.end(), t, TableInfoLt());
     if (range.first != range.second) {
         LOGS(_log, LOG_LVL_TRACE,
@@ -105,8 +104,12 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
         css::MatchTableParams const& m = tParam.match;
         double angSep = m.angSep;
         std::unique_ptr<MatchTableInfo> infoPtr(new MatchTableInfo(db_, table, angSep));
-        infoPtr->director.first = dynamic_cast<DirTableInfo const*>(get(db_, m.dirTable1));
-        infoPtr->director.second = dynamic_cast<DirTableInfo const*>(get(db_, m.dirTable2));
+        // Note that the director tables of a ref-match table may be in different databases, so use
+        // the partitioning database if it is specified, otherwise use the match table's database.
+        infoPtr->director.first =
+                dynamic_cast<DirTableInfo const*>(get(m.dirDb1.empty() ? db_ : m.dirDb1, m.dirTable1));
+        infoPtr->director.second =
+                dynamic_cast<DirTableInfo const*>(get(m.dirDb2.empty() ? db_ : m.dirDb2, m.dirTable2));
         if (!infoPtr->director.first || !infoPtr->director.second) {
             throw InvalidTableError(db_ + "." + table +
                                     " is a match table, but"

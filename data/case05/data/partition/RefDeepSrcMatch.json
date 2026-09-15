@@ -1,0 +1,25 @@
+{
+    "part":{
+        "pos1":"ra, decl",
+        "pos2":"coord_ra, coord_decl",
+        "flags":"flags"
+    },
+    "in":{
+        "csv":{
+            "field":[
+                "ra",
+                "decl",
+                "coord_ra",
+                "coord_decl",
+                "refObjectId",
+                "deepSourceId",
+                "angSep",
+                "nRefMatches",
+                "nSrcMatches",
+                "closestToRef",
+                "closestToSrc",
+                "flags"
+            ]
+        }
+    }
+}

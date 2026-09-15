@@ -1211,9 +1211,15 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
         if (table.isPublished) continue;
         if (!cssAccess->containsTable(database.name, table.name)) {
             if (table.isRefMatch()) {
+                auto const dirDb1 = table.directorTable.databaseName().empty()
+                                            ? database.name
+                                            : table.directorTable.databaseName();
+                auto const dirDb2 = table.directorTable2.databaseName().empty()
+                                            ? database.name
+                                            : table.directorTable2.databaseName();
                 css::MatchTableParams const matchParams(
-                        table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
-                        table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
+                        dirDb1, table.directorTable.tableName(), table.directorTable.primaryKeyColumn(),
+                        dirDb2, table.directorTable2.tableName(), table.directorTable2.primaryKeyColumn(),
                         table.flagColName, table.angSep);
                 cssAccess->createMatchTable(database.name, table.name, table.schema4css(), matchParams);
             } else {
