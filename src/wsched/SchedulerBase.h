@@ -95,6 +95,7 @@ public:
     virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
     /// Record performance data for the scheduler.
+    /// All functions called by this need to be thread safe.
     virtual void recordPerformanceData();
 
     std::string chunkStatusStr();  //< @return a string

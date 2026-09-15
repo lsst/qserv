@@ -121,7 +121,7 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
 }
 
 void GroupScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     // All the 'cmd's in the vector must be kept in the same group.
     // If there's only one cmd in cmds, it's impossible to split up.
     bool keepInGroup = (cmds.size() > 1);
@@ -131,7 +131,7 @@ void GroupScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
 }
 
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     // keepInThisGroup=false, there's no reason a single cmd needs
     // to be kept in a group.
     _queCmd(cmd, false);
@@ -139,7 +139,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.
 util::Command::Ptr GroupScheduler::getCmd(bool wait) {
-    unique_lock lock(util::CommandQueue::_mx);
+    VLOCKUNIQUE(lock, util::CommandQueue::_mx);
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
     } else if (!_ready()) {
@@ -172,13 +172,13 @@ GroupScheduler::GroupScheduler(string const& name, int maxThreads, int maxReserv
         : SchedulerBase{name, maxThreads, maxReserve, 0, priority}, _maxGroupSize{maxGroupSize} {}
 
 bool GroupScheduler::empty() {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     return _queue.empty();
 }
 
 /// Returns true when a Task is ready to run.
 bool GroupScheduler::ready() {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     return _ready();
 }
 
@@ -190,7 +190,7 @@ bool GroupScheduler::_ready() {
 
 /// Return the number of groups (not Tasks) in the queue.
 size_t GroupScheduler::getSize() const {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     return _queue.size();
 }
 

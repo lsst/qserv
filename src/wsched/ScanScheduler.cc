@@ -96,7 +96,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
     _taskQueue->taskComplete(task);  // does not need _mx protection.
     {
-        VLOCK(util::CommandQueue::_mx, guard);
+        VLOCK(guard, util::CommandQueue::_mx);
         --_inFlight;
         ++_recentlyCompleted;
         LOGS(_log, LOG_LVL_TRACE,
@@ -111,7 +111,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     return _ready();
 }
 
@@ -147,12 +147,12 @@ bool ScanScheduler::_ready() {
 }
 
 size_t ScanScheduler::getSize() const {
-    VLOCK(util::CommandQueue::_mx, lock);
+    VLOCK(lock, util::CommandQueue::_mx);
     return _taskQueue->getSize();
 }
 
 util::Command::Ptr ScanScheduler::getCmd(bool wait) {
-    VLOCKUNIQUE(util::CommandQueue::_mx, lock);
+    VLOCKUNIQUE(lock, util::CommandQueue::_mx);
     LOGS(_log, LOG_LVL_TRACE, "start getCmd " << getName() << " " << _taskQueue->queueInfo());
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
@@ -216,7 +216,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
     }
     // Queue the tasks
     {
-        VLOCK(util::CommandQueue::_mx, lock);
+        VLOCK(lock, util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(qid, tasks.size());
         LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << " uqCount=" << uqCount);
         _taskQueue->queueTask(tasks);
