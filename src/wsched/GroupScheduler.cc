@@ -94,7 +94,7 @@ wbase::Task::Ptr GroupQueue::peekTask() { return _tasks.front(); }
 /// Tasks in the same chunk are grouped together.
 void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup) {
     // Caller must hold util::CommandQueue::_mx
-    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    wbase::Task::Ptr t = dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
@@ -110,7 +110,7 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
     }
     if (!queued) {
         // Wasn't inserted into an existing group, need to make a new group.
-        auto group = std::make_shared<GroupQueue>(_maxGroupSize, t);
+        auto group = make_shared<GroupQueue>(_maxGroupSize, t);
         _queue.push_back(group);
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId(), 1);
@@ -120,8 +120,8 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
     util::CommandQueue::_cv.notify_one();
 }
 
-void GroupScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+void GroupScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
+    VLOCK(util::CommandQueue::_mx, lock);
     // All the 'cmd's in the vector must be kept in the same group.
     // If there's only one cmd in cmds, it's impossible to split up.
     bool keepInGroup = (cmds.size() > 1);
@@ -131,7 +131,7 @@ void GroupScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
 }
 
 void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    VLOCK(util::CommandQueue::_mx, lock);
     // keepInThisGroup=false, there's no reason a single cmd needs
     // to be kept in a group.
     _queCmd(cmd, false);
@@ -139,7 +139,7 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.
 util::Command::Ptr GroupScheduler::getCmd(bool wait) {
-    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+    unique_lock lock(util::CommandQueue::_mx);
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
     } else if (!_ready()) {
@@ -161,24 +161,24 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait) {
 void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     --_inFlight;
     ++_recentlyCompleted;
-    auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    auto t = dynamic_pointer_cast<wbase::Task>(cmd);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
     LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());
 }
 
 /// MaxActiveChunks and resource limitations (aside from available threads) are ignored by the GroupScheduler.
-GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize,
+GroupScheduler::GroupScheduler(string const& name, int maxThreads, int maxReserve, int maxGroupSize,
                                int priority)
         : SchedulerBase{name, maxThreads, maxReserve, 0, priority}, _maxGroupSize{maxGroupSize} {}
 
 bool GroupScheduler::empty() {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    VLOCK(util::CommandQueue::_mx, lock);
     return _queue.empty();
 }
 
 /// Returns true when a Task is ready to run.
 bool GroupScheduler::ready() {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    VLOCK(util::CommandQueue::_mx, lock);
     return _ready();
 }
 
@@ -189,8 +189,8 @@ bool GroupScheduler::_ready() {
 }
 
 /// Return the number of groups (not Tasks) in the queue.
-std::size_t GroupScheduler::getSize() const {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+size_t GroupScheduler::getSize() const {
+    VLOCK(util::CommandQueue::_mx, lock);
     return _queue.size();
 }
 

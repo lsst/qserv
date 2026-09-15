@@ -32,32 +32,59 @@
 
 #include "util/Bug.h"
 
+/// Complicated preprocessor logic to allow VMutex to be enabled for unit testing,
+/// and disabled for production, while not producing compiler warnings.
+#ifdef NOT_USING_VMUTEX
+#define USING_VMUTEX_VAL 0
+#else
+#define USING_VMUTEX_VAL 1
+#endif
+
 #ifdef MUTEX_UNITTEST
 #undef USING_VMUTEX
 #define USING_VMUTEX 1
 #else
-#define USING_VMUTEX 0
+#define USING_VMUTEX USING_VMUTEX_VAL
 #endif
 
-#if USING_VMUTEX
+#if USING_VMUTEX != 0
 
+#define VMUTEX util::VMutex
 #define MUTEX util::Mutex
 
 /// Used to verify a mutex is locked before accessing a protected variable.
 #define VMUTEX_HELD(vmtx) \
-    if (!vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not locked!");
+    if (!vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "not locked!");
 
 /// Used to verify a mutex is not locked by this thread before locking a related mutex.
 #define VMUTEX_NOT_HELD(vmtx) \
-    if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not unlocked!");
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "not held!");
+
+/// Define a lock_guard for a VMutex, verifying that the VMutex is not already locked
+/// by this thread. This also helps avoid "lock_guard (vmtx);" which compiles but
+/// does not hold the mutex past that statement.
+#define VLOCK(vmtx, lName)                                                                               \
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "already locked!"); \
+    std::lock_guard<lsst::qserv::util::VMutex> const lName(vmtx);                                        \
+    vmtx.setTag(__func__, #lName);
+
+/// Define a unique_lock for a VMutex, verifying that the VMutex is not already locked
+/// by this thread.
+#define VLOCKUNIQUE(vmtx, lName)                                                                         \
+    if (vmtx.lockedByThread()) throw lsst::qserv::util::VMtxException(ERR_LOC, vmtx, "already locked!"); \
+    std::unique_lock<lsst::qserv::util::VMutex> lName(vmtx);                                             \
+    vmtx.setTag(__func__, #lName);
 
 #else  // not USING_VMUTEX
 
+#define VMUTEX std::mutex
 #define MUTEX std::mutex
 
 #define VMUTEX_HELD(vmtx) ;
 
 #define VMUTEX_NOT_HELD(vmtx) ;
+
+#define VLOCK(vmtx, lName) std::lock_guard<std::mutex> const lName(vmtx);
 
 #endif  // USING_VMUTEX
 
@@ -71,21 +98,24 @@ namespace lsst::qserv::util {
 /// Making VMutex a wrapper around std::mutex instead of a child causes lines
 /// like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
 /// which is desirable.
-/// Unfortunately, VMutex won't work with condition_variable as those explicitly
-/// expect std::mutex.
+/// VMutex does work with std::condition_variable_any.
 class VMutex {
 public:
-    explicit VMutex() {}
+    VMutex() {}
+    VMutex(VMutex const&) = delete;
+    ~VMutex() = default;
 
     /// Lock the mutex (replaces the corresponding method of the base class)
     void lock() {
         _mutex.lock();
         _holder = std::this_thread::get_id();
+        _tag = "?";
     }
 
     /// Release the mutex (replaces the corresponding method of the base class)
     void unlock() {
         _holder = std::thread::id();
+        _tag = "?";
         _mutex.unlock();
     }
 
@@ -93,6 +123,7 @@ public:
         bool res = _mutex.try_lock();
         if (res) {
             _holder = std::this_thread::get_id();
+            _tag = "?";
         }
         return res;
     }
@@ -100,22 +131,37 @@ public:
     /// @return true if the mutex is locked by this thread.
     bool lockedByThread() const { return _holder == std::this_thread::get_id(); }
 
+    /// This should only be called when _mutex is locked.
+    void setTag(std::string const& funcName, std::string const& lockName) {
+        _tag = funcName + ":" + lockName;
+    }
+    std::string const& getTag() const { return _tag; }
+
 protected:
     std::atomic<std::thread::id> _holder;
 
 private:
+    /// While functioning as a mutex for the caller, this also protects the members of this class.
     std::mutex _mutex;
+    std::string _tag{"?"};  ///< Optional for debugging.
+};
+
+class VMtxException : public util::Issue {
+public:
+    explicit VMtxException(util::Issue::Context const& ctx, VMutex const& vmtx, std::string const& msg);
 };
 
 /**
  * Class Mutex extends the standard class std::mutex with extra methods.
+ * Note: This class adds a second mutex lock and an O log n operation
+ *       to the lock/unlock methods. n can be large.
  */
 class Mutex : public VMutex {
 public:
     /// @return identifiers of locked mutexes
-    static std::set<unsigned int> lockedId() {
+    static std::set<uint64_t> lockedId() {
         // make a consistent snapshot of the collection to be returned
-        std::set<unsigned int> result;
+        std::set<uint64_t> result;
         std::lock_guard<std::mutex> lg(_lockedIdMtx);
         result = _lockedId;
         return result;
@@ -144,12 +190,12 @@ public:
     }
 
     /// @return unique identifier of a lock
-    unsigned int id() const { return _id; }
+    uint64_t id() const { return _id; }
 
 private:
     /// @return next identifier in a global series
-    static unsigned int nextId() {
-        static std::atomic<unsigned int> id{0};
+    static uint64_t nextId() {
+        static std::atomic<uint64_t> id{0};
         return id++;
     }
 
@@ -167,9 +213,9 @@ private:
 
 private:
     static std::mutex _lockedIdMtx;
-    static std::set<unsigned int> _lockedId;
+    static std::set<uint64_t> _lockedId;
 
-    unsigned int _id;
+    uint64_t _id;  ///< This could get very large. Wrapping could cause false positives.
 };
 
 /**
