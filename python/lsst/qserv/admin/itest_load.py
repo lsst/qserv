@@ -463,18 +463,24 @@ def _remove_database(
             execute(cursor, sql)
 
 
-def _get_cases(cases: list[str] | None, test_cases_data: list[dict[Any, Any]]) -> list[dict[Any, Any]]:
-    """Get the test case data for the cases listed in cases.
+def _get_cases(
+    cases: list[str] | None,
+    test_cases_data: list[dict[Any, Any]],
+) -> list[dict[Any, Any]]:
+    """Get the test case data for the cases listed in `cases`. Multi-database cases expand into fixtures with
+       sequential IDs, and database order within each test case is preserved.
 
     Parameters
     ----------
-    Same as `cases` and `test_case_data` parameters of `load`.
+    cases : `list` [`str`] or `None`
+        Which case IDs to select in given order. None / empty list selects all.
+    test_cases_data : `list` [`dict`]
+        Dicts whose values will be used to initialize a LoadDb class instance.
 
     Returns
     -------
-    selected_cases : `list`
-        The test cases from `test_cases_data` that are named in `cases`,
-        or all the `test_cases_data` if `cases` does not name cases.
+    databases : `list`
+        A list of database configurations
 
     Raises
     ------
@@ -482,14 +488,24 @@ def _get_cases(cases: list[str] | None, test_cases_data: list[dict[Any, Any]]) -
         If `cases` names a case that is not in `test_cases_data`.
     """
     if cases:
-        db_data = {db["id"]: db for db in test_cases_data}
+        by_id = {case["id"]: case for case in test_cases_data}
         try:
-            cases_data = [db_data[case] for case in cases]
+            cases_data = [by_id[case] for case in cases]
         except KeyError as e:
             raise RuntimeError(f"{e.args[0]} is not in {test_cases_data}") from None
     else:
         cases_data = test_cases_data
-    return cases_data
+
+    databases = []
+    for case in cases_data:
+        if "databases" not in case:
+            databases.append(case)
+            continue
+        fixtures = [
+            dict(db, id=f"{case['id']}/{i}") for i, db in enumerate(case["databases"])
+        ]
+        databases.extend(fixtures)
+    return databases
 
 
 def prepare_data(
@@ -605,5 +621,5 @@ def remove(
     Same as same-named arguments to `load`.
     """
     cases_data = _get_cases(cases, test_cases_data)
-    for case_data in cases_data:
+    for case_data in reversed(cases_data):
         _remove_database(case_data, ref_db_admin, repl_ctrl_uri, auth_key, admin_auth_key)
