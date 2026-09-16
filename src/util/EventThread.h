@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "util/Command.h"
+#include "util/Mutex.h"
 
 namespace lsst::qserv::util {
 
@@ -81,7 +82,7 @@ public:
     /// waiting on the queue that a command is available.
     virtual void queCmd(Command::Ptr const& cmd) {
         {
-            std::lock_guard<std::mutex> lock(_mx);
+            VLOCK(lock, _mx);
             _qu.push_back(cmd);
         }
         notify(false);  // notify all=false
@@ -93,7 +94,7 @@ public:
     /// Get a command off the queue.
     /// If wait is true, wait until a message is available.
     virtual Command::Ptr getCmd(bool wait = true) {
-        std::unique_lock<std::mutex> lock(_mx);
+        VLOCKUNIQUE(lock, _mx);
         if (wait) {
             _cv.wait(lock, [this]() { return !_qu.empty(); });
         }
@@ -106,7 +107,7 @@ public:
     };
 
     virtual size_t size() {
-        std::lock_guard<std::mutex> lock(_mx);
+        VLOCK(lock, _mx);
         return _qu.size();
     }
 
@@ -123,9 +124,9 @@ public:
     virtual void commandFinish(Command::Ptr const&) {};  //< Derived methods must be thread safe.
 
 protected:
-    std::deque<Command::Ptr> _qu{};
-    std::condition_variable _cv{};
-    mutable std::mutex _mx{};
+    std::deque<Command::Ptr> _qu;
+    std::condition_variable_any _cv;
+    mutable VMUTEX _mx;
 };
 
 /// An event driven thread, the event loop is in handleCmds().
@@ -205,7 +206,7 @@ private:
     std::atomic<int> _count{0};
     std::chrono::milliseconds _sleepTime{1000};  ///< Wait time before checking, only if queue is empty.
     std::queue<EventThread::Ptr> _eventThreads;  ///< Queue of EventThreads that need joining.
-    std::mutex _mtxJoiner;                       ///< Protects _eventThreads
+    VMUTEX _mtxJoiner;                           ///< Protects _eventThreads
     std::thread _tJoiner;                        ///< Thread where joining will happen.
 };
 

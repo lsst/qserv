@@ -65,18 +65,8 @@ std::ostream& operator<<(std::ostream& os, Timer const& timer) {
     return os;
 }
 
-LockGuardTimed::LockGuardTimed(std::mutex& mtx, std::string const& note) : _mtx(mtx), _note(note) {
-    timeToLock.start();
-    _mtx.lock();
-    timeToLock.stop();
-    timeHeld.start();
-}
-
-LockGuardTimed::~LockGuardTimed() {
-    _mtx.unlock();
-    timeHeld.stop();
-    LOGS(_log, LOG_LVL_DEBUG,
-         "lockTime " << _note << " toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
+void LockGuardLog(time_t timeToLock, time_t timeHeld, std::string const& note) {
+    LOGS(_log, LOG_LVL_DEBUG, "lockTime " << note << " toLock=" << timeToLock << " held=" << timeHeld);
 }
 
 TimerHistogram::TimerHistogram(std::string const& label, std::vector<double> const& times) : _label(label) {
