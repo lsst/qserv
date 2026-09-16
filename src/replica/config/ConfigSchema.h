@@ -151,10 +151,19 @@ public:
 
 protected:
     /**
-     * @brief Construct a ConfigSchema object with the given JSON schema.
-     * @param schemaJson The JSON object representing the configuration schema.
+     * The method is meant to avoid code duplication in subclasses by providing a convenient way
+     * to access specific sections of the shared schema.
+     * @param category The name of the category within the shared schema.
+     * @return nlohmann::json The JSON object with a collection of parameters.
+     *   of the schema.
      */
-    ConfigSchema(nlohmann::json const& schemaJson);
+    static nlohmann::json sharedSchema(std::string const& category);
+
+    /**
+     * Construct a ConfigSchema object with the given JSON schema.
+     * @param schema The JSON object representing the configuration schema.
+     */
+    ConfigSchema(nlohmann::json const& schema);
 
 private:
     /**
@@ -171,8 +180,8 @@ private:
     template <typename T>
     T _attributeValue(std::string const& category, std::string const& param, std::string const& attr,
                       T const& defaultValue) const {
-        auto const categoryItr = _schemaJson.find(category);
-        if (categoryItr != _schemaJson.end()) {
+        auto const categoryItr = _schema.find(category);
+        if (categoryItr != _schema.end()) {
             auto const paramItr = categoryItr->find(param);
             if (paramItr != categoryItr->end()) {
                 auto const attrItr = paramItr->find(attr);
@@ -227,7 +236,7 @@ private:
      *     the dependent automation tools to avoid exposing sensitive information in log files,
      *     reports, etc.
      */
-    nlohmann::json _schemaJson = nlohmann::json::object();
+    nlohmann::json _schema = nlohmann::json::object();
 };
 
 }  // namespace lsst::qserv::replica
