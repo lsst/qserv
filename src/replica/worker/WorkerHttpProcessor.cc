@@ -149,7 +149,7 @@ void WorkerHttpProcessor::drain() {
 void WorkerHttpProcessor::reconfig() {
     LOGS(_log, LOG_LVL_DEBUG, _CONTEXT);
     replica::Lock lock(_mtx, _CONTEXT);
-    _serviceProvider->config()->reload();
+    _serviceProvider->config()->update();
 }
 
 json WorkerHttpProcessor::createReplica(protocol::QueuedRequestHdr const& hdr,

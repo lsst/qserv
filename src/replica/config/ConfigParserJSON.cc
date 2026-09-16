@@ -28,8 +28,15 @@
 // Qserv headers
 #include "replica/config/ConfigExceptions.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
 using json = nlohmann::json;
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ConfigParserJSON");
+}  // namespace
 
 namespace lsst::qserv::replica {
 
@@ -71,14 +78,22 @@ void ConfigParserJSON::parse(json const& obj) {
                 string const& param = itr.key();
                 json const& inParamObj = itr.value();
 
-                // Skip missing parameters
-                if (outCategoryObj.count(param) == 0) continue;
-
+                // Skip unknown parameters
+                if (outCategoryObj.count(param) == 0) {
+                    LOGS(_log, LOG_LVL_WARN,
+                         _context + "skipping unknown parameter ('" + category + "','" + param + "')");
+                    continue;
+                }
+                // IMPORTANT: The type comparision is made based on the name of the types rather than
+                // on the specific enum values of the types. This approach allows to treat the numeric
+                // types `number_integer` and `number_unsigned` uniformly. The configuration system
+                // does not distinguish between these numeric types.
                 json& outParamObj = outCategoryObj[param];
-                if (inParamObj.type() != outParamObj.type()) {
-                    throw std::invalid_argument(_context +
-                                                " no transient schema match for the parameter, category: '" +
-                                                category + "' param: '" + param + "'.");
+                if (inParamObj.type_name() != outParamObj.type_name()) {
+                    throw std::invalid_argument(
+                            _context + " no transient schema match for the parameter type, parameter: ('" +
+                            category + "','" + param + "'), expected type: '" + outParamObj.type_name() +
+                            "', actual type: '" + inParamObj.type_name() + "'");
                 }
                 if (inParamObj.is_string()) {
                     _storeGeneralParameter<string>(outParamObj, inParamObj, category, param);
@@ -89,9 +104,9 @@ void ConfigParserJSON::parse(json const& obj) {
                 } else if (inParamObj.is_number_float()) {
                     _storeGeneralParameter<double>(outParamObj, inParamObj, category, param);
                 } else {
-                    throw invalid_argument(
-                            _context + " unsupported transient schema type for the parameter, category: '" +
-                            category + "' param: '" + param + "'.");
+                    throw invalid_argument(_context +
+                                           " unsupported transient schema type for the parameter ('" +
+                                           category + "','" + param + "')");
                 }
             }
         }
