@@ -36,12 +36,14 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
+
 #include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "protojson/ScanTableInfo.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
+#include "qdisp/TmpTableName.h"
 #include "qdisp/UberJob.h"
 #include "qmeta/JobStatus.h"
 #include "util/EventThread.h"
@@ -105,6 +107,9 @@ public:
     /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
     /// UberJobs in the future, if needed.
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
+
+    /// Set the name of the primary database for the query.
+    void setQueryDbName(std::string const& dbName) { _queryDbName = dbName; }
 
     /// Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
@@ -188,10 +193,6 @@ public:
     /// @see python module lsst.qserv.czar.proxy.unlock()
     void updateProxyMessages();
 
-    /// Call UserQuerySelect::buildAndSendUberJobs make new UberJobs for
-    /// unassigned jobs.
-    virtual void assignJobsToUberJobs();
-
     int getTotalJobs() { return _totalJobs; }
 
     /// Add an error code and message that may be displayed to the user.
@@ -252,12 +253,18 @@ public:
         _resultFileSizeErr = resultFileSizeErr;
     }
 
+    /// Use the query and jobs information in the executive to construct and run whatever
+    /// UberJobs are needed. This can be called multiple times by Czar::_monitor
+    /// to reassign failed jobs or jobs that were never assigned.
+    virtual void buildAndSendUberJobs();
+
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
               std::shared_ptr<qmeta::QProgress> const& queryProgress,
               std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-              std::shared_ptr<qproc::QuerySession> const& querySession, unsigned int maxJobAttempts);
+              std::shared_ptr<qproc::QuerySession> const& querySession, unsigned int maxJobAttempts,
+              int uberJobMaxChunks);
 
 private:
     void _setupLimit();
@@ -382,6 +389,17 @@ private:
     std::atomic<bool> _resultFileSizeExceeded{false};
     /// The size of the result that that exceeded the limit.
     std::atomic<int64_t> _resultFileSizeErr{0};
+
+    /// The maximum number of chunks allowed in an UberJob, set from config.
+    int const _uberJobMaxChunks;         ///< Maximum number of chunks in an UberJob, from config.
+    std::atomic<int> _uberJobIdSeq{1};   ///< Sequence number for UberJobs in this query.
+    std::shared_ptr<TmpTableName> _ttn;  ///< Temporary table name generator.
+
+    /// Primary database name for the query, unknown at the time of Executive construction.
+    std::string _queryDbName;
+
+    /// Only one thread should run buildAndSendUberJobs() for this query at a time.
+    std::mutex _buildUberJobMtx;
 };
 
 }  // namespace lsst::qserv::qdisp
