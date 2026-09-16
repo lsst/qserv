@@ -25,6 +25,7 @@
 // System headers
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <thread>
 
 // Qserv headers
@@ -94,12 +95,34 @@ string Config::_context(string const& func) { return "CONFIG  " + func; }
 Config::Config(ConfigSchema const& configSchema)
         : _configSchema(configSchema), _data(configSchema.defaultConfigData()) {}
 
-void Config::reload() {
+void Config::update() {
     replica::Lock const lock(_mtx, _context(__func__));
     _loadFromMySQL(lock);
 }
 
-void Config::reload(json const& obj) {
+void Config::update(json const& obj) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    _loadFromJSON(lock, obj);
+}
+
+void Config::update(string const& configFile) {
+    ifstream input(configFile);
+    if (!input.is_open()) {
+        throw invalid_argument(_context(__func__) + " unable to open file: " + configFile);
+    }
+
+    // The loader method called below requires the JSON object to have a "general" section.
+    // Shifting the parameters into this section also prevents an injection of parameters outside
+    // the "general" section (such as "database_families", "databases", etc.).
+    json obj = {{"general", json::object()}};
+    try {
+        json generalParametersObj;
+        input >> generalParametersObj;
+        obj["general"] = generalParametersObj;
+    } catch (json::parse_error const& ex) {
+        throw invalid_argument(_context(__func__) + " unable to parse JSON from file: " + configFile +
+                               " error: " + string(ex.what()));
+    }
     replica::Lock const lock(_mtx, _context(__func__));
     _loadFromJSON(lock, obj);
 }
