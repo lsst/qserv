@@ -122,19 +122,69 @@ public:
     ConfigSchema const& configSchema() const { return _configSchema; }
 
     /**
-     * Reload non-general parameters of the Config from the persistent backend (MySQL).
-     * @throws ConfigNoSuchParameter If the parameter (database,repl-db-conn) doesn't exist
-     *   in the configuration.
+     * Update values of non-general parameters of the Config from the persistent
+     * backend (MySQL).
+     * @throws ConfigNoSuchParameter If the general parameter (database,repl-db-conn)
+     *  was not found in the configuration.
      */
-    void reload();
+    void update();
 
     /**
-     * Reload parameters of the Config from the given JSON object.
+     * Update parameters of the Config from the given JSON object.
+     *
+     * The JSON object is expected to have the following schema:
+     * @code
+     *   {
+     *     "general": {
+     *       <category-name>: {
+     *         <param-name>: <value>,
+     *         ...
+     *       },
+     *       ...
+     *     },
+     *     "workers": [
+     *       <object>,
+     *       ...
+     *     ],
+     *     "database_families": [
+     *       <object>,
+     *       ...
+     *     ],
+     *     "databases": [
+     *       <object>,
+     *       ...
+     *     ],
+     *     "czars": [
+     *       <object>,
+     *       ...
+     *     ]
+     *   }
+     * @endcode
      * @param obj The input configuration parameters.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with expectations of the transient schema.
      */
-    void reload(nlohmann::json const& obj);
+    void update(nlohmann::json const& obj);
+
+    /**
+     * Update general parameters from a configuration file. The file is expected to be
+     * in JSON format.
+     *
+     * The JSON object is expected to have the following schema:
+     * @code
+     *   {
+     *     <category-name>: {
+     *       <param-name>: <value>,
+     *       ...
+     *     },
+     *     ...
+     *   }
+     * @endcode
+     * @param configFile The path to the configuration file.
+     * @throw std::runtime_error If the input configuration is not consistent
+     *   with expectations of the transient schema.
+     */
+    void update(std::string const& configFile);
 
     /**
      * Return a connection object for the replication database with the name of
