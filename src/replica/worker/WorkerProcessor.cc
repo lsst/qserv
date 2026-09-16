@@ -140,7 +140,7 @@ void WorkerProcessor::drain() {
 void WorkerProcessor::reconfig() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     replica::Lock lock(_mtx, _context(__func__));
-    _serviceProvider->config()->reload();
+    _serviceProvider->config()->update();
 }
 
 void WorkerProcessor::enqueueForReplication(string const& id, int32_t priority,

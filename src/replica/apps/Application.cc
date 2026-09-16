@@ -47,8 +47,7 @@ Application::Application(int argc, const char* const argv[], string const& descr
                          bool const enableServiceProvider, ConfigSchema const& configSchema)
         : _enableServiceProvider(enableServiceProvider),
           _configSchema(configSchema),
-          _parser(argc, argv, description),
-          _debugFlag(false) {
+          _parser(argc, argv, description) {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
     GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -64,6 +63,14 @@ int Application::run() {
                   _debugFlag);
 
     if (_enableServiceProvider) {
+        parser().option(
+                "config",
+                "Path to the configuration file for the application. Note that values of the parameters"
+                " specified in this file will override the default values from the configuration schema."
+                " Values of the parameters could also be refined via command-line options. The command-line"
+                " options will take precedence over the values specified in the configuration file.",
+                _configFile);
+
         // Inject options for the general configuration parameters.
         for (auto&& itr : _configSchema.parameters()) {
             string const& category = itr.first;
@@ -100,8 +107,14 @@ int Application::run() {
         // Create and initialze the configuration object.
         auto const config = Config::load(_configSchema);
 
-        // Apply user-specified values of the general configuration parameters to the configuration object.
-        // Note that options specified by a user will have non-empty values.
+        // Apply the user-specified configuration file if provided. These parameters will override
+        // the default values specified in the configuration schema.
+        if (!_configFile.empty()) {
+            config->update(_configFile);
+        }
+
+        // Apply/update user-specified values of the general configuration parameters to the configuration
+        // object. Note that options specified by a user will have non-empty values.
         for (auto&& categoryItr : _generalParams) {
             string const& category = categoryItr.first;
             for (auto&& paramItr : categoryItr.second) {
@@ -132,7 +145,7 @@ int Application::run() {
             // Otherwise, the method will keep tracking the schema version for a duration of time
             // specified by the option --schema-upgrade-wait-timeout.
             if (config->exists("database", "repl-db-conn")) {
-                config->reload();
+                config->update();
             }
         }
 

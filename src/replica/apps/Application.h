@@ -114,8 +114,11 @@ private:
     /// For parsing command-line parameters, options and flags
     Parser _parser;
 
+    /// Path to the configuration file for the application.
+    std::string _configFile;
+
     /// The standard flag which would turn on the debug output if requested
-    bool _debugFlag;
+    bool _debugFlag = false;
 
     /// General parameters extracted from the command line and applied to the configuration object.
     std::map<std::string, std::map<std::string, std::string>> _generalParams;
