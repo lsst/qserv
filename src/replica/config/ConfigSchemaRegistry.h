@@ -24,6 +24,9 @@
 // Qserv headers
 #include "replica/config/ConfigSchema.h"
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -37,6 +40,9 @@ public:
     ConfigSchemaRegistry(ConfigSchemaRegistry const&) = default;
     ConfigSchemaRegistry& operator=(ConfigSchemaRegistry const&) = default;
     ~ConfigSchemaRegistry() = default;
+
+private:
+    static nlohmann::json _build();
 };
 
 }  // namespace lsst::qserv::replica
