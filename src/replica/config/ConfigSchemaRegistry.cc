@@ -23,6 +23,7 @@
 #include "replica/config/ConfigSchemaRegistry.h"
 
 // System headers
+#include <algorithm>
 #include <thread>
 
 // Qserv headers
@@ -37,77 +38,33 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-int const max_listen_connections = boost::asio::socket_base::max_listen_connections;
-int const num_threads = thread::hardware_concurrency();
+unsigned int const max_listen_connections = boost::asio::socket_base::max_listen_connections;
+unsigned int const num_threads = max(1U, thread::hardware_concurrency());
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-json const registrySchemaJson = json::object(
-        {{"common",
-          {{"asio-num-threads",
-            {{"description", "The number of shared threads managed by BOOST ASIO. Must be greater than 0."},
-             {"default", min(8, num_threads)}}},
-           {"request-buf-size-bytes",
-            {{"description", "The default buffer size for network communications. Must be greater than 0."},
-             {"default", 4096}}}}},
-         {"security",
-          {{"auth-key",
-            {{"description",
-              "An authorization key for operations affecting the state of Qserv or"
-              " the Replication/Ingest system."},
-             {"empty-allowed", 1},
-             {"security-context", 1},
-             {"default", ""}}},
-           {"admin-auth-key",
-            {{"description",
-              "An administrator-level authorization key for critical operations affecting"
-              " the state of Qserv of the Replication/Ingest system."},
-             {"empty-allowed", 1},
-             {"security-context", 1},
-             {"default", ""}}},
-           {"http-user",
-            {{"description", "The login name of a user for connecting to the Replication service."},
-             {"empty-allowed", 1},
-             {"default", ""}}},
-           {"http-password",
-            {{"description",
-              "The login password of a user for connecting to the Replication service. The value "
-              "of the password is ignored if the user is not specified. The password will be used for"
-              " authenticating the user. The password can't be empty if the user is specified."},
-             {"empty-allowed", 1},
-             {"security-context", 1},
-             {"default", ""}}},
-           {"instance-id",
-            {{"description",
-              "A unique identifier of a Qserv instance served by the Replication System."
-              " Its value will be passed along various internal communication lines of"
-              " the system to ensure that all services are related to the same instance."
-              " This mechanism also prevents 'cross-talks' between two (or many) Replication"
-              " System's setups in case of an accidental mis-configuration."},
-             {"default", "qserv"}}}}},
-         {"registry",
-          {{"host",
-            {{"description", "The IP address or the DNS host name for the registry's HTTP server."},
-             {"default", "localhost"}}},
-           {"port",
-            {{"description", "The port number for the registry's HTTP server. Must be greater than 0."},
-             {"default", 25082}}},
-           {"max-listen-conn",
-            {{"description",
-              "The maximum length of the queue of pending connections sent to the registry's HTTP server."
-              " Must be greater than 0."},
-             {"default", max_listen_connections}}},
-           {"threads",
-            {{"description",
-              "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
-             {"default", min(8, num_threads)}}},
-           {"heartbeat-ival-sec",
-            {{"description",
-              "The heartbeat interval for interactions with the workers Registry service. Must be greater "
-              "than 0."},
-             {"default", 5}}}}}});
+json ConfigSchemaRegistry::_build() {
+    json schema = json::object();
+    for (auto const& category : {"common", "registry", "security"}) {
+        schema[category] = ConfigSchema::sharedSchema(category);
+    }
 
-ConfigSchemaRegistry::ConfigSchemaRegistry() : ConfigSchema(registrySchemaJson) {}
+    // Add Registry-specific parameters to the category.
+    json& registry = schema["registry"];
+    registry["max-listen-conn"] = {
+            {"description",
+             "The maximum length of the queue of pending connections sent to the registry's HTTP server."
+             " Must be greater than 0."},
+            {"default", max_listen_connections}};
+    registry["threads"] = {
+            {"description",
+             "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
+            {"default", min(8U, num_threads)}};
+
+    return schema;
+}
+
+ConfigSchemaRegistry::ConfigSchemaRegistry() : ConfigSchema(ConfigSchemaRegistry::_build()) {}
 
 }  // namespace lsst::qserv::replica
