@@ -156,9 +156,9 @@ InputLines const makeInputLines(ConfigStore const& config) {
         if (stat.type() == fs::regular_file && fs::file_size(p) > 0) {
             paths.push_back(p);
         } else if (stat.type() == fs::directory_file) {
-            for (fs::directory_iterator d(p), de; d != de; ++d) {
-                if (d->status().type() == fs::regular_file && fs::file_size(p) > 0) {
-                    paths.push_back(d->path());
+            for (auto const& entry : fs::directory_iterator(p)) {
+                if (entry.status().type() == fs::regular_file && fs::file_size(entry.path()) > 0) {
+                    paths.push_back(entry.path());
                 }
             }
         }
