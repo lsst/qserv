@@ -71,13 +71,13 @@ public:
     virtual ~TestInfo() {}
 
     bool goWait() {
-        unique_lock ulock(_infoMtx);
+        VLOCKUNIQUE(ulock, _infoMtx);
         _infoCV.wait(ulock, [this]() { return _go == true; });
         return _ok;
     }
 
     void setGo(bool val) {
-        lock_guard lg(_infoMtx);
+        VLOCK(lg, _infoMtx);
         _go = val;
         _infoCV.notify_all();
     }
@@ -102,8 +102,8 @@ public:
 private:
     bool _ok = true;
     bool _go = true;
-    mutex _infoMtx;
-    condition_variable _infoCV;
+    VMUTEX _infoMtx;
+    condition_variable_any _infoCV;
 };
 
 /// Version of UberJob specifically for this unit test.

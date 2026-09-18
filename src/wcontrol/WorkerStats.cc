@@ -45,7 +45,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.WorkerStats");
 namespace lsst::qserv::wcontrol {
 
 WorkerStats::Ptr WorkerStats::_globalWorkerStats;
-MUTEX WorkerStats::_globalMtx;
+VMUTEX WorkerStats::_globalMtx;
 
 void WorkerStats::setup() {
     lock_guard lg(_globalMtx);

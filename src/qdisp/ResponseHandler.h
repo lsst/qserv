@@ -25,7 +25,6 @@
 
 // System headers
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 

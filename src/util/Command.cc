@@ -43,7 +43,7 @@ namespace lsst::qserv::util {
 /// Set status to COMPLETE and notify everyone waiting for a status change.
 void Tracker::setComplete() {
     {
-        std::lock_guard<std::mutex> lock(_trMutex);
+        VLOCK(lock, _trMutex);
         _trStatus = Status::COMPLETE;
     }
     _trCV.notify_all();
@@ -51,13 +51,13 @@ void Tracker::setComplete() {
 
 /// Check if the action is complete without waiting.
 bool Tracker::isFinished() {
-    std::lock_guard<std::mutex> lock(_trMutex);
+    VLOCK(lock, _trMutex);
     return _trStatus == Status::COMPLETE;
 }
 
 /// Wait until this Tracker's action is complete.
 void Tracker::waitComplete() {
-    std::unique_lock<std::mutex> lock(_trMutex);
+    VLOCKUNIQUE(lock, _trMutex);
     _trCV.wait(lock, [this]() { return _trStatus == Status::COMPLETE; });
 }
 

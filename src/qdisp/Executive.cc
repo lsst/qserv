@@ -209,7 +209,7 @@ void Executive::setQueryId(QueryId id) {
 }
 
 UberJob::Ptr Executive::findUberJob(UberJobId ujId) const {
-    lock_guard<mutex> lgMap(_uberJobsMapMtx);
+    VLOCK(lgMap, _uberJobsMapMtx);
     auto iter = _uberJobsMap.find(ujId);
     if (iter == _uberJobsMap.end()) {
         return nullptr;
@@ -273,7 +273,7 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
 
 void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     {
-        lock_guard<mutex> lck(_uberJobsMapMtx);
+        VLOCK(lck, _uberJobsMapMtx);
         UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
         LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
@@ -304,7 +304,7 @@ void Executive::waitForAllJobsToStart() {
 }
 
 Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
-    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    VLOCK(lck, _chunkToJobMapMtx);
 
     ChunkIdJobMapType unassignedMap;
     for (auto const& [key, jobPtr] : _chunkToJobMap) {
@@ -320,7 +320,7 @@ string Executive::dumpUberJobCounts() const {
     os << "exec=" << getIdStr();
     int totalJobs = 0;
     {
-        lock_guard<mutex> ujmLck(_uberJobsMapMtx);
+        VLOCK(ujmLck, _uberJobsMapMtx);
         for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
             int jobCount = ujPtr->getJobCount();
             totalJobs += jobCount;
@@ -328,7 +328,7 @@ string Executive::dumpUberJobCounts() const {
         }
     }
     {
-        lock_guard jmLck(_jobMapMtx);
+        VLOCK(jmLck, _jobMapMtx);
         os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
     }
     return os.str();
@@ -337,7 +337,7 @@ string Executive::dumpUberJobCounts() const {
 void Executive::addMultiError(int errorCode, int subError, std::string const& errorMsg, bool logLvlErr) {
     util::Error err(errorCode, subError, errorMsg, logLvlErr);
     {
-        lock_guard<mutex> lock(_errorsMutex);
+        VLOCK(lock, _errorsMutex);
         _multiError.insert(err);
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
@@ -346,7 +346,7 @@ void Executive::addMultiError(int errorCode, int subError, std::string const& er
 
 void Executive::addMultiError(util::MultiError const& multiErr) {
     {
-        lock_guard<mutex> lock(_errorsMutex);
+        VLOCK(lock, _errorsMutex);
         _multiError.merge(multiErr);
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
@@ -358,7 +358,7 @@ void Executive::addMultiError(util::MultiError const& multiErr) {
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     auto entry = pair<int, JobQuery::Ptr>(job->getJobId(), job);
-    lock_guard lockJobMap(_jobMapMtx);
+    VLOCK(lockJobMap, _jobMapMtx);
     bool res = _jobMap.insert(entry).second;
     _totalJobs = _jobMap.size();
     return res;
@@ -381,7 +381,7 @@ bool Executive::join() {
 
     int sCount = 0;
     {
-        lock_guard lockJobMap(_jobMapMtx);
+        VLOCK(lockJobMap, _jobMapMtx);
         sCount = count_if(_jobMap.begin(), _jobMap.end(), successF::func);
     }
     if (sCount == _requestCount) {
@@ -412,7 +412,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
     LOGS(_log, LOG_LVL_TRACE, "Executive::markCompleted " << success);
     if (!success && !isRowLimitComplete()) {
         {
-            lock_guard<mutex> lock(_incompleteJobsMutex);
+            VLOCK(lock, _incompleteJobsMutex);
             if (_incompleteJobs.count(jobId) == 0) {
                 string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                              " size=" + to_string(_incompleteJobs.size());
@@ -429,14 +429,14 @@ void Executive::markCompleted(JobId jobId, bool success) {
         }
 
         {
-            lock_guard<mutex> lock(_errorsMutex);
+            VLOCK(lock, _errorsMutex);
             err = _multiError.firstError();
             errStr = _multiError.toOneLineString();
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "Executive: error executing " << err);
         {
-            lock_guard lockJobMap(_jobMapMtx);
+            VLOCK(lockJobMap, _jobMapMtx);
             auto job = _jobMap[jobId];
             string id = job->getIdStr() + "<>" + idStr;
 
@@ -452,7 +452,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
 }
 
 std::shared_ptr<JobQuery> Executive::findJob(int jobId) const {
-    lock_guard lockJobMap(_jobMapMtx);
+    VLOCK(lockJobMap, _jobMapMtx);
     auto iter = _jobMap.find(jobId);
     if (iter == _jobMap.end()) return nullptr;
     return iter->second;
@@ -469,7 +469,7 @@ void Executive::squash(string const& note) {
          "Executive::squash Trying to cancel all queries... qid=" << getId() << " " << note);
     deque<JobQuery::Ptr> jobsToCancel;
     {
-        lock_guard lockJobMap(_jobMapMtx);
+        VLOCK(lockJobMap, _jobMapMtx);
         for (auto const& jobEntry : _jobMap) {
             jobsToCancel.push_back(jobEntry.second);
         }
@@ -508,7 +508,7 @@ void Executive::_squashSuperfluous() {
     LOGS(_log, LOG_LVL_INFO, "Executive::squashSuperflous Trying to cancel incomplete jobs");
     deque<JobQuery::Ptr> jobsToCancel;
     {
-        lock_guard lockJobMap(_jobMapMtx);
+        VLOCK(lockJobMap, _jobMapMtx);
         for (auto const& jobEntry : _jobMap) {
             JobQuery::Ptr jq = jobEntry.second;
             // It's important that none of the cancelled queries
@@ -551,7 +551,7 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
     LOGS(_log, LOG_LVL_INFO, cName(__func__) << " killing incomplete UberJobs on " << workerId);
     deque<UberJob::Ptr> ujToCancel;
     {
-        lock_guard<mutex> lockUJMap(_uberJobsMapMtx);
+        VLOCK(lockUJMap, _uberJobsMapMtx);
         for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
             auto ujStatus = ujPtr->getStatus()->getState();
             if (ujStatus != qmeta::JobStatus::RESPONSE_DONE && ujStatus != qmeta::JobStatus::COMPLETE) {
@@ -578,14 +578,14 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
 }
 
 int Executive::getNumInflight() const {
-    unique_lock<mutex> lock(_incompleteJobsMutex);
+    VLOCK(lock, _incompleteJobsMutex);
     return _incompleteJobs.size();
 }
 
 string Executive::getProgressDesc() const {
     ostringstream os;
     {
-        lock_guard lockJobMap(_jobMapMtx);
+        VLOCK(lockJobMap, _jobMapMtx);
         auto first = true;
         for (auto entry : _jobMap) {
             JobQuery::Ptr job = entry.second;
@@ -613,7 +613,7 @@ string Executive::getProgressDesc() const {
 bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
     int size = -1;
     {
-        lock_guard<mutex> lock(_incompleteJobsMutex);
+        VLOCK(lock, _incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
             LOGS(_log, LOG_LVL_WARN,
                  "Attempt for TRACKING " << " failed as jobId already found in incomplete jobs. "
@@ -634,7 +634,7 @@ void Executive::_unTrack(int jobId) {
     string s;
     bool logSome = false;
     {
-        lock_guard<mutex> lock(_incompleteJobsMutex);
+        VLOCK(lock, _incompleteJobsMutex);
         auto i = _incompleteJobs.find(jobId);
         if (i != _incompleteJobs.end()) {
             _incompleteJobs.erase(i);
@@ -658,7 +658,7 @@ void Executive::_unTrack(int jobId) {
     // limiting factors: no more than one update a minute (config)
     if (untracked) {
         auto now = chrono::system_clock::now();
-        unique_lock<mutex> lastUpdateLock(_lastQMetaMtx);
+        VLOCKUNIQUE(lastUpdateLock, _lastQMetaMtx);
         if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates || incompleteJobs == _totalJobs / 2 ||
             incompleteJobs == 0) {
             _lastQMetaUpdate = now;
@@ -694,7 +694,7 @@ void Executive::updateProxyMessages() {
     {
         // Add all messages to the message store. These will
         // be used to populate QMessages for this query.
-        lock_guard lockJobMap(_jobMapMtx);
+        VLOCK(lockJobMap, _jobMapMtx);
         for (auto const& entry : _jobMap) {
             JobQuery::Ptr const& job = entry.second;
             auto const& info = job->getStatus()->getInfo();
@@ -709,7 +709,7 @@ void Executive::updateProxyMessages() {
         }
     }
     {
-        lock_guard<mutex> lock(_errorsMutex);
+        VLOCK(lock, _errorsMutex);
         // If there were any errors, combine them into one string and add that to
         // the _messageStore. This will be passed to the proxy for the user, if
         // there's an error.
@@ -725,7 +725,7 @@ void Executive::updateProxyMessages() {
 /// Typically the requesters are handled by markCompleted().
 /// _reapRequesters() deals with cases that involve errors.
 void Executive::_waitAllUntilEmpty() {
-    unique_lock<mutex> lock(_incompleteJobsMutex);
+    VLOCKUNIQUE(lock, _incompleteJobsMutex);
     int lastCount = -1;
     int count;
     int moreDetailThreshold = 10;
@@ -757,7 +757,7 @@ void Executive::_waitAllUntilEmpty() {
 void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
     int chunkId = job->getDescription()->resource().chunk();
     auto entry = pair<ChunkIdType, JobQuery::Ptr>(chunkId, job);
-    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    VLOCK(lck, _chunkToJobMapMtx);
     bool inserted = _chunkToJobMap.insert(entry).second;
     if (!inserted) {
         throw util::Bug(ERR_LOC, "map insert FAILED ChunkId=" + to_string(chunkId) + " already existed");
@@ -827,7 +827,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
         // so recalculate it to verify.
         uint64_t total = 0;
         {
-            lock_guard<mutex> lck(_uberJobsMapMtx);
+            VLOCK(lck, _uberJobsMapMtx);
             for (auto const& [ujId, ujPtr] : _uberJobsMap) {
                 total += ujPtr->getResultFileSize();
             }
@@ -858,19 +858,27 @@ void Executive::checkForResultFileSizeExceededErr(vector<util::Error> const& err
     }
 }
 
-shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
-    shared_ptr<lock_guard<mutex>> ptr(new lock_guard<mutex>(_mtxLimitSquash));
-    return ptr;
-}
-
-void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+void Executive::collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
                             std::string const& idStr) {
     // Limit collecting LIMIT queries to one at a time, but only for LIMIT.
     // This is to avoid having to wait for multiple large files to merge when only a
     // few are needed to satisfy the LIMIT. This can make a huge difference.
-    shared_ptr<lock_guard<mutex>> limitSquashL;
     if (_limitSquashApplies) {
-        limitSquashL.reset(new lock_guard<mutex>(_mtxLimitSquash));
+        VLOCK(limitSquashL, _mtxLimitSquash);
+        _collectFile(ujPtr, fileUrlInfo, idStr);
+    } else {
+        _collectFile(ujPtr, fileUrlInfo, idStr);
+    }
+}
+
+void Executive::_collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+                             std::string const& idStr) {
+    // Limit collecting LIMIT queries to one at a time, but only for LIMIT.
+    // This is to avoid having to wait for multiple large files to merge when only a
+    // few are needed to satisfy the LIMIT. This can make a huge difference.
+    shared_ptr<lock_guard<VMUTEX>> limitSquashL;
+    if (_limitSquashApplies) {
+        limitSquashL.reset(new lock_guard<VMUTEX>(_mtxLimitSquash));  //&&& how to fix this hack?
     }
     bool flushStatus = ujPtr->getRespHandler()->flushHttp(ujPtr, fileUrlInfo.fileUrl, fileUrlInfo.fileSize);
     bool contaminated = ujPtr->getContaminated();
@@ -944,7 +952,7 @@ void Executive::buildAndSendUberJobs() {
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
-    lock_guard fcLock(_buildUberJobMtx);
+    VLOCK(fcLock, _buildUberJobMtx);
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " totalJobs=" << getTotalJobs());
 
     auto const uqs = _userQuerySelect.lock();

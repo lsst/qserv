@@ -128,10 +128,11 @@ private:
     /// @return the stringified representation of the statistics for all queues
     std::string _statsStr() const;
 
+    // @note a lock on _mtx must be held before calling the method
     void _incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr);
 
-    mutable std::mutex _mtx;
-    std::condition_variable _cv;
+    mutable VMUTEX _mtx;
+    std::condition_variable_any _cv;
     bool _shuttingDown{false};
     bool _changed{false};
 

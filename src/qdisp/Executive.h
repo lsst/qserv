@@ -236,10 +236,7 @@ public:
     /// `_resultFileSizeExceeded`.
     void checkForResultFileSizeExceededErr(std::vector<util::Error> const& errors);
 
-    /// Returns a pointer to a lock on _mtxLimitSquash.
-    std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
-
-    void collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+    void collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
                      std::string const& idStr);
 
     /// Return true if the result size limit has been exceeded.
@@ -273,6 +270,9 @@ private:
     void _unTrack(int refNum);
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
     std::string _getIncompleteJobsString(int maxToList);
+
+    void _collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+                      std::string const& idStr);
 
     void _waitAllUntilEmpty();
 
@@ -315,14 +315,14 @@ private:
     std::atomic<bool> _superfluous{false};
 
     // Mutexes
-    mutable std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
+    mutable VMUTEX _incompleteJobsMutex;  ///< protect _incompleteJobsMutex.
 
     /// Used to record execution errors
-    mutable std::mutex _errorsMutex;
+    mutable VMUTEX _errorsMutex;  ///< Protects _multiError.
 
-    std::condition_variable _allJobsComplete;
+    std::condition_variable_any _allJobsComplete;
 
-    mutable std::mutex _jobMapMtx;  ///< Protects _jobMap.
+    mutable VMUTEX _jobMapMtx;  ///< Protects _jobMap.
 
     QueryId _id = 0;  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
@@ -334,20 +334,20 @@ private:
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
     std::chrono::seconds _secondsBetweenQMetaUpdates;
-    std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
+    mutable VMUTEX _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
     /// true for interactive scans, once set it doesn't change.
     bool _scanInteractive = false;
 
     // Add a job to the _chunkToJobMap
     void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
-    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap
+    mutable VMUTEX _chunkToJobMapMtx;  ///< protects _chunkToJobMap
     ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId
 
     /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
     /// to handle failed UberJobs.
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
-    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
+    mutable VMUTEX _uberJobsMapMtx;  ///< protects _uberJobs.
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
@@ -383,7 +383,7 @@ private:
     /// but only when the executive will squash the query when the limit is reached.
     /// This keeps data transfers (and temporary storage requirements) from
     /// getting out of hand.
-    std::mutex _mtxLimitSquash;
+    mutable VMUTEX _mtxLimitSquash;
 
     /// Set to true if the result file is too large.
     std::atomic<bool> _resultFileSizeExceeded{false};
@@ -399,7 +399,7 @@ private:
     std::string _queryDbName;
 
     /// Only one thread should run buildAndSendUberJobs() for this query at a time.
-    std::mutex _buildUberJobMtx;
+    mutable VMUTEX _buildUberJobMtx;
 };
 
 }  // namespace lsst::qserv::qdisp

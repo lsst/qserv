@@ -93,14 +93,19 @@
 // This header declarations
 namespace lsst::qserv::util {
 
-/// This class implements a verifiable mutex based on std::mutex. It can be used with the
-/// VMUTEX_HELD and VMUTEX_NOT_HELD macros.
-/// For it to work properly, all of the lock_guard calls must specify util::VMutex
-/// (or a child thereof) and not std::mutex.
-/// Making VMutex a wrapper around std::mutex instead of a child causes lines
-/// like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
-/// which is desirable.
-/// VMutex does work with std::condition_variable_any.
+/** This class implements a verifiable mutex based on std::mutex. It can be used with the
+ *  VMUTEX_HELD, VMUTEX_NOT_HELD, VLOCK, and VLOCKUNIQUE macros.
+ *  NOTE: All of the following are important:
+ *   - For it to work properly, VLOCK and VLOCKUNIQUE must be used consistently to lock the mutex.
+ *   - std::wait() and its kin will not call setTag(), but the calls will append '~', '!`, and `#`
+ *     to the tag in the error message.
+ *   - '~' in the tag means any lock could own the mutex.
+ *   - '?' in the tag means the mutex was not locked using VLOCK or VLOCKUNIQUE.
+ *  Making VMutex a wrapper around std::mutex instead of a child causes lines
+ *  like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
+ *  which can be desirable.
+ *  VMutex does work with std::condition_variable_any.
+ */
 class VMutex {
 public:
     VMutex() {}

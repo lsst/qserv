@@ -32,6 +32,9 @@
 #include <mutex>
 #include <vector>
 
+// qserv headers
+#include "util/Mutex.h"
+
 namespace lsst::qserv::util {
 
 /// A dirt-simple class for instrumenting ops in qserv.
@@ -127,7 +130,7 @@ private:
     std::string _getString(std::string const& note);
 
     std::string _label;
-    std::mutex _mtx;
+    VMUTEX _mtx;
     std::vector<bucket> _buckets;
     uint64_t _overMaxCount{0};
     double _total{0.0};

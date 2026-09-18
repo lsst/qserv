@@ -55,12 +55,12 @@ void HoldTrack::_addKey(KeyType const& key, Issue::Context const& ctx, string co
     os << " " << note;
     string str = os.str();
 
-    lock_guard<mutex> lockG(_mapMtx);
+    VLOCK(lockG, _mapMtx);
     _keyMap[key] = str;
 }
 
 void HoldTrack::_removeKey(KeyType const& key) {
-    lock_guard<mutex> lockG(_mapMtx);
+    VLOCK(lockG, _mapMtx);
     _keyMap.erase(key);
 }
 
@@ -86,7 +86,7 @@ std::string HoldTrack::CheckKeySet() {
     }
     TIMEPOINT timePoint = CLOCK::now();
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch());
-    lock_guard<mutex> lockG(gi->_mapMtx);
+    VLOCK(lockG, gi->_mapMtx);
     for (auto const& elem : gi->_keyMap) {
         auto const& key = elem.first;
         thread::id tid = key.first;

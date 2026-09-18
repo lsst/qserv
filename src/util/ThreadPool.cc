@@ -131,14 +131,14 @@ void CommandForThreadPool::_setPoolEventThread(PoolEventThread::Ptr const& poolE
 /// have the thread leave the pool. This prevents that from
 /// happening more than once.
 PoolEventThread::Ptr CommandForThreadPool::getAndNullPoolEventThread() {
-    std::lock_guard<std::mutex> lg(_poolMtx);
+    VLOCK(lg, _poolMtx);
     auto pet = _poolEventThread.lock();
     _poolEventThread.reset();
     return pet;
 }
 
 bool CommandForThreadPool::atMaxThreadCount() {
-    std::lock_guard<std::mutex> lg(_poolMtx);
+    VLOCK(lg, _poolMtx);
     auto pet = _poolEventThread.lock();
     return (pet == nullptr || pet->atMaxThreadCount());
 }
@@ -193,7 +193,7 @@ bool ThreadPool::release(PoolEventThread* thrd) {
 
     PoolEventThread::Ptr thrdPtr;
     {
-        std::lock_guard<std::mutex> lock(_poolMutex);
+        VLOCK(lock, _poolMutex);
         auto iter = std::find_if(_pool.begin(), _pool.end(), func);
         if (iter == _pool.end()) {
             LOGS(_log, LOG_LVL_WARN, "ThreadPool::release thread not found " << thrd);
@@ -214,7 +214,7 @@ void ThreadPool::resize(unsigned int targetThrdCount) {
     {
         LOGS(_log, LOG_LVL_INFO, "ThreadPool::resize " << targetThrdCount);
         {
-            std::lock_guard<std::mutex> lockPool(_mxPool);
+            VLOCK(lockPool, _mxPool);
             /// This is not expected to happen in cases where low CPU usage threads
             /// are removed from the pool. In those cases, the targetThrdCount is expected to be
             /// less than 100 while _maxThreadCount would be several thousand.
@@ -228,7 +228,7 @@ void ThreadPool::resize(unsigned int targetThrdCount) {
             }
         }
 
-        std::lock_guard<std::mutex> lock(_countMutex);
+        VLOCK(lock, _countMutex);
         if (_shutdown) {
             targetThrdCount = 0;
         }
@@ -241,7 +241,7 @@ void ThreadPool::resize(unsigned int targetThrdCount) {
 /// Making the pool larger is just a matter of adding threads.
 /// Shrinking the pool requires ending one thread at a time.
 void ThreadPool::_resize() {
-    std::lock_guard<std::mutex> lock(_poolMutex);
+    VLOCK(lock, _poolMutex);
     auto target = getTargetThrdCount();
     while (target > _pool.size()) {
         LOGS(_log, LOG_LVL_TRACE, "ThreadPool::_resize creating new PoolEventThread");
@@ -263,7 +263,7 @@ void ThreadPool::_resize() {
     }
     LOGS(_log, LOG_LVL_TRACE, "_resize target=" << target << " size=" << _pool.size());
     {
-        std::unique_lock<std::mutex> countlock(_countMutex);
+        VLOCK(countlock, _countMutex);
         _countCV.notify_all();
     }
 }
@@ -274,7 +274,7 @@ void ThreadPool::_resize() {
 /// Note that this wont detect changes to _targetThrdCount.
 void ThreadPool::waitForResize(int millisecs) {
     auto eqTest = [this]() { return _targetThrdCount == _pool.size(); };
-    std::unique_lock<std::mutex> lock(_countMutex);
+    VLOCKUNIQUE(lock, _countMutex);
     if (millisecs > 0) {
         _countCV.wait_for(lock, std::chrono::milliseconds(millisecs), eqTest);
     } else {
@@ -283,14 +283,14 @@ void ThreadPool::waitForResize(int millisecs) {
 }
 
 void ThreadPool::_incrPoolThreadCount() {
-    std::lock_guard<std::mutex> lockPool(_mxPool);
+    VLOCK(lockPool, _mxPool);
     ++_poolThreadCount;
     LOGS(_log, LOG_LVL_DEBUG, "incr _poolThreadCount=" << _poolThreadCount);
 }
 
 void ThreadPool::_decrPoolThreadCount() {
     {
-        std::lock_guard<std::mutex> lockPool(_mxPool);
+        VLOCK(lockPool, _mxPool);
         --_poolThreadCount;
     }
     LOGS(_log, LOG_LVL_DEBUG, "decr _poolThreadCount=" << _poolThreadCount);
@@ -298,7 +298,7 @@ void ThreadPool::_decrPoolThreadCount() {
 }
 
 void ThreadPool::_waitIfAtMaxThreadPoolCount() {
-    std::unique_lock<std::mutex> lockPool(_mxPool);
+    VLOCKUNIQUE(lockPool, _mxPool);
     auto logLvl = LOG_LVL_DEBUG;
     if (_poolThreadCount >= _maxThreadCount) {
         logLvl = LOG_LVL_WARN;
@@ -308,7 +308,7 @@ void ThreadPool::_waitIfAtMaxThreadPoolCount() {
 }
 
 bool ThreadPool::atMaxThreadPoolCount() {
-    std::unique_lock<std::mutex> lockPool(_mxPool);
+    VLOCK(lockPool, _mxPool);
     bool atMax = _poolThreadCount > _maxThreadCount;
     if (atMax) {
         LOGS(_log, LOG_LVL_WARN,

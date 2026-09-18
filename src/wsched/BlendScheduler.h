@@ -167,7 +167,6 @@ private:
     /// TODO: DM-??? set values from configuration, change values at runtime.
     std::chrono::system_clock::time_point _nextRecordPerformanceTime;
     std::chrono::milliseconds _intervalRecordPerformanceTime{15000};
-    //&&&VMUTEX _mtxRecordPerformance;  ///< protects _nextRecordPerformanceTime  //&&& not being used
 };
 
 }  // namespace lsst::qserv::wsched

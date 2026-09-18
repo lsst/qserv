@@ -81,7 +81,7 @@ TimerHistogram::TimerHistogram(std::string const& label, std::vector<double> con
 }
 
 std::string TimerHistogram::addTime(double time, std::string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VLOCK(lock, _mtx);
     _total += time;
     ++_totalCount;
     bool found = false;
@@ -103,7 +103,7 @@ std::string TimerHistogram::addTime(double time, std::string const& note) {
 }
 
 std::string TimerHistogram::getString(std::string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VLOCK(lock, _mtx);
     return _getString(note);
 }
 

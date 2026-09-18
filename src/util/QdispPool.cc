@@ -39,7 +39,7 @@ namespace lsst::qserv::util {
 
 ///< @Return true if the queue could be added.
 bool PriorityQueue::addPriQueue(int priority, int minRunning, int maxRunning) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VLOCK(lock, _mtx);
     auto q = std::make_shared<PriQ>(priority, minRunning, maxRunning);
     // std::pair<int, PriQ::Ptr> item(priority, q);
     auto item = std::make_pair(priority, q);
@@ -53,7 +53,7 @@ bool PriorityQueue::addPriQueue(int priority, int minRunning, int maxRunning) {
 /// The pool needs to be able to place commands in this queue for shutdown.
 void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
     {
-        std::lock_guard<std::mutex> lock(_mtx);
+        VLOCK(lock, _mtx);
         auto iter = _queues.find(_defaultPriority);
         if (iter == _queues.end()) {
             throw util::Bug(ERR_LOC, "PriorityQueue default priority queue not found a!");
@@ -66,7 +66,7 @@ void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
 
 void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
     {
-        std::lock_guard<std::mutex> lock(_mtx);
+        VLOCK(lock, _mtx);
         if (cmd->_queued.exchange(true) == true) {
             throw util::Bug(ERR_LOC,
                             "PriorityQueue::queCmd cmd has already been queued and cannot be queued twice.");
@@ -93,7 +93,7 @@ std::atomic<unsigned int> localLogLimiter(0);
 
 util::Command::Ptr PriorityQueue::getCmd(bool wait) {
     util::Command::Ptr ptr;
-    std::unique_lock<std::mutex> uLock(_mtx);
+    VLOCKUNIQUE(uLock, _mtx);
     while (true) {
         _changed = false;
         ++localLogLimiter;
@@ -115,6 +115,8 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait) {
                 if (que->running < que->getMinRunning()) {
                     ptr = que->getCmd(false);  // no wait
                     if (ptr != nullptr) {
+                        _changed = true;
+                        _cv.notify_one();
                         return ptr;
                     }
                 }
@@ -146,12 +148,12 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait) {
 }
 
 void PriorityQueue::prepareShutdown() {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VLOCK(lock, _mtx);
     _shuttingDown = true;
 }
 
 void PriorityQueue::_incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VMUTEX_HELD(_mtx);
     PriorityCommand::Ptr priCmd = std::dynamic_pointer_cast<PriorityCommand>(cmd);
     if (priCmd != nullptr) {
         int priority = priCmd->_priority;
@@ -172,20 +174,23 @@ void PriorityQueue::_incrDecrRunningCount(util::Command::Ptr const& cmd, int inc
 
 void PriorityQueue::commandStart(util::Command::Ptr const& cmd) {
     // Increase running count by 1
+    VLOCK(lock, _mtx);
     _incrDecrRunningCount(cmd, 1);
 }
 
 void PriorityQueue::commandFinish(util::Command::Ptr const& cmd) {
     // Reduce running count by 1
+    VLOCK(lock, _mtx);
     _incrDecrRunningCount(cmd, -1);
 }
 
 std::vector<PriorityQueue::PriQ::Stats> PriorityQueue::stats() const {
-    std::lock_guard<std::mutex> const lock(_mtx);
+    VLOCK(lock, _mtx);
     return _stats();
 }
 
 std::vector<PriorityQueue::PriQ::Stats> PriorityQueue::_stats() const {
+    VMUTEX_HELD(_mtx);
     std::vector<PriorityQueue::PriQ::Stats> result;
     for (auto const& elem : _queues) {
         PriQ::Ptr const& queue = elem.second;
@@ -195,6 +200,7 @@ std::vector<PriorityQueue::PriQ::Stats> PriorityQueue::_stats() const {
 }
 
 std::string PriorityQueue::_statsStr() const {
+    VMUTEX_HELD(_mtx);
     std::stringstream os;
     for (auto const& queueStats : _stats()) {
         os << "(pr=" << queueStats.priority << ":sz=" << queueStats.size << ":r=" << queueStats.running
@@ -204,7 +210,7 @@ std::string PriorityQueue::_statsStr() const {
 }
 
 nlohmann::json PriorityQueue::getJson() const {
-    std::lock_guard<std::mutex> const lock(_mtx);
+    VLOCK(lock, _mtx);
     nlohmann::json jsArray = nlohmann::json::array();
     for (auto const& queueStats : _stats()) {
         nlohmann::json js;
