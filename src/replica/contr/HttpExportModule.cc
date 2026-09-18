@@ -113,13 +113,13 @@ json HttpExportModule::_getTableConfig() {
 
     // The optional attributes for the partitioned tables only.
     if (table.isPartitioned) {
-        result["director_table"] = table.directorTable.tableName();
+        result["director_table"] = table.directorTable.databaseTableName();
         result["director_key"] = table.directorTable.primaryKeyColumn();
         if (table.isDirector()) {
             result["unique_primary_key"] = table.uniquePrimaryKey ? 1 : 0;
         }
         if (table.isRefMatch()) {
-            result["director_table2"] = table.directorTable2.tableName();
+            result["director_table2"] = table.directorTable2.databaseTableName();
             result["director_key2"] = table.directorTable2.primaryKeyColumn();
             result["ang_sep"] = table.angSep;
             result["flag"] = table.flagColName;

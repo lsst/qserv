@@ -139,3 +139,45 @@ test_cases:
       # ones.
       - "0001"
       - "0020"
+  # One case owns all databases; list directors before their dependent match table.
+  - id: case05
+    databases:
+      - root: /tmp/qserv/data
+        data: case05/data/{table_name}.csv.gz
+        schema: case05/data/schema/{table_name}.schema
+        partition:
+          config:
+            - case05/data/partition/{table_name}.json
+            - case05/data/partition/common.json
+          output: partition/{table_name}
+        ingest:
+          metadata: case05/ingest/1/metadata.json
+          database: case05/ingest/1/database.json
+          table: case05/ingest/1/{table_name}.json
+        tables: [RefObject]
+      - root: /tmp/qserv/data
+        data: case05/data/{table_name}.csv.gz
+        schema: case05/data/schema/{table_name}.schema
+        partition:
+          config:
+            - case05/data/partition/{table_name}.json
+            - case05/data/partition/common.json
+          output: partition/{table_name}
+        ingest:
+          metadata: case05/ingest/2/metadata.json
+          database: case05/ingest/2/database.json
+          table: case05/ingest/2/{table_name}.json
+        tables: [RunDeepSource]
+      - root: /tmp/qserv/data
+        data: case05/data/{table_name}.csv.gz
+        schema: case05/data/schema/{table_name}.schema
+        partition:
+          config:
+            - case05/data/partition/{table_name}.json
+            - case05/data/partition/common.json
+          output: partition/{table_name}
+        ingest:
+          metadata: case05/ingest/matches/metadata.json
+          database: case05/ingest/matches/database.json
+          table: case05/ingest/matches/{table_name}.json
+        tables: [RefDeepSrcMatch]
