@@ -99,7 +99,8 @@ void HttpProcessor::registerServices() {
                         json::object({{"kind", "replication-controller"},
                                       {"id", self->controller()->identity().id},
                                       {"database_schema_version", ConfigParserMySQL::expectedSchemaVersion},
-                                      {"instance_id", self->serviceProvider()->instanceId()}});
+                                      {"instance_id", self->serviceProvider()->config()->get<string>(
+                                                              "security", "instance-id")}});
                 http::MetaModule::process(::taskName, info, req, resp, "VERSION");
             });
     httpServer()->addHandler("GET", "/replication/catalogs",

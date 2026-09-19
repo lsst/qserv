@@ -29,6 +29,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
@@ -198,7 +199,8 @@ private:
      */
     template <class RESPONSE>
     bool _verifyInstance(ProtocolRequestHeader const& hdr, RESPONSE& response) const {
-        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
+            return true;
         WorkerProcessor::setDefaultResponse(response, ProtocolStatus::BAD,
                                             ProtocolStatusExt::FOREIGN_INSTANCE);
         return false;
@@ -207,7 +209,8 @@ private:
     /// The specialized version of the above defined template method for responses
     /// to the requests stoppings.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseStop& response) const {
-        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
+            return true;
         response.set_status(ProtocolStatus::BAD);
         response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
         return false;
@@ -216,7 +219,8 @@ private:
     /// The specialized version of the above defined template method for responses
     /// to the requests disposals.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseDispose& response) const {
-        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
+            return true;
         response.set_status(ProtocolStatus::BAD);
         response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
         return false;
@@ -225,7 +229,8 @@ private:
     /// The specialized version of the above defined template method for responses
     /// to the worker services management requests.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolServiceResponse& response) const {
-        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
+            return true;
         response.set_status(ProtocolStatus::BAD);
         response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
         return false;
