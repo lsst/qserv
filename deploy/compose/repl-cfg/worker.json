@@ -1,0 +1,5 @@
+{
+    "worker": {
+        "request-timeout-sec": 120
+    }
+}
