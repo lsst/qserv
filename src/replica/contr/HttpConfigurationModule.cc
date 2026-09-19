@@ -113,7 +113,8 @@ json HttpConfigurationModule::_get() {
 
     auto const config = controller()->serviceProvider()->config();
     json result;
-    result["config"] = config->toJson();
+    bool const showPassword = false;
+    result["config"] = config->toJson(showPassword);
     result["config"]["meta"] = meta4general(config);
     return result;
 }
@@ -132,7 +133,8 @@ json HttpConfigurationModule::_updateGeneral() {
     }
     config->setFromString(category, parameter, value);
     json result;
-    result["config"] = config->toJson();
+    bool const showPassword = false;
+    result["config"] = config->toJson(showPassword);
     result["config"]["meta"] = meta4general(config);
     return result;
 }

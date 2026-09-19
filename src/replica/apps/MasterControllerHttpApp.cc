@@ -355,8 +355,8 @@ void MasterControllerHttpApp::_registryUpdateLoop() {
                        to_string(config->get<uint16_t>("registry", "port")) + "/controller";
     vector<string> const headers = {"Content-Type: application/json"};
     json const request = json::object({{"version", http::MetaModule::version},
-                                       {"instance_id", serviceProvider->instanceId()},
-                                       {"auth_key", serviceProvider->httpAuthContext().authKey},
+                                       {"instance_id", config->get<string>("security", "instance-id")},
+                                       {"auth_key", config->httpAuthContext().authKey},
                                        {"controller",
                                         {{"name", _name},
                                          {"id", _controller->identity().id},

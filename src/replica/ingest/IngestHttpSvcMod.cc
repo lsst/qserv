@@ -26,6 +26,7 @@
 #include "http/Auth.h"
 #include "http/Exceptions.h"
 #include "http/Method.h"
+#include "replica/config/Configuration.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
 #include "replica/ingest/IngestUtils.h"
@@ -53,7 +54,7 @@ IngestHttpSvcMod::IngestHttpSvcMod(shared_ptr<ServiceProvider> const& servicePro
                                    shared_ptr<IngestRequestMgr> const& ingestRequestMgr,
                                    string const& workerName, httplib::Request const& req,
                                    httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp),
+        : http::ChttpModule(serviceProvider->config()->httpAuthContext(), req, resp),
           _serviceProvider(serviceProvider),
           _ingestRequestMgr(ingestRequestMgr),
           _workerName(workerName) {}

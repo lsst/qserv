@@ -102,9 +102,10 @@ void WorkerHttpSvc::registerServices(unique_ptr<httplib::Server> const& server) 
     // Dynamic modules
     auto const self = shared_from_base<WorkerHttpSvc>();
     server->Get("/meta/version", [self](httplib::Request const& req, httplib::Response& resp) {
-        json const info = json::object({{"kind", "replication-worker-svc"},
-                                        {"id", self->_workerName},
-                                        {"instance_id", self->serviceProvider()->instanceId()}});
+        json const info = json::object(
+                {{"kind", "replication-worker-svc"},
+                 {"id", self->_workerName},
+                 {"instance_id", self->serviceProvider()->config()->get<string>("security", "instance-id")}});
         http::ChttpMetaModule::process(context_, info, req, resp, "VERSION");
     });
     server->Post("/worker/echo", [self](httplib::Request const& req, httplib::Response& resp) {
