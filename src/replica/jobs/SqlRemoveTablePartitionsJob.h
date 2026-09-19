@@ -106,7 +106,7 @@ public:
      * @param ignoreNonPartitioned if 'true' then don't report as errors tables
      *   that don't have MySQL partitions. Those partitions may have already been
      *   removed by a previous attempt to run this algorithm.
-     * @param controller is needed launching requests and accessing the Configuration
+     * @param controller is needed launching requests and accessing the Config
      * @param parentJobId an identifier of the parent job
      * @param onFinish a callback function to be called upon a completion
      *   of the job

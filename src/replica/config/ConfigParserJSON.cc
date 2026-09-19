@@ -26,17 +26,19 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/ConfigurationExceptions.h"
+#include "replica/config/ConfigExceptions.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-ConfigParserJSON::ConfigParserJSON(json& data, map<string, ConfigWorker>& workers,
+ConfigParserJSON::ConfigParserJSON(ConfigSchema const& configSchema, json& data,
+                                   map<string, ConfigWorker>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
                                    map<string, DatabaseInfo>& databases, map<string, ConfigCzar>& czars)
-        : _data(data),
+        : _configSchema(configSchema),
+          _data(data),
           _workers(workers),
           _databaseFamilies(databaseFamilies),
           _databases(databases),
@@ -72,11 +74,16 @@ void ConfigParserJSON::parse(json const& obj) {
                 // Skip missing parameters
                 if (outCategoryObj.count(param) == 0) continue;
 
+                // IMPORTANT: The type comparision is made based on the name of the types rather than
+                // on the specific enum values of the types. This approach allows to treat the numeric
+                // types `number_integer` and `number_unsigned` uniformly. The configuration system
+                // does not distinguish between these numeric types.
                 json& outParamObj = outCategoryObj[param];
-                if (inParamObj.type() != outParamObj.type()) {
-                    throw std::invalid_argument(_context +
-                                                " no transient schema match for the parameter, category: '" +
-                                                category + "' param: '" + param + "'.");
+                if (inParamObj.type_name() != outParamObj.type_name()) {
+                    throw std::invalid_argument(
+                            _context + " no transient schema match for the parameter type, category: '" +
+                            category + "' param: '" + param + "', expected type: '" +
+                            outParamObj.type_name() + "', actual type: '" + inParamObj.type_name() + "'.");
                 }
                 if (inParamObj.is_string()) {
                     _storeGeneralParameter<string>(outParamObj, inParamObj, category, param);

@@ -31,7 +31,7 @@
 // Qserv headers
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkNumber.h"
@@ -126,18 +126,16 @@ namespace lsst::qserv::replica {
 replica::Mutex HttpIngestChunksModule::_ingestManagementMtx;
 
 void HttpIngestChunksModule::process(Controller::Ptr const& controller, string const& taskName,
-                                     HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                      string const& subModuleName, http::AuthType const authType) {
-    HttpIngestChunksModule module(controller, taskName, processorConfig, req, resp);
+    HttpIngestChunksModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpIngestChunksModule::HttpIngestChunksModule(Controller::Ptr const& controller, string const& taskName,
-                                               HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
                                                qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "ADD-CHUNK")

@@ -30,7 +30,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/services/ServiceProvider.h"
 #include "util/common.h"
 
@@ -75,7 +75,7 @@ WorkerHttpRequest::WorkerHttpRequest(shared_ptr<ServiceProvider> const& serviceP
           _params(params),
           _onExpired(onExpired),
           _expirationTimeoutSec(hdr.timeout == 0 ? serviceProvider->config()->get<unsigned int>(
-                                                           "controller", "request-timeout-sec")
+                                                           "worker", "request-timeout-sec")
                                                  : hdr.timeout),
           _expirationTimerPtr(new boost::asio::deadline_timer(serviceProvider->io_service())) {}
 

@@ -69,7 +69,7 @@ private:
     MasterControllerHttpApp(int argc, char* argv[]);
 
     /// @return the name of the application for the purpose of logging
-    std::string _controllerName4log() const { return "CONTROLLER[" + _name + "]"; }
+    std::string _controllerName4log() const;
 
     /**
      * Evict the specified worker from the cluster.
@@ -128,37 +128,6 @@ private:
      *  the Registry will be posted into the log stream and ignored.
      */
     void _registryUpdateLoop();
-
-    // Command line parameters
-
-    /// The unique name of the controller as it's seen in the service discovery Registry.
-    std::string _name = "master";
-
-    unsigned int _healthProbeIntervalSec;
-    unsigned int _replicationIntervalSec;
-    unsigned int _czarResponseTimeoutSec;
-    unsigned int _workerResponseTimeoutSec;
-    unsigned int _workerEvictTimeoutSec;
-    unsigned int _qservSyncTimeoutSec;
-    unsigned int _numReplicas;
-    unsigned int _workerReconfigTimeoutSec;
-
-    bool _purge;
-    bool _disableQservSync;
-    bool _forceQservSync;
-    bool _qservChunkMapUpdate;
-    bool _permanentDelete;
-
-    /// A connection URL for the MySQL service of the Qserv master database.
-    std::string _qservCzarDbUrl;
-
-    /// The root folder for the static content to be served by the built-in
-    /// HTTP service.
-    std::string _httpRoot;
-
-    /// The Controller will create missing folders unless told not to do so by
-    /// passing the corresponding command-line flag.
-    bool _doNotCreateMissingFolders = false;
 
     /// This flag will be raised by any thread if a non-recoverable
     /// catastrophic failure will be detected.
