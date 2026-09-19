@@ -76,7 +76,7 @@ WorkerExporterHttpSvcMod::WorkerExporterHttpSvcMod(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         shared_ptr<database::mysql::ConnectionPool> const& databaseConnectionPool,
         httplib::Request const& req, httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp, ::sendCustomResponse),
+        : http::ChttpModule(serviceProvider->config()->httpAuthContext(), req, resp, ::sendCustomResponse),
           _serviceProvider(serviceProvider),
           _workerName(workerName),
           _databaseConnectionPool(databaseConnectionPool) {}

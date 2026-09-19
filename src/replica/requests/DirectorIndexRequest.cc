@@ -127,7 +127,7 @@ void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::INDEX);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestDirectorIndex message;
@@ -162,7 +162,7 @@ void DirectorIndexRequest::_sendStatusRequest(replica::Lock const& lock) {
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
     buffer()->serialize(hdr);
 
     ProtocolRequestTrack message;

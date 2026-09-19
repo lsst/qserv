@@ -68,7 +68,7 @@ FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider, string const
           _readContent(readContent),
           _workerHostPort(workerHost + ":" + to_string(workerPort)),
           _databaseInfo(serviceProvider->config()->databaseInfo(databaseName)),
-          _instanceId(serviceProvider->instanceId()),
+          _instanceId(serviceProvider->config()->get<string>("security", "instance-id")),
           _bufferPtr(new ProtocolBuffer(
                   serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
           _io_service(),
