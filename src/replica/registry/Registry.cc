@@ -63,8 +63,9 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
 
 vector<ConfigWorker> Registry::workers() const {
     vector<ConfigWorker> coll;
-    string const resource = "/services?instance_id=" + _serviceProvider->instanceId() +
-                            "&version=" + to_string(http::MetaModule::version);
+    string const resource =
+            "/services?instance_id=" + _serviceProvider->config()->get<string>("security", "instance-id") +
+            "&version=" + to_string(http::MetaModule::version);
     json const resultJson = _request(http::Method::GET, resource);
     for (auto const& [workerName, workerJson] : resultJson.at("services").at("workers").items()) {
         ConfigWorker worker;
@@ -114,8 +115,8 @@ void Registry::addWorker(string const& name) const {
     auto const config = _serviceProvider->config();
     json const request =
             json::object({{"version", http::MetaModule::version},
-                          {"instance_id", _serviceProvider->instanceId()},
-                          {"auth_key", _serviceProvider->httpAuthContext().authKey},
+                          {"instance_id", config->get<string>("security", "instance-id")},
+                          {"auth_key", _serviceProvider->config()->httpAuthContext().authKey},
                           {"worker",
                            {{"name", name},
                             {"host-name", hostName},
@@ -131,14 +132,16 @@ void Registry::addWorker(string const& name) const {
 }
 
 void Registry::removeWorker(string const& name) const {
-    json const request = json::object({{"instance_id", _serviceProvider->instanceId()},
-                                       {"auth_key", _serviceProvider->httpAuthContext().authKey}});
+    json const request =
+            json::object({{"instance_id", _serviceProvider->config()->get<string>("security", "instance-id")},
+                          {"auth_key", _serviceProvider->config()->httpAuthContext().authKey}});
     _request(http::Method::DELETE, "/worker/" + name, request);
 }
 
 vector<ConfigCzar> Registry::czars() const {
     vector<ConfigCzar> coll;
-    string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
+    string const resource =
+            "/services?instance_id=" + _serviceProvider->config()->get<string>("security", "instance-id");
     json const resultJson = _request(http::Method::GET, resource);
     for (auto const& [czarName, czarJson] : resultJson.at("services").at("czars").items()) {
         ConfigCzar czar;
