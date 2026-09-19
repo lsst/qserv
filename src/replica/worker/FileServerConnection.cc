@@ -171,11 +171,11 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
             LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  unknown database: " << request.database());
             break;
         }
-        if (_serviceProvider->instanceId() != request.instance_id()) {
+        if (_serviceProvider->config()->get<string>("security", "instance-id") != request.instance_id()) {
             LOGS(_log, LOG_LVL_ERROR,
                  context << __func__ << "  Qserv instance of the request: '" << request.instance_id() << "'"
-                         << " doesn't match the one of this service: '" << _serviceProvider->instanceId()
-                         << "'");
+                         << " doesn't match the one of this service: '"
+                         << _serviceProvider->config()->get<string>("security", "instance-id") << "'");
             foreignInstance = true;
             break;
         }

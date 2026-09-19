@@ -56,6 +56,11 @@
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
 
+// Forward declarations
+namespace lsst::qserv::http {
+class AuthContext;
+}  // namespace lsst::qserv::http
+
 // This header declarations
 namespace lsst::qserv::replica {
 namespace detail {
@@ -388,6 +393,11 @@ public:
      * @see Configuration::set()
      */
     void setFromString(std::string const& category, std::string const& param, std::string const& val);
+
+    /**
+     * @return The security context of the Replication system.
+     */
+    http::AuthContext httpAuthContext() const;
 
     /**
      * Return the names of known workers as per the selection criteria.
