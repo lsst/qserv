@@ -124,13 +124,13 @@ public:
      *   the persistent backend for any requests to update the state of the transient
      *   parameters. A connection object to the MySQL service will be initialized
      *   as the corresponding data member of the class.
-     * @param configUrl The configuration source.
+     * @param replDbUrl Connection URL for the Replication database.
      * @throw std::invalid_argument If the URL has unsupported scheme or it
      *   couldn't be parsed.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
-    static Ptr load(std::string const& configUrl);
+    static Ptr load(std::string const& replDbUrl);
 
     /**
      * Return a connection object for the czar's MySQL service with the name of
@@ -285,22 +285,22 @@ public:
 
     /**
      * Reload non-static parameters of the Configuration from an external source.
-     * @param configUrl The configuration source,
+     * @param replDbUrl Connection URL for the Replication database.
      * @throw std::invalid_argument If the URL has unsupported scheme or it couldn't
      *   be parsed.
      * @throw std::runtime_error If the input configuration is not consistent with
      *   expectations of the transient schema.
      */
-    void reload(std::string const& configUrl);
+    void reload(std::string const& replDbUrl);
 
     /**
-     * Construct the original (minus security-related info) path to
-     * the configuration source.
+     * Construct the original (minus security-related info) connection URL
+     * for the Replication database.
      * @param showPassword If a value of the flag is 'false' then hash a password
      *   in the result.
-     * @return The constructed path.
+     * @return The constructed connection URL.
      */
-    std::string configUrl(bool showPassword = false) const;
+    std::string replDbUrl(bool showPassword = false) const;
 
     /**
      * The directory method for locating categories and parameters within
@@ -765,13 +765,13 @@ private:
      * Load from MySQL. Parameters read from the database will be applied
      * to the internal state.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
-     * @param configUrl The connection string to the MySQL database from which to read
+     * @param replDbUrl The connection string to the MySQL database from which to read
      *   the configuration parameters. The database will become the persistent back-end
      *   for the configuration.
      * @param reset The flag (if set to 'true') will trigger the internal state reset
      *   to the default values of the parameters before applying the input configuration.
      */
-    void _load(replica::Lock const& lock, std::string const& configUrl, bool reset);
+    void _load(replica::Lock const& lock, std::string const& replDbUrl, bool reset);
 
     /// @param lock The lock on '_mtx' to be acquired prior to calling the method.
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
@@ -863,11 +863,9 @@ private:
     static std::string _qservCzarDbUrl;
     static std::string _qservWorkerDbUrl;
 
-    // For implementing static synchronized methods.
-    static replica::Mutex _classMtx;
+    static replica::Mutex _classMtx;  ///< For implementing static synchronized methods.
 
-    // A source of the configuration.
-    std::string _configUrl;
+    std::string _replDbUrl;  ///< The connection URL for the Replication database (if any).
 
     // These parameters  will be set for the MySQL back-end (if any).
     database::mysql::ConnectionParams _connectionParams;

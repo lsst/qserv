@@ -186,11 +186,11 @@ void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
     _schemaUpgradeWaitTimeoutSec = value;
 }
 
-Configuration::Ptr Configuration::load(string const& configUrl) {
+Configuration::Ptr Configuration::load(string const& replDbUrl) {
     Ptr const ptr(new Configuration());
     replica::Lock const lock(ptr->_mtx, _context(__func__));
     bool const reset = false;
-    ptr->_load(lock, configUrl, reset);
+    ptr->_load(lock, replDbUrl, reset);
     return ptr;
 }
 
@@ -212,16 +212,16 @@ Configuration::Configuration() : _data(ConfigurationSchema::defaultConfigData())
 
 void Configuration::reload() {
     replica::Lock const lock(_mtx, _context(__func__));
-    if (!_configUrl.empty()) {
+    if (!_replDbUrl.empty()) {
         bool const reset = true;
-        _load(lock, _configUrl, reset);
+        _load(lock, _replDbUrl, reset);
     }
 }
 
-void Configuration::reload(string const& configUrl) {
+void Configuration::reload(string const& replDbUrl) {
     replica::Lock const lock(_mtx, _context(__func__));
     bool const reset = true;
-    _load(lock, configUrl, reset);
+    _load(lock, replDbUrl, reset);
 }
 
 void Configuration::reload(json const& obj) {
@@ -230,7 +230,7 @@ void Configuration::reload(json const& obj) {
     _load(lock, obj, reset);
 }
 
-string Configuration::configUrl(bool showPassword) const {
+string Configuration::replDbUrl(bool showPassword) const {
     replica::Lock const lock(_mtx, _context(__func__));
     if (_connectionPtr == nullptr) return string();
     return _connectionParams.toString(showPassword);
@@ -272,7 +272,7 @@ void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset
         _databases.clear();
         _czars.clear();
     }
-    _configUrl = string();
+    _replDbUrl = string();
     _connectionPtr = nullptr;
 
     // Validate and update configuration parameters.
@@ -284,21 +284,21 @@ void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset
     LOGS(_log, LOG_LVL_DEBUG, _context() << _toJson(lock, showPassword).dump());
 }
 
-void Configuration::_load(replica::Lock const& lock, string const& configUrl, bool reset) {
+void Configuration::_load(replica::Lock const& lock, string const& replDbUrl, bool reset) {
     if (reset) {
         _workers.clear();
         _databaseFamilies.clear();
         _databases.clear();
         _czars.clear();
     }
-    _configUrl = configUrl;
+    _replDbUrl = replDbUrl;
 
     // When initializing the connection object use the current defaults for the relevant
     // fields that are missing in the connection string. After that update the database
     // info in the configuration to match values of the parameters that were parsed
     // in the connection string.
     _connectionParams = database::mysql::ConnectionParams::parse(
-            configUrl, _get(lock, "database", "host").get<string>(),
+            replDbUrl, _get(lock, "database", "host").get<string>(),
             _get(lock, "database", "port").get<uint16_t>(), _get(lock, "database", "user").get<string>(),
             _get(lock, "database", "password").get<string>());
     _data["database"]["host"] = _connectionParams.host;
