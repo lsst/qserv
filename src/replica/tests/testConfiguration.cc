@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
     LOGS_INFO("Testing JSON initialization");
     BOOST_REQUIRE_NO_THROW(config = Configuration::load(ConfigTestData::data()));
     BOOST_CHECK(config != nullptr);
-    BOOST_CHECK(config->configUrl().empty());
+    BOOST_CHECK(config->replDbUrl().empty());
     string const configJsonStr = config->toJson().dump();
     BOOST_CHECK(!configJsonStr.empty());
 }
