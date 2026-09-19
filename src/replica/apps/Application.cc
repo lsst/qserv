@@ -51,7 +51,7 @@ Application::Application(int argc, const char* const argv[], string const& descr
           _enableServiceProvider(enableServiceProvider),
           _parser(argc, argv, description),
           _debugFlag(false),
-          _config("mysql://qsreplica@localhost:3306/qservReplica"),
+          _replDbUrl("mysql://qsreplica@localhost:3306/qservReplica"),
           _databaseAllowReconnect(Configuration::databaseAllowReconnect() ? 1 : 0),
           _databaseConnectTimeoutSec(Configuration::databaseConnectTimeoutSec()),
           _databaseMaxReconnects(Configuration::databaseMaxReconnects()),
@@ -134,7 +134,7 @@ int Application::run() {
                         _schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
-        parser().option("config", "Configuration URL (a database connection string).", _config);
+        parser().option("repl-db", "Configuration URL (a database connection string).", _replDbUrl);
         // Inject options for th egeneral configuration parameters.
         for (auto&& itr : ConfigurationSchema::parameters()) {
             string const& category = itr.first;
@@ -177,7 +177,7 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
-        _serviceProvider = ServiceProvider::create(_config, _instanceId, _httpAuthContext);
+        _serviceProvider = ServiceProvider::create(_replDbUrl, _instanceId, _httpAuthContext);
 
         // Update general configuration parameters.
         // Note that options specified by a user will have non-empty values.
@@ -212,11 +212,6 @@ int Application::run() {
 ServiceProvider::Ptr const& Application::serviceProvider() const {
     _assertValidOption(__func__, _enableServiceProvider, " service provider options");
     return _serviceProvider;
-}
-
-string const& Application::configUrl() const {
-    _assertValidOption(__func__, _enableServiceProvider, " service provider options");
-    return _config;
 }
 
 void Application::_assertValidOption(string const& func, bool option, string const& context) const {
