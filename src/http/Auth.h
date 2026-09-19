@@ -61,6 +61,13 @@ public:
     std::string adminAuthKey;  ///< The administrator-level authorization key
 };
 
+inline bool operator==(AuthContext const& lhs, AuthContext const& rhs) {
+    return lhs.user == rhs.user && lhs.password == rhs.password && lhs.authKey == rhs.authKey &&
+           lhs.adminAuthKey == rhs.adminAuthKey;
+}
+
+inline bool operator!=(AuthContext const& lhs, AuthContext const& rhs) { return !(lhs == rhs); }
+
 }  // namespace lsst::qserv::http
 
 #endif  // LSST_QSERV_HTTP_AUTH_H

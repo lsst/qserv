@@ -359,7 +359,7 @@ void Request::dispose(replica::Lock const& lock, int priority, OnDisposeCallback
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
-    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->config()->get<string>("security", "instance-id"));
 
     buffer()->serialize(hdr);
     ProtocolRequestDispose message;

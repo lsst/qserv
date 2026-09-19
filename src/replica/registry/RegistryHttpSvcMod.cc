@@ -26,6 +26,7 @@
 #include "global/stringUtil.h"
 #include "http/Auth.h"
 #include "qhttp/Request.h"
+#include "replica/config/Configuration.h"
 #include "replica/registry/RegistryServices.h"
 #include "util/common.h"
 #include "util/TimeUtils.h"
@@ -73,7 +74,7 @@ void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, Re
 RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                                        RegistryServices& services, shared_ptr<qhttp::Request> const& req,
                                        shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(serviceProvider->httpAuthContext(), req, resp),
+        : http::QhttpModule(serviceProvider->config()->httpAuthContext(), req, resp),
           _serviceProvider(serviceProvider),
           _services(services) {}
 
@@ -82,7 +83,7 @@ string RegistryHttpSvcMod::context() const { return "REGISTRY-HTTP-SVC "; }
 json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
     debug(func);
-    enforceInstanceId(func, _serviceProvider->instanceId());
+    enforceInstanceId(func, _serviceProvider->config()->get<string>("security", "instance-id"));
     if (subModuleName == "SERVICES")
         return _getServices();
     else if (subModuleName == "ADD-WORKER")
