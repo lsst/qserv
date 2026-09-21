@@ -1,0 +1,17 @@
+CREATE TABLE `RefDeepSrcMatch` (
+  `ra` double DEFAULT NULL,
+  `decl` double DEFAULT NULL,
+  `coord_ra` double DEFAULT NULL,
+  `coord_decl` double DEFAULT NULL,
+  `refObjectId` bigint(20) DEFAULT NULL,
+  `deepSourceId` bigint(20) DEFAULT NULL,
+  `angSep` double DEFAULT NULL,
+  `nRefMatches` int(11) DEFAULT NULL,
+  `nSrcMatches` int(11) DEFAULT NULL,
+  `closestToRef` tinyint(4) DEFAULT NULL,
+  `closestToSrc` tinyint(4) DEFAULT NULL,
+  KEY `deepSourceId` (`deepSourceId`),
+  KEY `refObjectId` (`refObjectId`),
+  KEY `refObjectId_2` (`refObjectId`,`deepSourceId`),
+  KEY `deepSourceId_2` (`deepSourceId`,`refObjectId`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
