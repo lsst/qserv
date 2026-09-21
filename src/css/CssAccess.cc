@@ -444,8 +444,9 @@ MatchTableParams CssAccess::getMatchTableParams(std::string const& dbName,
 
     MatchTableParams params;
 
-    std::vector<std::string> subKeys{"match/dirTable1",   "match/dirColName1", "match/dirTable2",
-                                     "match/dirColName2", "match/flagColName", "match/angSep"};
+    std::vector<std::string> subKeys{"match/dirDb1",      "match/dirTable1", "match/dirColName1",
+                                     "match/dirDb2",      "match/dirTable2", "match/dirColName2",
+                                     "match/flagColName", "match/angSep"};
     auto paramMap = _getSubkeys(tableKey, subKeys);
     if (paramMap.empty()) {
         // check table key
@@ -537,8 +538,10 @@ TableParams CssAccess::getTableParams(std::string const& dbName, std::string con
                                      "partitioning/secIndexColName",
                                      "sharedScann/lockInMem",
                                      "sharedScan/scanRating",
+                                     "match/dirDb1",
                                      "match/dirTable1",
                                      "match/dirColName1",
+                                     "match/dirDb2",
                                      "match/dirTable2",
                                      "match/dirColName2",
                                      "match/flagColName",
@@ -632,8 +635,10 @@ void CssAccess::createMatchTable(std::string const& dbName, std::string const& t
         // It looks like older code checks "match" key value
         _kvI->create(tableKey + "/match", "1");
         std::map<std::string, std::string> partMap{
+                std::make_pair("dirDb1", matchParams.dirDb1),
                 std::make_pair("dirTable1", matchParams.dirTable1),
                 std::make_pair("dirColName1", matchParams.dirColName1),
+                std::make_pair("dirDb2", matchParams.dirDb2),
                 std::make_pair("dirTable2", matchParams.dirTable2),
                 std::make_pair("dirColName2", matchParams.dirColName2),
                 std::make_pair("flagColName", matchParams.flagColName),
@@ -1063,8 +1068,10 @@ void CssAccess::_fillPartTableParams(std::map<std::string, std::string>& paramMa
 
 void CssAccess::_fillMatchTableParams(std::map<std::string, std::string>& paramMap, MatchTableParams& params,
                                       std::string const& tableKey) const {
+    params.dirDb1 = paramMap["match/dirDb1"];
     params.dirTable1 = paramMap["match/dirTable1"];
     params.dirColName1 = paramMap["match/dirColName1"];
+    params.dirDb2 = paramMap["match/dirDb2"];
     params.dirTable2 = paramMap["match/dirTable2"];
     params.dirColName2 = paramMap["match/dirColName2"];
     params.flagColName = paramMap["match/flagColName"];
