@@ -135,8 +135,8 @@ class EventThread : public CmdData {
 public:
     typedef std::shared_ptr<EventThread> Ptr;
     enum { HALT = -1000 };
-    EventThread() {}
-    explicit EventThread(CommandQueue::Ptr const& q) : _q{q} {}
+    EventThread() : _q(std::make_shared<CommandQueue>()) {}
+    explicit EventThread(CommandQueue::Ptr const& q) : _q{q} { assert(_q != nullptr); }
     EventThread(EventThread const&) = delete;
     EventThread& operator=(EventThread const&) = delete;
     virtual ~EventThread() {}
@@ -173,8 +173,8 @@ protected:
     virtual void specialActions(Command::Ptr const& cmd) {}  ///< Things to do before running a command.
     void callCommandFinish(Command::Ptr const& cmd);  //< Limit commandFinish() to be called once per loop.
 
-    CommandQueue::Ptr _q{std::make_shared<CommandQueue>()};  ///< Queue of commands.
-    std::thread _t;                                          //< Our thread.
+    CommandQueue::Ptr const _q;                     ///< Queue of commands.
+    std::thread _t;                                 //< Our thread.
     std::atomic<bool> _loop{true};                  //< Keep running the event loop while this is true.
     std::atomic<bool> _commandFinishCalled{false};  //< flag to prevent multiple calls to commandFinish.
     Command::Ptr _getCurrentCommandPtr() const { return _cmd; }  //< not thread safe.
@@ -195,15 +195,19 @@ public:
     EventThreadJoiner();
     ~EventThreadJoiner();
 
-    void joinLoop();
+    /** Adds `eventThread` to the queue of threads to join.
+     * @throws std::bad_expected_access if the thread cannot be added. This
+     * can be avoided by not calling addThread after `shutdownJoin()` has been called.
+     */
     void addThread(EventThread::Ptr const& eventThread);
-    int getCount() { return _count; }
+
+    void joinLoop();
     void shutdownJoin();
     bool joinable() { return _tJoiner.joinable(); }
 
 private:
-    std::atomic<bool> _continue{true};  ///< Stop checking
-    std::atomic<int> _count{0};
+    /// Set to false when shutdownJoin() is called to end the joinLoop() thread.
+    std::atomic<bool> _continue{true};
     std::chrono::milliseconds _sleepTime{1000};  ///< Wait time before checking, only if queue is empty.
     std::queue<EventThread::Ptr> _eventThreads;  ///< Queue of EventThreads that need joining.
     VMUTEX _mtxJoiner;                           ///< Protects _eventThreads

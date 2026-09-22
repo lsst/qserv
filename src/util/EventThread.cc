@@ -81,11 +81,18 @@ void EventThread::callCommandFinish(Command::Ptr const& cmd) {
 
 /// call this to start the thread
 void EventThread::run() {
+    if (_t.joinable()) {
+        throw util::Bug(ERR_LOC, "EventThread::run() called when thread is already running.");
+    }
     thread t{&EventThread::handleCmds, this};
     _t = move(t);
 }
 
 EventThreadJoiner::EventThreadJoiner() {
+    if (_tJoiner.joinable()) {
+        throw util::Bug(ERR_LOC,
+                        "EventThreadJoiner::EventThreadJoiner() called when thread is already running.");
+    }
     thread t(&EventThreadJoiner::joinLoop, this);
     _tJoiner = move(t);
 }
@@ -109,11 +116,11 @@ void EventThreadJoiner::joinLoop() {
         if (!_eventThreads.empty()) {
             pet = _eventThreads.front();
             _eventThreads.pop();
+            size_t count = _eventThreads.size();
             ulock.unlock();
             pet->join();
             pet.reset();
-            _count--;
-            LOGS(_log, LOG_LVL_DEBUG, "joined count=" << _count);
+            LOGS(_log, LOG_LVL_DEBUG, "joined count=" << count);
         } else {
             if (!_continue) break;
             ulock.unlock();
@@ -124,10 +131,16 @@ void EventThreadJoiner::joinLoop() {
 }
 
 void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {
-    if (eventThread == nullptr) return;
+    if (eventThread == nullptr) return;  // Nothing to join.
     VLOCK(lg, _mtxJoiner);
-    ++_count;
+    if (!_continue) {
+        // Logically, this should never happen. If it does, there will be a hanging thread at termination.
+        string const msg = "EventThreadJoiner::addThread called after shutdownJoiner()";
+        LOGS(_log, LOG_LVL_ERROR, msg);
+        throw std::logic_error(msg);
+    }
     _eventThreads.push(eventThread);
+    return;
 }
 
 }  // namespace lsst::qserv::util

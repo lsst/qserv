@@ -65,7 +65,7 @@ std::ostream& operator<<(std::ostream& os, Timer const& timer) {
     return os;
 }
 
-void LockGuardLog(time_t timeToLock, time_t timeHeld, std::string const& note) {
+void LockGuardLog(double timeToLock, double timeHeld, std::string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "lockTime " << note << " toLock=" << timeToLock << " held=" << timeHeld);
 }
 
@@ -110,6 +110,7 @@ std::string TimerHistogram::getString(std::string const& note) {
 /// _mtx must be locked before calling this function.
 ///
 std::string TimerHistogram::_getString(std::string const& note) {
+    VMUTEX_HELD(_mtx);
     std::stringstream os;
     os << _label << " " << note << " avg=" << (_total / _totalCount) << " ";
     double maxB = -std::numeric_limits<double>::infinity();

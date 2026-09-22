@@ -131,7 +131,7 @@ private:
     // @note a lock on _mtx must be held before calling the method
     void _incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr);
 
-    mutable VMUTEX _mtx;
+    mutable VMUTEX _mtx;  ///< protects all private members.
     std::condition_variable_any _cv;
     bool _shuttingDown{false};
     bool _changed{false};
@@ -189,7 +189,8 @@ public:
     /// Invalid priorities get the lowest priority (high priority number).
     void queCmd(PriorityCommand::Ptr const& cmd, int priority) { _prQueue->queCmd(cmd, priority); }
 
-    /// Commands on queue's with priority lower than default may not be run.
+    /// Commands on queue's with priority lower than default priority may not be run
+    /// as the pool shuts down.
     void shutdownPool() {
         _prQueue->prepareShutdown();
         _pool->shutdownPool();

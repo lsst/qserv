@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm);
 
 /// This class is used to log how long it takes to lock a mutex
 /// and how long the mutex is held.
-void LockGuardLog(time_t timeToLock, time_t timeHeld, std::string const& note);
+void LockGuardLog(double timeToLock, double timeHeld, std::string const& note);
 template <typename MutexType>
 class LockGuardTimed {
 public:
@@ -129,8 +129,8 @@ public:
 private:
     std::string _getString(std::string const& note);
 
-    std::string _label;
-    VMUTEX _mtx;
+    std::string const _label;
+    mutable VMUTEX _mtx;
     std::vector<bucket> _buckets;
     uint64_t _overMaxCount{0};
     double _total{0.0};

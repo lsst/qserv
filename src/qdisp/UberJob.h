@@ -96,11 +96,14 @@ public:
     /// that have already happened. If it returns false, the thread calling this
     /// should stop processing.
     bool setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg) {
-        std::lock_guard<std::mutex> jobLock(_jobsMtx);
+        VLOCK(jobLock, _jobsMtx);
         return _setStatusIfOk(newState, msg);
     }
 
-    int getJobCount() const { return _jobs.size(); }
+    int getJobCount() const {
+        VLOCK(jLck, _jobsMtx);
+        return _jobs.size();
+    }
 
     /// Set the worker information needed to send messages to the worker believed to
     /// be responsible for the chunks handled in this UberJob.
@@ -155,7 +158,7 @@ private:
                             std::string const& note = std::string());
 
     std::vector<std::shared_ptr<JobQuery>> _jobs;  ///< List of Jobs in this UberJob.
-    mutable std::mutex _jobsMtx;                   ///< Protects _jobs, _jobStatus
+    mutable VMUTEX _jobsMtx;                       ///< Protects _jobs, _jobStatus
     std::atomic<bool> _started{false};
     qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};
 

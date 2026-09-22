@@ -52,8 +52,8 @@ public:
     bool ready();
 
 private:
-    std::deque<util::Command::Ptr> _qu;
-    VMUTEX _mx;
+    std::deque<util::Command::Ptr> _ctrlCmdQ;
+    VMUTEX _ctrlCmdQMtx;
 };
 
 /// BlendScheduler is a scheduler that places queries in one of

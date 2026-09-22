@@ -32,7 +32,7 @@
 #include <memory>
 #include <mutex>
 
-// qserv headerfs
+// qserv headers
 #include "util/Mutex.h"
 
 namespace lsst::qserv::util {
@@ -51,7 +51,7 @@ public:
 
 private:
     Status _trStatus{Status::INPROGRESS};
-    VMUTEX _trMutex;
+    mutable VMUTEX _trMutex;
     std::condition_variable_any _trCV;
 };
 

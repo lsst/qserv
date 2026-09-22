@@ -25,7 +25,6 @@
 
 // System headers
 #include <atomic>
-#include <mutex>
 
 // Qserv headers
 #include "wsched/ChunkTaskCollection.h"
@@ -72,7 +71,7 @@ public:
     std::string getRatingStr() const;
 
     // SchedulerBase overrides
-    bool ready() override;
+    bool ready() override;  ///< This should only be called by the BlendScheduler.
     std::size_t getSize() const override;
 
     double getMaxTimeMinutes() const { return _maxTimeMinutes; }
