@@ -542,23 +542,23 @@ void BlendScheduler::_logSchedulers() {
 }
 
 void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {
-    VLOCK(lock, _mx);
-    _qu.push_back(cmd);
+    VLOCK(lock, _ctrlCmdQMtx);
+    _ctrlCmdQ.push_back(cmd);
 }
 
 util::Command::Ptr ControlCommandQueue::getCmd() {
-    VLOCK(lock, _mx);
-    if (_qu.empty()) {
+    VLOCK(lock, _ctrlCmdQMtx);
+    if (_ctrlCmdQ.empty()) {
         return nullptr;
     }
-    auto cmd = _qu.front();
-    _qu.pop_front();
+    auto cmd = _ctrlCmdQ.front();
+    _ctrlCmdQ.pop_front();
     return cmd;
 }
 
 bool ControlCommandQueue::ready() {
-    VLOCK(lock, _mx);
-    return !_qu.empty();
+    VLOCK(lock, _ctrlCmdQMtx);
+    return !_ctrlCmdQ.empty();
 }
 
 }  // namespace lsst::qserv::wsched

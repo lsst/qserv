@@ -89,10 +89,10 @@ public:
     /// If it has 1 or 2 Tasks running, it asks for 2 threads to be reserved so the queries
     /// do not get interrupted, or in the case of 1 Task, a second Task can be started right away.
     /// If 3 or more Tasks are running it still asks for 2 to be reserved.
-    virtual int desiredThreadReserve() { return std::min(_inFlight + 1, _maxReserve); }
+    virtual int desiredThreadReserve() { return std::min(_inFlight.load() + 1, _maxReserve.load()); }
 
     /// Return maximum number of Tasks this scheduler can have inFlight.
-    virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
+    virtual int maxInFlight() { return std::min(_maxThreads.load(), _maxThreadsAdj.load()); }
 
     /// Record performance data for the scheduler.
     /// All functions called by this need to be thread safe.
@@ -141,12 +141,14 @@ protected:
     void _decrChunkTaskCount(int chunkId);  //< Decrease the count of Tasks working on this chunk.
 
     std::string const _name{};  //< Name of this scheduler.
-    int _maxReserve = 1;        //< Number of threads this scheduler would like to have reserved for its use.
-    int _maxReserveDefault = 1;
-    int _maxThreads = 1;     //< Maximum number of threads for this scheduler to have inFlight.
-    int _maxThreadsAdj = 1;  //< Maximum number of threads to have inFlight adjusted for available pool.
+    std::atomic<int> _maxReserve{
+            1};  //< Number of threads this scheduler would like to have reserved for its use.
+    std::atomic<int> _maxReserveDefault = 1;
+    std::atomic<int> _maxThreads = 1;  //< Maximum number of threads for this scheduler to have inFlight.
+    std::atomic<int> _maxThreadsAdj =
+            1;  //< Maximum number of threads to have inFlight adjusted for available pool.
 
-    int _priority;  ///< Current priority, higher value - higher priority
+    std::atomic<int> _priority;  ///< Current priority, higher value - higher priority
     int _priorityDefault;
 
     std::atomic<int> _inFlight{0};           ///< Number of Tasks running.
@@ -168,10 +170,9 @@ private:
     std::atomic<int> _totalTaskCount{0};
 
     std::map<int, int> _chunkTasks;  ///< Number of tasks in each chunk actively being queried.
-    std::mutex _countsMutex;         ///< Protects _userQueryCounts and _chunkTasks.
-    // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
-    //       on 'everything' scheduler limits/needs.
-    int _maxActiveChunks;      ///< Limit the number of chunks this scheduler can work on at one time.
+    VMUTEX _countsMutex;             ///< Protects _userQueryCounts and _chunkTasks.
+    std::atomic<int>
+            _maxActiveChunks;  ///< Limit the number of chunks this scheduler can work on at one time.
     int _defaultPosition{10};  ///< Position of this scheduler in the list of schedulers.
 };
 

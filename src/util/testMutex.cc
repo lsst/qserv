@@ -53,6 +53,10 @@ string thisThreadId2str() {
     ss << this_thread::get_id();
     return ss.str();
 }
+
+void lockCompileTest(VLOCKPARAM const& lck) { LOGS_INFO("lockCompileTest" << thisThreadId2str()); }
+
+void lockUniqueCompileTest(VLOCKUNIQPARAM& lck) { LOGS_INFO("lockUniqueCompileTest" << thisThreadId2str()); }
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
@@ -145,6 +149,7 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
     // The mutex will be locked by the current thread
     VMutex mtx2;
     VLOCK(lockGuard2, mtx2);
+    lockCompileTest(lockGuard2);  // just a compile check.
     BOOST_CHECK(mtx2.lockedByThread());
     BOOST_REQUIRE_NO_THROW(VMUTEX_HELD(mtx2));
     BOOST_CHECK_THROW(VMUTEX_NOT_HELD(mtx2), lsst::qserv::util::VMtxException);
@@ -226,6 +231,10 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
+
+    VMutex mtxCompTest;
+    VLOCKUNIQUE(unique, mtxCompTest);
+    lockUniqueCompileTest(unique);
 
     LOGS_INFO("VMutexTest ends");
 }

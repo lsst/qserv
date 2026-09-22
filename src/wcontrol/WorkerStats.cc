@@ -48,7 +48,7 @@ WorkerStats::Ptr WorkerStats::_globalWorkerStats;
 VMUTEX WorkerStats::_globalMtx;
 
 void WorkerStats::setup() {
-    lock_guard lg(_globalMtx);
+    VLOCK(lg, _globalMtx);
     if (_globalWorkerStats != nullptr) {
         throw util::Bug(ERR_LOC, "Error WorkerStats::setup called after global pointer set.");
     }
@@ -70,7 +70,7 @@ WorkerStats::WorkerStats() {
 }
 
 WorkerStats::Ptr WorkerStats::get() {
-    std::lock_guard lg(_globalMtx);
+    VLOCK(lg, _globalMtx);
     if (_globalWorkerStats == nullptr) {
         throw util::Bug(ERR_LOC, "Error CzarStats::get called before CzarStats::setup.");
     }

@@ -282,7 +282,10 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
-    _jobStartCmdList.push_back(cmd);
+    {
+        VLOCK(jsLck, _jobStartCmdListMtx);
+        _jobStartCmdList.push_back(cmd);
+    }
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 0);
     } else {
@@ -294,10 +297,12 @@ void Executive::waitForAllJobsToStart() {
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart");
     // Wait for each command to start.
     while (true) {
+        VLOCKUNIQUE(jsLck, _jobStartCmdListMtx);
         bool empty = _jobStartCmdList.empty();
         if (empty) break;
         auto cmd = move(_jobStartCmdList.front());
         _jobStartCmdList.pop_front();
+        jsLck.unlock();
         cmd->waitComplete();
     }
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
@@ -682,6 +687,7 @@ void Executive::_unTrack(int jobId) {
 string Executive::_getIncompleteJobsString(int maxToList) {
     ostringstream os;
     int c = 0;
+    VMUTEX_HELD(_incompleteJobsMutex);
     if (maxToList < 0) maxToList = _incompleteJobs.size();
     os << "_incompleteJobs listing first" << maxToList << " of (size=" << _incompleteJobs.size() << ") ";
     for (auto j = _incompleteJobs.begin(), e = _incompleteJobs.end(); j != e && c < maxToList; ++j, ++c) {
@@ -824,7 +830,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
         LOGS(_log, LOG_LVL_WARN,
              cName(__func__) << " total=" << _totalResultFileSize << " max=" << maxResultTableSizeBytes);
         // _totalResultFileSize may include non zero values from dead UberJobs,
-        // so recalculate it to verify.
+        // so recalculate it to verify it only includes the sizes of the UberJobs that are still alive.
         uint64_t total = 0;
         {
             VLOCK(lck, _uberJobsMapMtx);
@@ -839,7 +845,10 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
             util::Error err(util::Error::CZAR_RESULT_TOO_LARGE, util::Error::NONE,
                             "Incomplete result already too large " + to_string(total));
-            _multiError.insert(err);
+            {
+                VLOCK(lock, _errorsMutex);
+                _multiError.insert(err);
+            }
             _resultFileSizeExceeded = true;
             _resultFileSizeErr = total;
             squash("czar, file too large");
@@ -876,10 +885,6 @@ void Executive::_collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::F
     // Limit collecting LIMIT queries to one at a time, but only for LIMIT.
     // This is to avoid having to wait for multiple large files to merge when only a
     // few are needed to satisfy the LIMIT. This can make a huge difference.
-    shared_ptr<lock_guard<VMUTEX>> limitSquashL;
-    if (_limitSquashApplies) {
-        limitSquashL.reset(new lock_guard<VMUTEX>(_mtxLimitSquash));  //&&& how to fix this hack?
-    }
     bool flushStatus = ujPtr->getRespHandler()->flushHttp(ujPtr, fileUrlInfo.fileUrl, fileUrlInfo.fileSize);
     bool contaminated = ujPtr->getContaminated();
     LOGS(_log, LOG_LVL_TRACE,
@@ -952,6 +957,7 @@ void Executive::buildAndSendUberJobs() {
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
+    // This simplifies the logic and helps it be deterministic.
     VLOCK(fcLock, _buildUberJobMtx);
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " totalJobs=" << getTotalJobs());
 
@@ -1152,6 +1158,7 @@ ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
 
 /// precondition: _incompleteJobsMutex is held by current thread.
 void Executive::_printState(ostream& os) {
+    VMUTEX_HELD(_incompleteJobsMutex);
     for (auto const& entry : _incompleteJobs) {
         JobQuery::Ptr job = entry.second;
         os << *job << "\n";
