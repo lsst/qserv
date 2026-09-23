@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerHttpProcessorThread.h"
+#include "replica/worker/http/WorkerHttpProcessorThread.h"
 
 // System headers
 #include <stdexcept>
@@ -28,8 +28,8 @@
 // Qserv headers
 #include "replica/config/ConfigExceptions.h"
 #include "replica/proto/Protocol.h"
-#include "replica/worker/WorkerHttpProcessor.h"
-#include "replica/worker/WorkerHttpRequest.h"
+#include "replica/worker/http/WorkerHttpProcessor.h"
+#include "replica/worker/http/WorkerHttpRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"

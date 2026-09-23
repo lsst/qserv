@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerDeleteReplicaHttpRequest.h"
+#include "replica/worker/http/WorkerDeleteReplicaHttpRequest.h"
 
 // System headers
 #include <filesystem>

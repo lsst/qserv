@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKERFINDALLREPLICASHTTPREQUEST_H
-#define LSST_QSERV_REPLICA_WORKERFINDALLREPLICASHTTPREQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKERFINDREPLICAHTTPREQUEST_H
+#define LSST_QSERV_REPLICA_WORKERFINDREPLICAHTTPREQUEST_H
 
 // System headers
 #include <memory>
@@ -30,10 +30,11 @@
 
 // Qserv headers
 #include "replica/util/ReplicaInfo.h"
-#include "replica/worker/WorkerHttpRequest.h"
+#include "replica/worker/http/WorkerHttpRequest.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class MultiFileCsComputeEngine;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
@@ -45,10 +46,10 @@ struct QueuedRequestHdr;
 namespace lsst::qserv::replica {
 
 /**
- * Class WorkerFindAllReplicasHttpRequest represents a context and a state of replicas lookup
+ * Class WorkerFindReplicaHttpRequest represents a context and a state of replica lookup
  * requests within the worker servers.
  */
-class WorkerFindAllReplicasHttpRequest : public WorkerHttpRequest {
+class WorkerFindReplicaHttpRequest : public WorkerHttpRequest {
 public:
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -64,16 +65,16 @@ public:
      * @param onExpired request expiration callback function
      * @return pointer to the created object
      */
-    static std::shared_ptr<WorkerFindAllReplicasHttpRequest> create(
+    static std::shared_ptr<WorkerFindReplicaHttpRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
             protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
             ExpirationCallbackType const& onExpired);
 
-    WorkerFindAllReplicasHttpRequest() = delete;
-    WorkerFindAllReplicasHttpRequest(WorkerFindAllReplicasHttpRequest const&) = delete;
-    WorkerFindAllReplicasHttpRequest& operator=(WorkerFindAllReplicasHttpRequest const&) = delete;
+    WorkerFindReplicaHttpRequest() = delete;
+    WorkerFindReplicaHttpRequest(WorkerFindReplicaHttpRequest const&) = delete;
+    WorkerFindReplicaHttpRequest& operator=(WorkerFindReplicaHttpRequest const&) = delete;
 
-    ~WorkerFindAllReplicasHttpRequest() override = default;
+    ~WorkerFindReplicaHttpRequest() override = default;
 
     bool execute() override;
 
@@ -81,19 +82,24 @@ protected:
     nlohmann::json getResult() const override;
 
 private:
-    WorkerFindAllReplicasHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                                     std::string const& worker, protocol::QueuedRequestHdr const& hdr,
-                                     protocol::RequestParams const& params,
-                                     ExpirationCallbackType const& onExpired);
+    WorkerFindReplicaHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                 std::string const& worker, protocol::QueuedRequestHdr const& hdr,
+                                 protocol::RequestParams const& params,
+                                 ExpirationCallbackType const& onExpired);
 
-    // Input parameters (extracted from the request object)
+    // Input parameters of the request as per the request JSON object
 
     std::string const _databaseName;
+    unsigned int _chunkNumber;
+    bool const _computeCheckSum;
 
     /// Result of the operation
-    ReplicaInfoCollection _replicaInfoCollection;
+    ReplicaInfo _replicaInfo;
+
+    /// The engine for incremental control sum calculation
+    std::unique_ptr<MultiFileCsComputeEngine> _csComputeEnginePtr;
 };
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_WORKERFINDALLREPLICASHTTPREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERFINDREPLICAHTTPREQUEST_H
