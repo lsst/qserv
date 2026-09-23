@@ -25,7 +25,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/util/MessageQueue.h"
+#include "replica/util/PriorityQueue.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -66,10 +66,10 @@ ostream& operator<<(ostream& os, Element const& e) {
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(MessageQueueTest) {
-    LOGS_INFO("MessageQueueTest BEGIN");
+BOOST_AUTO_TEST_CASE(PriorityQueueTest) {
+    LOGS_INFO("PriorityQueueTest BEGIN");
 
-    MessageQueue<Element> queue;
+    PriorityQueue<Element> queue;
 
     BOOST_CHECK(queue.empty());
     BOOST_CHECK_EQUAL(queue.size(), 0U);
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     BOOST_CHECK(queue.empty());
     BOOST_CHECK_EQUAL(queue.size(), 0U);
 
-    LOGS_INFO("MessageQueueTest END");
+    LOGS_INFO("PriorityQueueTest END");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

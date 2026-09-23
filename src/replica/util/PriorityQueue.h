@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_MESSAGEQUEUE_H
-#define LSST_QSERV_REPLICA_MESSAGEQUEUE_H
+#ifndef LSST_QSERV_REPLICA_PRIORITYQUEUE_H
+#define LSST_QSERV_REPLICA_PRIORITYQUEUE_H
 
 // System headers
 #include <algorithm>
@@ -38,7 +38,7 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class MessageQueue is the priority-based queue for storing shared pointers
+ * Class PriorityQueue is the priority-based queue for storing shared pointers
  * to objects of any class that provides the required unique identity. Objects
  * of the same priority are organized as the FIFO-based sub-queues (priority "lanes").
  *
@@ -47,7 +47,8 @@ namespace lsst::qserv::replica {
  * @code
  *   class Element {
  *   public:
- *       std::string const& id() const;
+ *       std::string id() const;
+ *       int priority() const;
  *   };
  * @endcode
  * The implementation is optimized for three most frequent operations with
@@ -79,12 +80,12 @@ namespace lsst::qserv::replica {
  *   simplified element classes.
  */
 template <class T>
-class MessageQueue {
+class PriorityQueue {
 public:
-    MessageQueue() = default;
-    MessageQueue(MessageQueue const&) = default;
-    MessageQueue& operator=(MessageQueue const&) = default;
-    ~MessageQueue() = default;
+    PriorityQueue() = default;
+    PriorityQueue(PriorityQueue const&) = default;
+    PriorityQueue& operator=(PriorityQueue const&) = default;
+    ~PriorityQueue() = default;
 
     /// @return 'true' if the collection is empty.
     bool empty() const { return size() == 0; }
@@ -155,4 +156,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_MESSAGEQUEUE_H
+#endif  // LSST_QSERV_REPLICA_PRIORITYQUEUE_H

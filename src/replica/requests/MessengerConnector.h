@@ -37,7 +37,7 @@
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
 #include "replica/util/ProtocolBuffer.h"
-#include "replica/util/MessageQueue.h"
+#include "replica/util/PriorityQueue.h"
 #include "replica/util/Mutex.h"
 
 // Forward declarations
@@ -468,7 +468,7 @@ private:
     mutable replica::Mutex _mtx;
 
     /// The priority-based queue of requests.
-    MessageQueue<MessageWrapperBase> _requests;
+    PriorityQueue<MessageWrapperBase> _requests;
 
     /// The currently processed (being sent) request (if any, otherwise
     /// the pointer is set to nullptr).
