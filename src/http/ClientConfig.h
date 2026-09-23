@@ -41,16 +41,18 @@ public:
 
     // The protocol and connection options keys
 
-    static std::string const httpVersionKey;     ///< CURLOPT_HTTP_VERSION
-    static std::string const bufferSizeKey;      ///< CURLOPT_BUFFERSIZE
-    static std::string const maxConnectsKey;     ///< CURLOPT_MAXCONNECTS
-    static std::string const connectTimeoutKey;  ///< CURLOPT_CONNECTTIMEOUT
-    static std::string const timeoutKey;         ///< CURLOPT_TIMEOUT
-    static std::string const lowSpeedLimitKey;   ///< CURLOPT_LOW_SPEED_LIMIT
-    static std::string const lowSpeedTimeKey;    ///< CURLOPT_LOW_SPEED_TIME
-    static std::string const tcpKeepAliveKey;    ///< CURLOPT_TCP_KEEPALIVE
-    static std::string const tcpKeepIdleKey;     ///< CURLOPT_TCP_KEEPIDLE
-    static std::string const tcpKeepIntvlKey;    ///< CURLOPT_TCP_KEEPINTVL
+    static std::string const httpVersionKey;       ///< CURLOPT_HTTP_VERSION
+    static std::string const bufferSizeKey;        ///< CURLOPT_BUFFERSIZE
+    static std::string const maxConnectsKey;       ///< CURLOPT_MAXCONNECTS
+    static std::string const connectTimeoutKey;    ///< CURLOPT_CONNECTTIMEOUT
+    static std::string const connectTimeoutMsKey;  ///< CURLOPT_CONNECTTIMEOUT_MS
+    static std::string const timeoutKey;           ///< CURLOPT_TIMEOUT
+    static std::string const timeoutMsKey;         ///< CURLOPT_TIMEOUT_MS
+    static std::string const lowSpeedLimitKey;     ///< CURLOPT_LOW_SPEED_LIMIT
+    static std::string const lowSpeedTimeKey;      ///< CURLOPT_LOW_SPEED_TIME
+    static std::string const tcpKeepAliveKey;      ///< CURLOPT_TCP_KEEPALIVE
+    static std::string const tcpKeepIdleKey;       ///< CURLOPT_TCP_KEEPIDLE
+    static std::string const tcpKeepIntvlKey;      ///< CURLOPT_TCP_KEEPINTVL
 
     // Keys for the SSL certs of the final data servers
 
@@ -108,7 +110,9 @@ public:
     long tcpKeepIdle = 0;
     long tcpKeepIntvl = 0;
     long connectTimeout = 0;
+    long connectTimeoutMs = 0;
     long timeout = 0;
+    long timeoutMs = 0;
     long lowSpeedLimit = 0;
     long lowSpeedTime = 0;
 
