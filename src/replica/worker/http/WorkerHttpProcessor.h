@@ -34,7 +34,7 @@
 // Qserv headers
 #include "replica/proto/Protocol.h"
 #include "replica/util/Mutex.h"
-#include "replica/worker/WorkerHttpRequest.h"
+#include "replica/worker/http/WorkerHttpRequest.h"
 
 // Third party headers
 #include "nlohmann/json.hpp"

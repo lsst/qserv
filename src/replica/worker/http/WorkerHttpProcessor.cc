@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerHttpProcessor.h"
+#include "replica/worker/http/WorkerHttpProcessor.h"
 
 // System headers
 #include <algorithm>
@@ -32,15 +32,15 @@
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Performance.h"
-#include "replica/worker/WorkerHttpProcessorThread.h"
-#include "replica/worker/WorkerHttpRequest.h"
-#include "replica/worker/WorkerCreateReplicaHttpRequest.h"
-#include "replica/worker/WorkerDeleteReplicaHttpRequest.h"
-#include "replica/worker/WorkerDirectorIndexHttpRequest.h"
-#include "replica/worker/WorkerEchoHttpRequest.h"
-#include "replica/worker/WorkerFindReplicaHttpRequest.h"
-#include "replica/worker/WorkerFindAllReplicasHttpRequest.h"
-#include "replica/worker/WorkerSqlHttpRequest.h"
+#include "replica/worker/http/WorkerHttpProcessorThread.h"
+#include "replica/worker/http/WorkerHttpRequest.h"
+#include "replica/worker/http/WorkerCreateReplicaHttpRequest.h"
+#include "replica/worker/http/WorkerDeleteReplicaHttpRequest.h"
+#include "replica/worker/http/WorkerDirectorIndexHttpRequest.h"
+#include "replica/worker/http/WorkerEchoHttpRequest.h"
+#include "replica/worker/http/WorkerFindReplicaHttpRequest.h"
+#include "replica/worker/http/WorkerFindAllReplicasHttpRequest.h"
+#include "replica/worker/http/WorkerSqlHttpRequest.h"
 #include "util/BlockPost.h"
 #include "util/TimeUtils.h"
 
