@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerEchoHttpRequest.h"
+#include "replica/worker/http/WorkerEchoHttpRequest.h"
 
 // System headers
 #include <algorithm>
