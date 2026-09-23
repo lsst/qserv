@@ -257,6 +257,11 @@ json ConfigSchemaController::_build() {
              " of the Replication/Ingest system."},
             {"empty-allowed", 1},
             {"default", 1}};
+    controller["http-messenger-num-threads"] = {
+            {"description",
+             "The number of threads used by the HTTP messenger for processing requests."
+             " The limit is set per worker."},
+            {"default", min(8U, num_threads)}};
 
     // This is Controller-specific category of the schema.
     schema["xrootd"] = json::object();
