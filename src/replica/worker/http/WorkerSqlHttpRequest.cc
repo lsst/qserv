@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerSqlHttpRequest.h"
+#include "replica/worker/http/WorkerSqlHttpRequest.h"
 
 // System headers
 #include <stdexcept>
