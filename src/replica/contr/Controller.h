@@ -38,6 +38,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class HttpMessenger;
 class Messenger;
 class QservMgtServices;
 class ServiceProvider;
@@ -100,7 +101,10 @@ public:
      */
     void verifyFolders(bool createMissingFolders = false) const;
 
-    /// @return a reference to worker messenger service (configured for controllers)
+    /// @return a reference to worker messenger service (HTTP+JSON)
+    std::shared_ptr<HttpMessenger> httpMessenger() const { return _httpMessenger; }
+
+    /// @return a reference to worker messenger service (TCP+PROTOBUF)
     std::shared_ptr<Messenger> messenger() const { return _messenger; }
 
     /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
@@ -124,8 +128,8 @@ private:
     /// the Controller was created.
     std::uint64_t const _startTime;
 
-    /// Worker messenger service
-    std::shared_ptr<Messenger> const _messenger;
+    std::shared_ptr<HttpMessenger> const _httpMessenger;  ///< The HTTP+JSON worker messenger service
+    std::shared_ptr<Messenger> const _messenger;          ///< The TCP+PROTOBUF worker messenger service
 
     /// Qserv management services
     std::shared_ptr<QservMgtServices> const _qservMgtServices;
