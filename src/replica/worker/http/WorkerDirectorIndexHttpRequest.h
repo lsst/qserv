@@ -31,7 +31,7 @@
 // Qserv headers
 #include "replica/proto/Protocol.h"
 #include "replica/util/Common.h"
-#include "replica/worker/WorkerHttpRequest.h"
+#include "replica/worker/http/WorkerHttpRequest.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
