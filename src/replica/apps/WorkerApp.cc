@@ -38,8 +38,8 @@
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "replica/worker/FileServer.h"
+#include "replica/worker/http/WorkerHttpSvc.h"
 #include "replica/worker/WorkerExporterHttpSvc.h"
-#include "replica/worker/WorkerHttpSvc.h"
 #include "replica/worker/WorkerServer.h"
 
 // LSST headers
