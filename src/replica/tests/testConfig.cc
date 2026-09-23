@@ -197,6 +197,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<string>("controller", "director-index-charset-name") == "latin1");
     BOOST_CHECK(config->get<string>("controller", "director-index-engine") == "MyISAM");
     BOOST_CHECK(config->get<unsigned int>("controller", "create-folders") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "http-messenger-num-threads") == 4);
 
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
@@ -474,6 +475,9 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "create-folders", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "create-folders") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "http-messenger-num-threads", 5));
+    BOOST_CHECK(config->get<unsigned int>("controller", "http-messenger-num-threads") == 5);
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 1));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") != 0);

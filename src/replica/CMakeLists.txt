@@ -88,6 +88,7 @@ replica_tests(
     testConnectionParams
     testCsv
     testFileUtils
+    testHttpMessenger
     testIngestRequestMgr
     testJson
     testPriorityQueue
