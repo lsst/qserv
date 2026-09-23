@@ -150,6 +150,9 @@ public:
         }
     }
 
+    /// Empty the queue.
+    void clear() { _priority2lane.clear(); }
+
 private:
     std::map<int, std::list<std::shared_ptr<T>>> _priority2lane;
 };

@@ -66,7 +66,8 @@ map<string, set<string>> ConfigTestDataController::parameters() {
                "num-director-index-connections",
                "director-index-charset-name",
                "director-index-engine",
-               "create-folders"}},
+               "create-folders",
+               "http-messenger-num-threads"}},
              {"database",
               {"allow-reconnect", "connect-timeout-sec", "max-reconnects", "schema-upgrade-wait",
                "schema-upgrade-wait-timeout", "services-pool-size", "qserv-mysql-user",
@@ -119,7 +120,8 @@ json ConfigTestDataController::data() {
                                              {"ingest-job-monitor-ival-sec", 5},
                                              {"num-director-index-connections", 6},
                                              {"director-index-engine", "MyISAM"},
-                                             {"create-folders", 1}});
+                                             {"create-folders", 1},
+                                             {"http-messenger-num-threads", 4}});
     generalObj["database"] = json::object({{"allow-reconnect", 1},
                                            {"connect-timeout-sec", 30},
                                            {"max-reconnects", 3},

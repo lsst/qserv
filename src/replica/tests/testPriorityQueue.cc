@@ -180,6 +180,14 @@ BOOST_AUTO_TEST_CASE(PriorityQueueTest) {
     BOOST_CHECK(queue.empty());
     BOOST_CHECK_EQUAL(queue.size(), 0U);
 
+    // Test clearing a non-empty queue.
+    for (auto&& e : allElements) queue.push_back(e);
+    BOOST_CHECK(!queue.empty());
+    BOOST_CHECK_EQUAL(queue.size(), allElements.size());
+    BOOST_REQUIRE_NO_THROW({ queue.clear(); });
+    BOOST_CHECK(queue.empty());
+    BOOST_CHECK_EQUAL(queue.size(), 0U);
+
     LOGS_INFO("PriorityQueueTest END");
 }
 
