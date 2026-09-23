@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerHttpSvc.h"
+#include "replica/worker/http/WorkerHttpSvc.h"
 
 // System headers
 #include <functional>
@@ -33,8 +33,8 @@
 #include "replica/config/Config.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
-#include "replica/worker/WorkerHttpProcessor.h"
-#include "replica/worker/WorkerHttpSvcMod.h"
+#include "replica/worker/http/WorkerHttpProcessor.h"
+#include "replica/worker/http/WorkerHttpSvcMod.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
