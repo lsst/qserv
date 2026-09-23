@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerHttpSvcMod.h"
+#include "replica/worker/http/WorkerHttpSvcMod.h"
 
 // System headers
 #include <filesystem>
@@ -35,7 +35,7 @@
 #include "http/Method.h"
 #include "replica/config/Config.h"
 #include "replica/proto/Protocol.h"
-#include "replica/worker/WorkerHttpProcessor.h"
+#include "replica/worker/http/WorkerHttpProcessor.h"
 #include "replica/services/ServiceProvider.h"
 
 using namespace std;
