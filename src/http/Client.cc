@@ -181,9 +181,18 @@ void Client::_setConnOptions() {
         _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_CONNECTTIMEOUT)",
                               curl_easy_setopt(_hcurl, CURLOPT_CONNECTTIMEOUT, _clientConfig.connectTimeout));
     }
+    if (_clientConfig.connectTimeoutMs > 0) {
+        _curlEasyErrorChecked(
+                "curl_easy_setopt(CURLOPT_CONNECTTIMEOUT_MS)",
+                curl_easy_setopt(_hcurl, CURLOPT_CONNECTTIMEOUT_MS, _clientConfig.connectTimeoutMs));
+    }
     if (_clientConfig.timeout > 0) {
         _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_TIMEOUT)",
                               curl_easy_setopt(_hcurl, CURLOPT_TIMEOUT, _clientConfig.timeout));
+    }
+    if (_clientConfig.timeoutMs > 0) {
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_TIMEOUT_MS)",
+                              curl_easy_setopt(_hcurl, CURLOPT_TIMEOUT_MS, _clientConfig.timeoutMs));
     }
     if (_clientConfig.lowSpeedLimit > 0) {
         _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_LIMIT)",
