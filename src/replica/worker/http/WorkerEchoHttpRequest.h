@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  *
@@ -19,20 +18,22 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKERDELETEREPLICAHTTPREQUEST_H
-#define LSST_QSERV_REPLICA_WORKERDELETEREPLICAHTTPREQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKERECHOHTTPREQUEST_H
+#define LSST_QSERV_REPLICA_WORKERECHOHTTPREQUEST_H
 
 // System headers
+#include <cstdint>
+#include <memory>
 #include <string>
+
+// Qserv headers
+#include "replica/worker/http/WorkerHttpRequest.h"
 
 // Third party headers
 #include "nlohmann/json.hpp"
 
-// Qserv headers
-#include "replica/util/ReplicaInfo.h"
-#include "replica/worker/WorkerHttpRequest.h"
-
 // Forward declarations
+
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -45,10 +46,11 @@ struct QueuedRequestHdr;
 namespace lsst::qserv::replica {
 
 /**
- * Class WorkerDeleteReplicaHttpRequest represents a context and a state of replica deletion
- * requests within the worker servers.
+ * Class WorkerEchoHttpRequest implements test requests within the worker servers.
+ * Requests of this type don't have any side effects (in terms of modifying
+ * any files or databases).
  */
-class WorkerDeleteReplicaHttpRequest : public WorkerHttpRequest {
+class WorkerEchoHttpRequest : public WorkerHttpRequest {
 public:
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -64,16 +66,16 @@ public:
      * @param onExpired request expiration callback function
      * @return pointer to the created object
      */
-    static std::shared_ptr<WorkerDeleteReplicaHttpRequest> create(
+    static std::shared_ptr<WorkerEchoHttpRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
             protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
             ExpirationCallbackType const& onExpired);
 
-    WorkerDeleteReplicaHttpRequest() = delete;
-    WorkerDeleteReplicaHttpRequest(WorkerDeleteReplicaHttpRequest const&) = delete;
-    WorkerDeleteReplicaHttpRequest& operator=(WorkerDeleteReplicaHttpRequest const&) = delete;
+    WorkerEchoHttpRequest() = delete;
+    WorkerEchoHttpRequest(WorkerEchoHttpRequest const&) = delete;
+    WorkerEchoHttpRequest& operator=(WorkerEchoHttpRequest const&) = delete;
 
-    ~WorkerDeleteReplicaHttpRequest() override = default;
+    ~WorkerEchoHttpRequest() override = default;
 
     bool execute() override;
 
@@ -81,20 +83,17 @@ protected:
     nlohmann::json getResult() const override;
 
 private:
-    WorkerDeleteReplicaHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                                   std::string const& worker, protocol::QueuedRequestHdr const& hdr,
-                                   protocol::RequestParams const& params,
-                                   ExpirationCallbackType const& onExpired);
+    WorkerEchoHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+                          protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+                          ExpirationCallbackType const& onExpired);
 
     // Input parameters (extracted from the request object)
+    int const _delay;         ///< The amount of the initial delay (milliseconds)
+    std::string const _data;  ///< The message to be echoed back to the client
 
-    std::string const _databaseName;
-    uint32_t const _chunkNumber;
-
-    /// Extended status of the replica deletion request
-    ReplicaInfo _replicaInfo;
+    int _delayLeft;  ///< The amount of the initial delay which is still left (milliseconds)
 };
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_WORKERDELETEREPLICAHTTPREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERECHOHTTPREQUEST_H
