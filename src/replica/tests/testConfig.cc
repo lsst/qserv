@@ -172,6 +172,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 1);
+    BOOST_CHECK(config->get<size_t>("controller", "worker-response-size-limit") == 1024);
     BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 2);
     BOOST_CHECK(config->get<unsigned int>("controller", "health-probe-interval") == 10);
     BOOST_CHECK(config->get<unsigned int>("controller", "replication-interval") == 120);
@@ -372,6 +373,10 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
                       invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "num-requests-per-worker", 2));
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 2);
+
+    BOOST_CHECK_THROW(config->set<size_t>("controller", "worker-response-size-limit", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "worker-response-size-limit", 2048));
+    BOOST_CHECK(config->get<size_t>("controller", "worker-response-size-limit") == 2048);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("controller", "max-repl-level", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "max-repl-level", 3));
