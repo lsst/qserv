@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/worker/WorkerCreateReplicaHttpRequest.h"
+#include "replica/worker/http/WorkerCreateReplicaHttpRequest.h"
 
 // System headers
 #include <cerrno>
