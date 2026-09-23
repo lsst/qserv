@@ -102,7 +102,12 @@ json ConfigSchemaController::_build() {
              "The number of simultaneous requests to be sent to each Replication worker service."
              " For the best performance of the system, the number should match the number of"
              " the service threads at the worker. This number must be greater than 0."},
-            {"default", 2}};
+            {"default", min(8U, num_threads)}};
+    controller["worker-response-size-limit"] = {
+            {"description",
+             "The maximum allowed size (in bytes) of the HTTP response body from each Replication worker "
+             "service. It must be large enough to accommodate potentially large responses from the server."},
+            {"default", 512 * 1024 * 1024}};
     controller["http-server-threads"] = {
             {"description",
              "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
