@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_MESSAGEQUEUE_H
-#define LSST_QSERV_REPLICA_MESSAGEQUEUE_H
+#ifndef LSST_QSERV_REPLICA_PRIORITYQUEUE_H
+#define LSST_QSERV_REPLICA_PRIORITYQUEUE_H
 
 // System headers
 #include <algorithm>
@@ -38,7 +38,7 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class MessageQueue is the priority-based queue for storing shared pointers
+ * Class PriorityQueue is the priority-based queue for storing shared pointers
  * to objects of any class that provides the required unique identity. Objects
  * of the same priority are organized as the FIFO-based sub-queues (priority "lanes").
  *
@@ -47,7 +47,9 @@ namespace lsst::qserv::replica {
  * @code
  *   class Element {
  *   public:
- *       std::string const& id() const;
+ *       using key_type = std::string;
+ *       std::string id() const;
+ *       int priority() const;
  *   };
  * @endcode
  * The implementation is optimized for three most frequent operations with
@@ -79,12 +81,12 @@ namespace lsst::qserv::replica {
  *   simplified element classes.
  */
 template <class T>
-class MessageQueue {
+class PriorityQueue {
 public:
-    MessageQueue() = default;
-    MessageQueue(MessageQueue const&) = default;
-    MessageQueue& operator=(MessageQueue const&) = default;
-    ~MessageQueue() = default;
+    PriorityQueue() = default;
+    PriorityQueue(PriorityQueue const&) = default;
+    PriorityQueue& operator=(PriorityQueue const&) = default;
+    ~PriorityQueue() = default;
 
     /// @return 'true' if the collection is empty.
     bool empty() const { return size() == 0; }
@@ -129,7 +131,7 @@ public:
      * @return A copy of the element or an empty element initialized with 'nullptr'
      *   if no such element exists in the collection.
      */
-    std::shared_ptr<T> find(std::string const& id) const {
+    std::shared_ptr<T> find(typename T::key_type const& id) const {
         for (auto&& itr : _priority2lane) {
             auto& lane = itr.second;
             if (!lane.empty()) {
@@ -142,12 +144,15 @@ public:
     }
 
     /// Locate and remove an element matching the specified identifier.
-    void remove(std::string const& id) {
+    void remove(typename T::key_type const& id) {
         for (auto&& itr : _priority2lane) {
             auto&& lane = itr.second;
             lane.remove_if([&id](auto ptr) { return ptr->id() == id; });
         }
     }
+
+    /// Empty the queue.
+    void clear() { _priority2lane.clear(); }
 
 private:
     std::map<int, std::list<std::shared_ptr<T>>> _priority2lane;
@@ -155,4 +160,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_MESSAGEQUEUE_H
+#endif  // LSST_QSERV_REPLICA_PRIORITYQUEUE_H

@@ -25,7 +25,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/util/MessageQueue.h"
+#include "replica/util/PriorityQueue.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -45,6 +45,9 @@ namespace {
  */
 class Element {
 public:
+    /// The type of the unique identifier for the request is required by the PriorityQueue.
+    using key_type = std::string;
+
     Element(string const& id, int priority) : _id(id), _priority(priority) {}
     Element() = default;
     Element(Element const&) = default;
@@ -66,10 +69,10 @@ ostream& operator<<(ostream& os, Element const& e) {
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(MessageQueueTest) {
-    LOGS_INFO("MessageQueueTest BEGIN");
+BOOST_AUTO_TEST_CASE(PriorityQueueTest) {
+    LOGS_INFO("PriorityQueueTest BEGIN");
 
-    MessageQueue<Element> queue;
+    PriorityQueue<Element> queue;
 
     BOOST_CHECK(queue.empty());
     BOOST_CHECK_EQUAL(queue.size(), 0U);
@@ -180,7 +183,15 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     BOOST_CHECK(queue.empty());
     BOOST_CHECK_EQUAL(queue.size(), 0U);
 
-    LOGS_INFO("MessageQueueTest END");
+    // Test clearing a non-empty queue.
+    for (auto&& e : allElements) queue.push_back(e);
+    BOOST_CHECK(!queue.empty());
+    BOOST_CHECK_EQUAL(queue.size(), allElements.size());
+    BOOST_REQUIRE_NO_THROW({ queue.clear(); });
+    BOOST_CHECK(queue.empty());
+    BOOST_CHECK_EQUAL(queue.size(), 0U);
+
+    LOGS_INFO("PriorityQueueTest END");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
