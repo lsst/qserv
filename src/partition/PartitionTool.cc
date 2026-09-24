@@ -46,6 +46,8 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
+#define INVALID_POS(v) (!(std::isnormal(v) || v == 0))
+
 namespace lsst::partition {
 
 class PartitionTool::Worker : public ChunkReducer {
@@ -139,14 +141,14 @@ void PartitionTool::Worker::map(char const* const begin, char const* const end,
             sc.first = _editor.get<double>(_pos.first);
             sc.second = _editor.get<double>(_pos.second);
             // Skip this record if the position is invalid (e.g. NaN, Inf, -Inf).
-            if (!std::isnormal(sc.first) || !std::isnormal(sc.second)) {
+            if (INVALID_POS(sc.first) || INVALID_POS(sc.second)) {
                 if (_skipRowsOnEmptyCoord) continue;
                 throw std::runtime_error("Invalid position values: " + std::to_string(sc.first) + ", " +
                                          std::to_string(sc.second));
             }
             if (_autoCorrectLat360) {
                 sc.first = std::fmod(sc.first + 360.0, 360.0);
-                if (!std::isnormal(sc.first)) {
+                if (INVALID_POS(sc.first)) {
                     if (_skipRowsOnEmptyCoord) continue;
                     throw std::runtime_error("Invalid position values after auto-correction: " +
                                              std::to_string(sc.first) + ", " + std::to_string(sc.second));
