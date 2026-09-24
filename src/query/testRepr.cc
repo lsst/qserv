@@ -225,6 +225,27 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
     wc1->prependAndTerm(ot0);
     auto str0 = wc1->getGenerated();
     BOOST_CHECK_EQUAL(str0, "(`refObjectId` IS NULL OR `flags`<>2) AND `foo`!=`bar` AND `baz`<3.14159");
+
+    // If we prepend an AND term, ensure we constrain both sides of the OR.
+    WhereClause existingOr(ot0);
+    auto original = existingOr.clone();
+    existingOr.prependAndTerm(at0);
+    BOOST_CHECK_EQUAL(existingOr.getGenerated(),
+                      "`foo`!=`bar` AND `baz`<3.14159 AND (`refObjectId` IS NULL OR `flags`<>2)");
+    BOOST_CHECK_EQUAL(original->getGenerated(), "`refObjectId` IS NULL OR `flags`<>2");
+    BOOST_REQUIRE(existingOr.getRootAndTerm());
+    BOOST_CHECK_EQUAL(existingOr.getColumnRefs()->size(), 5U);
+
+    // Repeated insertion
+    existingOr.prependAndTerm(bf3);
+    BOOST_CHECK_EQUAL(existingOr.getGenerated(),
+                      "`baz`<3.14159 AND `foo`!=`bar` AND `baz`<3.14159 "
+                      "AND (`refObjectId` IS NULL OR `flags`<>2)");
+
+    // Single factor under OR
+    WhereClause singleFactor(std::make_shared<OrTerm>(bf2));
+    singleFactor.prependAndTerm(bf3);
+    BOOST_CHECK_EQUAL(singleFactor.getGenerated(), "`baz`<3.14159 AND (`foo`!=`bar`)");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

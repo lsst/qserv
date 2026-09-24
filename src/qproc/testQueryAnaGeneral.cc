@@ -193,6 +193,25 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     BOOST_CHECK(!context->hasSubChunks());
 }
 
+BOOST_AUTO_TEST_CASE(RestrictorWithOr) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    auto qs = queryAnaHelper.buildQuerySession(
+            qsTest,
+            "SELECT o.objectIdObjTest FROM Object o WHERE qserv_areaspec_box(0,0,1,1) "
+            "AND (o.objectIdObjTest=1 OR o.objectIdObjTest=2)");
+    BOOST_REQUIRE(qs->getError().empty());
+    auto const ctx = qs->dbgGetContext();
+    BOOST_REQUIRE(ctx->areaRestrictors);
+    BOOST_CHECK_EQUAL(ctx->areaRestrictors->size(), 1U);
+    BOOST_CHECK(!ctx->secIdxRestrictors || ctx->secIdxRestrictors->empty());
+    BOOST_CHECK_EQUAL(queryAnaHelper.buildFirstParallelQuery(false),
+                      "SELECT `o`.`objectIdObjTest` AS `o.objectIdObjTest` "
+                      "FROM `LSST`.`Object_100` AS `o` WHERE "
+                      "scisql_s2PtInBox(`o`.`ra_Test`,`o`.`decl_Test`,0,0,1,1)=1 "
+                      "AND (`o`.`objectIdObjTest`=1 OR `o`.`objectIdObjTest`=2)");
+}
+
 BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::string stmt =
             "select count(*) from Object as o1, Object as o2 "
@@ -1498,6 +1517,24 @@ BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(Match, QueryAnaFixture)
+
+BOOST_AUTO_TEST_CASE(OrWithFiltering) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"RefObjMatch", {"refObjectId", "objectId", "flags"}}}}}));
+    std::vector<std::string> const statements = {
+            "SELECT m.objectId FROM RefObjMatch m WHERE m.objectId=1 OR m.refObjectId IS NULL",
+            "SELECT m.objectId FROM RefObjMatch m WHERE (m.objectId=1 OR m.refObjectId IS NULL)"};
+    for (auto const& stmt : statements) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+            BOOST_REQUIRE(qs->getError().empty());
+            auto const parallel = queryAnaHelper.buildFirstParallelQuery(false);
+            BOOST_CHECK_NE(parallel.find("WHERE (`refObjectId` IS NULL OR `flags`<>2) "
+                                         "AND (`m`.`objectId`=1 OR `m`.`refObjectId` IS NULL)"),
+                           std::string::npos);
+        }
+    }
+}
 
 BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch;";
