@@ -125,25 +125,18 @@ std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const {
 
 void WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
     // Find the global AndTerm and add the new BoolTerm to its terms. If the new BoolTerm is an instance of
-    // AndTerm, merge its terms instead of adding it to the AndTerm's terms.
-    // If a global AndTerm can not be found then throw; this query can not be handled.
-    if (nullptr == _rootOrTerm) {
-        _rootOrTerm = std::make_shared<OrTerm>();
-    }
-
-    std::shared_ptr<AndTerm> andTerm;
-    if (_rootOrTerm->_terms.size() == 0) {
+    // AndTerm, merge its terms instead of adding it to the AndTerm's terms. If there is no global AND, we
+    // wrap the existing predicate with one.
+    auto andTerm = getRootAndTerm();
+    if (!andTerm) {
         andTerm = std::make_shared<AndTerm>();
-        _rootOrTerm->addBoolTerm(andTerm);
-    } else if (_rootOrTerm->_terms.size() == 1) {
-        andTerm = std::dynamic_pointer_cast<AndTerm>(_rootOrTerm->_terms[0]);
-        if (nullptr == andTerm) {
-            throw std::logic_error("Term of first OR term is not an AND term; there is no global AND term");
+        if (_rootOrTerm && !_rootOrTerm->_terms.empty()) {
+            andTerm->addBoolTerm(_rootOrTerm);
         }
-    } else {
-        throw std::logic_error("There is more than term in the root OR term; can't pick a global AND term");
+        _rootOrTerm = std::make_shared<OrTerm>(andTerm);
     }
 
+    // Try to merge the term. If that isn't possible (not AND), insert it:
     if (!andTerm->merge(*t, AndTerm::PREPEND)) {
         andTerm->_terms.insert(andTerm->_terms.begin(), t);
     }
