@@ -39,6 +39,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Boost unit test header
@@ -1617,6 +1618,70 @@ BOOST_AUTO_TEST_SUITE_END()
 
 /// table JOIN table syntax
 BOOST_FIXTURE_TEST_SUITE(JoinSyntax, QueryAnaFixture)
+
+BOOST_AUTO_TEST_CASE(NegatedEquality) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest"}}, {"Source", {"objectIdSourceTest"}}}}}));
+    std::vector<std::string> const statements = {
+            "SELECT o.objectIdObjTest FROM Object o, Source s "
+            "WHERE NOT (o.objectIdObjTest=s.objectIdSourceTest)",
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+            // ANTLR rejects NOT in ON before query analysis.
+            "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
+            "ON NOT (o.objectIdObjTest=s.objectIdSourceTest)",
+            "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
+            "ON NOT (NOT (NOT (o.objectIdObjTest=s.objectIdSourceTest)))",
+#endif
+    };
+    for (auto const& stmt : statements) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+            BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+        }
+    }
+}
+
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+BOOST_AUTO_TEST_CASE(NegatedEqualityOuterJoin) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest"}}, {"Source", {"objectIdSourceTest"}}}}}));
+    for (std::string const joinType : {"LEFT", "RIGHT"}) {
+        BOOST_TEST_CONTEXT(joinType) {
+            auto qs = queryAnaHelper.buildQuerySession(
+                    qsTest,
+                    "SELECT o.objectIdObjTest FROM Object o " + joinType +
+                            " JOIN Source s ON NOT (o.objectIdObjTest=s.objectIdSourceTest)",
+                    true);
+            BOOST_CHECK_EQUAL(qs->getError(),
+                              "AnalysisError:Unable to evaluate query by joining only partition-local data");
+        }
+    }
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(NegatedEqualityWithLocality) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "foo"}}, {"Source", {"objectIdSourceTest", "foo"}}}}}));
+    std::vector<std::string> const statements = {
+            "SELECT o.objectIdObjTest FROM Object o, Source s "
+            "WHERE o.objectIdObjTest=s.objectIdSourceTest AND NOT (o.foo=s.foo)",
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+            "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
+            "ON o.objectIdObjTest=s.objectIdSourceTest AND NOT (o.foo=s.foo)",
+            "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
+            "ON NOT (NOT (o.objectIdObjTest=s.objectIdSourceTest)) AND NOT (o.foo=s.foo)",
+#endif
+    };
+    for (auto const& stmt : statements) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+            BOOST_REQUIRE(qs->getError().empty());
+            auto const parallel = queryAnaHelper.buildFirstParallelQuery(false);
+            BOOST_CHECK_NE(parallel.find("NOT"), std::string::npos);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(ImplicitJoin) {
     std::vector<std::pair<std::string, std::string>> const joinForms = {
             {"JOIN", "JOIN"},
@@ -2081,6 +2146,28 @@ BOOST_AUTO_TEST_CASE(NegatedSecondaryKeyPredicateNotUsedAsRestrictor) {
         BOOST_CHECK(qs->getSecIdxRestrictors() == nullptr);
     }
 }
+
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+BOOST_AUTO_TEST_CASE(NestedNegationSecondaryIndexRestrictions) {
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest", "ra_Test"}}}}}));
+    std::vector<std::pair<std::string, bool>> const predicates = {
+            {"NOT (objectIdObjTest NOT IN (1,2))", true},
+            {"NOT (NOT (objectIdObjTest=1))", true},
+            {"NOT (NOT (NOT (objectIdObjTest=1)))", false},
+            {"NOT (objectIdObjTest IS NOT NULL)", false},
+            {"NOT (NOT (objectIdObjTest=1 OR objectIdObjTest=2))", false}};
+    for (auto const& [predicate, shouldRestrict] : predicates) {
+        BOOST_TEST_CONTEXT(predicate) {
+            auto qs =
+                    queryAnaHelper.buildQuerySession(qsTest, "SELECT ra_Test FROM Object WHERE " + predicate);
+            BOOST_REQUIRE(qs->getError().empty());
+            auto const restrictors = qs->getSecIdxRestrictors();
+            BOOST_CHECK_EQUAL(restrictors && !restrictors->empty(), shouldRestrict);
+        }
+    }
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(DirectorChildSpatialJoin) {
     std::string stmt =

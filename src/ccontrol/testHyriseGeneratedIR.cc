@@ -24,6 +24,8 @@
 // System headers
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #define BOOST_TEST_MODULE HyriseGeneratedIR
 
@@ -2575,6 +2577,31 @@ BOOST_AUTO_TEST_CASE(nulls_ordering_not_supported) {
     BOOST_CHECK_THROW(
             ccontrol::ParseRunner::makeSelectStmt("SELECT objectId FROM Object ORDER BY objectId NULLS LAST"),
             parser::ParseException);
+}
+
+// Double negations are canceled out. Test round trip:
+BOOST_AUTO_TEST_CASE(nested_not_preserves_predicate_semantics) {
+    std::vector<std::pair<std::string, std::string>> const predicates = {
+            {"NOT (x NOT IN (1,2,NULL))", "x IN (1,2,NULL)"},
+            {"NOT (x NOT BETWEEN 0 AND 1)", "x BETWEEN 0 AND 1"},
+            {"NOT (x IS NOT NULL)", "x IS NULL"},
+            {"NOT (NOT (x=1))", "x=1"},
+            {"NOT (NOT (x=NULL))", "x=NULL"},
+            {"NOT (NOT (NULL))", "NULL"},
+            {"NOT (NOT (x NOT LIKE 'a%'))", "x NOT LIKE 'a%'"},
+            {"NOT (NOT (NOT (x=1)))", "NOT (x=1)"},
+            {"NOT (NOT (NOT (NOT (x=1))))", "x=1"},
+            {"NOT (NOT (x=1 OR y IS NULL))", "x=1 OR y IS NULL"},
+            {"NOT (NOT (NOT (x=1 AND y IS NULL)))", "NOT (x=1 AND y IS NULL)"}};
+    for (auto const& [input, expected] : predicates) {
+        BOOST_TEST_CONTEXT(input) {
+            auto actualStmt = ccontrol::ParseRunner::makeSelectStmt("SELECT x FROM Object WHERE " + input);
+            auto expectedStmt =
+                    ccontrol::ParseRunner::makeSelectStmt("SELECT x FROM Object WHERE " + expected);
+            BOOST_CHECK_EQUAL(actualStmt->getQueryTemplate().sqlFragment(),
+                              expectedStmt->getQueryTemplate().sqlFragment());
+        }
+    }
 }
 
 // A qserv area restrictor may appear bare or compared against an integer literal ("= 1"). Comparing it
