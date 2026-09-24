@@ -406,9 +406,9 @@ std::pair<FuncExpr::Ptr, double> getPtInCircleJoin(CompPredicate const& cp) {
 std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(BoolTerm::Ptr const& bt) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     std::pair<ColumnRef::Ptr, ColumnRef::Ptr> p;
-    // Look for a BoolFactor containing a single CompPredicate.
+    // Look for a non-negated BoolFactor containing a single CompPredicate.
     BoolFactor::Ptr bf = std::dynamic_pointer_cast<BoolFactor>(bt);
-    if (!bf || bf->_terms.size() != 1) {
+    if (!bf || bf->_hasNot || bf->_terms.size() != 1) {
         LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
         return p;
     }
