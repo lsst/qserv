@@ -573,16 +573,20 @@ std::shared_ptr<query::LogicalTerm> buildBoolTerm(hsql::Expr const* expr) {
         return std::make_shared<query::OrTerm>(terms);
     }
     if (expr->opType == hsql::kOpNot) {
-        if (expr->expr == nullptr) unsupported("NOT expression");
-        if (expr->expr->type == hsql::kExprOperator &&
-            (expr->expr->opType == hsql::kOpAnd || expr->expr->opType == hsql::kOpOr)) {
-            auto inner = buildBoolTerm(expr->expr);
+        auto const* op = expr->expr;
+        if (op == nullptr) unsupported("NOT expression");
+        if (op->type == hsql::kExprOperator && op->opType == hsql::kOpNot) {
+            // Recurse if we have double negation (e.g., WHERE NOT (objectId NOT IN(...)))
+            return buildBoolTerm(op->expr);
+        }
+        if (op->type == hsql::kExprOperator && (op->opType == hsql::kOpAnd || op->opType == hsql::kOpOr)) {
+            auto inner = buildBoolTerm(op);
             auto wrapped =
                     std::make_shared<query::BoolFactor>(std::make_shared<query::BoolTermFactor>(inner), true);
             wrapped->addParenthesis();
             return std::make_shared<query::AndTerm>(query::BoolTerm::PtrVector{wrapped});
         }
-        return buildPredicateTerm(expr->expr, true);
+        return buildPredicateTerm(op, true);
     }
     return buildPredicateTerm(expr);
 }
