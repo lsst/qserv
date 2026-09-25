@@ -33,7 +33,7 @@
 // Qserv headers
 #include "global/stringUtil.h"
 #include "http/Method.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
@@ -75,15 +75,8 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
-        : DatabaseServices(),
-          _configuration(configuration),
-          _conn(Connection::open(ConnectionParams(configuration->get<string>("database", "host"),
-                                                  configuration->get<uint16_t>("database", "port"),
-                                                  configuration->get<string>("database", "user"),
-                                                  configuration->get<string>("database", "password"),
-                                                  configuration->get<string>("database", "name")))),
-          _g(_conn) {}
+DatabaseServicesMySQL::DatabaseServicesMySQL(shared_ptr<Config> const& config)
+        : DatabaseServices(), _config(config), _conn(Connection::open(config->replDbParams())), _g(_conn) {}
 
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64_t startTime) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Controller] ";
@@ -327,8 +320,8 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    unsigned int maxReconnects = 0;  // pull the default value from the Configuration
-    unsigned int timeoutSec = 0;     // pull the default value from the Configuration
+    unsigned int maxReconnects = 0;  // pull the default value from the Config
+    unsigned int timeoutSec = 0;     // pull the default value from the Config
     unsigned int maxRetriesOnDeadLock = 1;
 
     replica::Lock lock(_mtx, context);
@@ -347,10 +340,10 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& workerName, 
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertWorkerIsValid(workerName);
+    _config->assertWorkerIsValid(workerName);
 
-    unsigned int maxReconnects = 0;  // pull the default value from the Configuration
-    unsigned int timeoutSec = 0;     // pull the default value from the Configuration
+    unsigned int maxReconnects = 0;  // pull the default value from the Config
+    unsigned int timeoutSec = 0;     // pull the default value from the Config
     unsigned int maxRetriesOnDeadLock = 1;
 
     replica::Lock lock(_mtx, context);
@@ -490,7 +483,7 @@ void DatabaseServicesMySQL::_deleteReplicaInfoImpl(replica::Lock const& lock, st
                                                    string const& databaseName, unsigned int chunk) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
-    _configuration->assertWorkerIsValid(workerName);
+    _config->assertWorkerIsValid(workerName);
     string const query =
             _g.delete_("replica") +
             _g.where(_g.eq("worker", workerName), _g.eq("database", databaseName), _g.eq("chunk", chunk));
@@ -507,12 +500,11 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas, si
     replica::Lock lock(_mtx, context);
     try {
         string const noSpecificFamily;
-        auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
-        string const query =
-                _g.select(Sql::STAR) + _g.from("replica") +
-                _g.where(_g.in("database", databases),
-                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "") +
-                _g.orderBy(make_pair("verify_time", "ASC")) + _g.limit(maxReplicas);
+        auto const databases = _config->databases(noSpecificFamily, allDatabases, isPublished);
+        string const query = _g.select(Sql::STAR) + _g.from("replica") +
+                             _g.where(_g.in("database", databases),
+                                      enabledWorkersOnly ? _g.in("worker", _config->workers(true)) : "") +
+                             _g.orderBy(make_pair("verify_time", "ASC")) + _g.limit(maxReplicas);
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query); });
     } catch (exception const& ex) {
@@ -531,10 +523,9 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, unsigned
 
     replica::Lock lock(_mtx, context);
     try {
-        string const query =
-                _g.select(Sql::STAR) + _g.from("replica") +
-                _g.where(_g.eq("chunk", chunk), _g.eq("database", databaseName),
-                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "");
+        string const query = _g.select(Sql::STAR) + _g.from("replica") +
+                             _g.where(_g.eq("chunk", chunk), _g.eq("database", databaseName),
+                                      enabledWorkersOnly ? _g.in("worker", _config->workers(true)) : "");
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query, includeFileInfo); });
     } catch (database::mysql::Error const& ex) {
@@ -559,10 +550,9 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<u
 
     replica::Lock lock(_mtx, context);
     try {
-        string const query =
-                _g.select(Sql::STAR) + _g.from("replica") +
-                _g.where(_g.in("chunk", chunks), _g.eq("database", databaseName),
-                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "");
+        string const query = _g.select(Sql::STAR) + _g.from("replica") +
+                             _g.where(_g.in("chunk", chunks), _g.eq("database", databaseName),
+                                      enabledWorkersOnly ? _g.in("worker", _config->workers(true)) : "");
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query, includeFileInfo); });
     } catch (database::mysql::Error const& ex) {
@@ -580,7 +570,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, st
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertWorkerIsValid(workerName);
+    _config->assertWorkerIsValid(workerName);
 
     replica::Lock lock(_mtx, context);
     try {
@@ -602,7 +592,7 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& workerName, stri
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertWorkerIsValid(workerName);
+    _config->assertWorkerIsValid(workerName);
 
     uint64_t num;
     replica::Lock lock(_mtx, context);
@@ -610,7 +600,7 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& workerName, stri
         string query = _g.select(Sql::COUNT_STAR) + _g.from("replica");
         if (databaseName.empty()) {
             string const noSpecificFamily;
-            auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
+            auto const databases = _config->databases(noSpecificFamily, allDatabases, isPublished);
             query += _g.where(_g.in("database", databases), _g.eq("worker", workerName));
         } else {
             query += _g.where(_g.eq("database", databaseName), _g.eq("worker", workerName));
@@ -634,12 +624,12 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(replica::Lock const& lock, v
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertWorkerIsValid(workerName);
+    _config->assertWorkerIsValid(workerName);
 
     auto query = _g.select(Sql::STAR) + _g.from("replica");
     if (databaseName.empty()) {
         string const noSpecificFamily;
-        auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
+        auto const databases = _config->databases(noSpecificFamily, allDatabases, isPublished);
         query += _g.where(_g.in("database", databases), _g.eq("worker", workerName));
     } else {
         query += _g.where(_g.eq("database", databaseName), _g.eq("worker", workerName));
@@ -657,12 +647,12 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, un
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertWorkerIsValid(workerName);
-    _configuration->assertDatabaseFamilyIsValid(familyName);
+    _config->assertWorkerIsValid(workerName);
+    _config->assertDatabaseFamilyIsValid(familyName);
 
     replica::Lock lock(_mtx, context);
     try {
-        auto const databases = _configuration->databases(familyName, allDatabases, isPublished);
+        auto const databases = _config->databases(familyName, allDatabases, isPublished);
         auto const query =
                 _g.select(Sql::STAR) + _g.from("replica") +
                 _g.where(_g.eq("worker", workerName), _g.eq("chunk", chunk), _g.in("database", databases));
@@ -683,10 +673,9 @@ void DatabaseServicesMySQL::findDatabaseReplicas(vector<ReplicaInfo>& replicas, 
 
     replica::Lock lock(_mtx, context);
     try {
-        string const query =
-                _g.select(Sql::STAR) + _g.from("replica") +
-                _g.where(_g.eq("database", databaseName),
-                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "");
+        string const query = _g.select(Sql::STAR) + _g.from("replica") +
+                             _g.where(_g.eq("database", databaseName),
+                                      enabledWorkersOnly ? _g.in("worker", _config->workers(true)) : "");
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query); });
     } catch (database::mysql::Error const& ex) {
@@ -706,8 +695,7 @@ void DatabaseServicesMySQL::findDatabaseChunks(vector<unsigned int>& chunks, str
     try {
         string query = _g.select(_g.distinctId("chunk")) + _g.from("replica");
         if (enabledWorkersOnly) {
-            query +=
-                    _g.where(_g.eq("database", databaseName), _g.in("worker", _configuration->workers(true)));
+            query += _g.where(_g.eq("database", databaseName), _g.in("worker", _config->workers(true)));
         } else {
             query += _g.where(_g.eq("database", databaseName));
         }
@@ -770,7 +758,7 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& databaseName,
         size_t result = 0;
         if (!uniqueOnWorkers.empty()) {
             vector<string> workersToExclude;
-            for (auto&& workerName : _configuration->allWorkers()) {
+            for (auto&& workerName : _config->allWorkers()) {
                 if (uniqueOnWorkers.end() ==
                     find(uniqueOnWorkers.begin(), uniqueOnWorkers.end(), workerName)) {
                     workersToExclude.push_back(workerName);
@@ -2342,7 +2330,7 @@ void DatabaseServicesMySQL::deleteTableRowStats(string const& databaseName, stri
 
     replica::Lock lock(_mtx, context);
     try {
-        TableInfo const table = _configuration->databaseInfo(databaseName).findTable(tableName);
+        TableInfo const table = _config->databaseInfo(databaseName).findTable(tableName);
         string predicate = _g.packConds(_g.eq("database", table.database), _g.eq("table", table.name));
         if (table.isPartitioned && overlapSelector != ChunkOverlapSelector::CHUNK_AND_OVERLAP) {
             bool const isOverlap = overlapSelector == ChunkOverlapSelector::OVERLAP;

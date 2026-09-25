@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 
 // LSST headers
 #include "lsst/log/Log.h"

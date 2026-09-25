@@ -44,8 +44,8 @@ public:
     typedef std::shared_ptr<HttpWorkerStatusModule> Ptr;
 
     static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask,
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        HealthMonitorTask::Ptr const& healthMonitorTask,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -60,8 +60,8 @@ protected:
 
 private:
     HttpWorkerStatusModule(Controller::Ptr const& controller, std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                           qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask);
+                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                           HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters
 

@@ -35,12 +35,8 @@ namespace lsst::qserv::replica {
 
 HealthMonitorTask::Ptr HealthMonitorTask::create(Controller::Ptr const& controller,
                                                  Task::AbnormalTerminationCallbackType const& onTerminated,
-                                                 WorkerEvictCallbackType const& onWorkerEvictTimeout,
-                                                 unsigned int workerEvictTimeoutSec,
-                                                 unsigned int workerResponseTimeoutSec,
-                                                 unsigned int healthProbeIntervalSec) {
-    return Ptr(new HealthMonitorTask(controller, onTerminated, onWorkerEvictTimeout, workerEvictTimeoutSec,
-                                     workerResponseTimeoutSec, healthProbeIntervalSec));
+                                                 WorkerEvictCallbackType const& onWorkerEvictTimeout) {
+    return Ptr(new HealthMonitorTask(controller, onTerminated, onWorkerEvictTimeout));
 }
 
 HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() const {
@@ -74,11 +70,12 @@ bool HealthMonitorTask::onRun() {
     string const noParentJobId;
 
     vector<ClusterHealthJob::Ptr> jobs;
+    auto config = serviceProvider()->config();
+    bool const allWorkers = true;
     jobs.emplace_back(ClusterHealthJob::create(
-            _workerResponseTimeoutSec, true, /* allWorkers */
-            controller(), noParentJobId,
-            [self](ClusterHealthJob::Ptr const& job) { self->_numFinishedJobs++; },
-            serviceProvider()->config()->get<int>("controller", "health-monitor-priority-level")));
+            config->get<unsigned int>("controller", "worker-response-timeout"), allWorkers, controller(),
+            noParentJobId, [self](ClusterHealthJob::Ptr const& job) { self->_numFinishedJobs++; },
+            config->get<int>("controller", "health-monitor-priority-level")));
     jobs[0]->start();
 
     _logStartedEvent(jobs[0]);
@@ -130,6 +127,8 @@ bool HealthMonitorTask::onRun() {
     // (including the evicted ones) which are offline.
     size_t numEnabledWorkersOffline = 0;
 
+    unsigned int const workerEvictTimeoutSec =
+            config->get<unsigned int>("controller", "worker-evict-timeout");
     for (auto&& entry : _workerServiceNoResponseSec) {
         auto workerName = entry.first;
         auto worker = serviceProvider()->config()->worker(workerName);
@@ -137,14 +136,14 @@ bool HealthMonitorTask::onRun() {
         // Both services on the worker must be offline for a duration of
         // the eviction interval before electing the worker for eviction.
 
-        if (entry.second.at("replication") >= _workerEvictTimeoutSec) {
-            if (entry.second.at("qserv") >= _workerEvictTimeoutSec) {
+        if (entry.second.at("replication") >= workerEvictTimeoutSec) {
+            if (entry.second.at("qserv") >= workerEvictTimeoutSec) {
                 // Only the ENABLED workers are considered for eviction
 
                 if (worker.isEnabled) {
                     workers2evict.push_back(workerName);
                     info("worker '" + workerName + "' has reached eviction timeout of " +
-                         to_string(_workerEvictTimeoutSec) + " seconds");
+                         to_string(workerEvictTimeoutSec) + " seconds");
                 }
             }
 
@@ -196,14 +195,11 @@ bool HealthMonitorTask::onRun() {
 
 HealthMonitorTask::HealthMonitorTask(Controller::Ptr const& controller,
                                      Task::AbnormalTerminationCallbackType const& onTerminated,
-                                     WorkerEvictCallbackType const& onWorkerEvictTimeout,
-                                     unsigned int workerEvictTimeoutSec,
-                                     unsigned int workerResponseTimeoutSec,
-                                     unsigned int healthProbeIntervalSec)
-        : Task(controller, "HEALTH-MONITOR  ", onTerminated, healthProbeIntervalSec),
+                                     WorkerEvictCallbackType const& onWorkerEvictTimeout)
+        : Task(controller, "HEALTH-MONITOR  ", onTerminated,
+               controller->serviceProvider()->config()->get<unsigned int>("controller",
+                                                                          "health-probe-interval")),
           _onWorkerEvictTimeout(onWorkerEvictTimeout),
-          _workerEvictTimeoutSec(workerEvictTimeoutSec),
-          _workerResponseTimeoutSec(workerResponseTimeoutSec),
           _numFinishedJobs(0),
           _prevUpdateTimeMs(0) {}
 
@@ -214,7 +210,9 @@ void HealthMonitorTask::_logStartedEvent(ClusterHealthJob::Ptr const& job) const
     event.status = "STARTED";
     event.jobId = job->id();
 
-    event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
+    auto const config = serviceProvider()->config();
+    event.kvInfo.emplace_back("worker-response-timeout",
+                              to_string(config->get<unsigned int>("controller", "worker-response-timeout")));
 
     logEvent(event);
 }

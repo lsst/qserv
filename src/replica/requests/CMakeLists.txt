@@ -7,11 +7,12 @@ target_sources(replica_requests PRIVATE
     EchoRequest.cc
     FindAllRequest.cc
     FindRequest.cc
+    http/HttpMessenger.cc
+    http/HttpMessengerConnector.cc
     Messenger.cc
     MessengerConnector.cc
     ReplicationRequest.cc
     Request.cc
-    RequestTracker.cc
     ServiceManagementRequest.cc
     ServiceManagementRequestBase.cc
     SqlAlterTablesRequest.cc

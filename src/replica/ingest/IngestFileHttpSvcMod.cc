@@ -27,7 +27,7 @@
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/Url.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/ingest/IngestUtils.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -59,7 +59,7 @@ IngestFileHttpSvcMod::IngestFileHttpSvcMod(shared_ptr<ServiceProvider> const& se
                                            string const& workerName, httplib::Request const& req,
                                            httplib::Response& resp,
                                            httplib::ContentReader const& contentReader)
-        : http::FileUploadModule(serviceProvider->httpAuthContext(), req, resp, contentReader),
+        : http::FileUploadModule(serviceProvider->config()->httpAuthContext(), req, resp, contentReader),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestFileHttpSvcMod::context() const { return "INGEST-FILE-HTTP-SVC "; }

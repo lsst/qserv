@@ -31,28 +31,30 @@ string const ClientConfig::category = "worker-http-file-reader";
 string const ClientConfig::httpVersionKey = "CURLOPT_HTTP_VERSION";
 string const ClientConfig::bufferSizeKey = "CURLOPT_BUFFERSIZE";
 string const ClientConfig::maxConnectsKey = "CURLOPT_MAXCONNECTS";
-string const ClientConfig::connectTimeoutKey = "CONNECTTIMEOUT";
-string const ClientConfig::timeoutKey = "TIMEOUT";
-string const ClientConfig::lowSpeedLimitKey = "LOW_SPEED_LIMIT";
-string const ClientConfig::lowSpeedTimeKey = "LOW_SPEED_TIME";
+string const ClientConfig::connectTimeoutKey = "CURLOPT_CONNECTTIMEOUT";
+string const ClientConfig::connectTimeoutMsKey = "CURLOPT_CONNECTTIMEOUT_MS";
+string const ClientConfig::timeoutKey = "CURLOPT_TIMEOUT";
+string const ClientConfig::timeoutMsKey = "CURLOPT_TIMEOUT_MS";
+string const ClientConfig::lowSpeedLimitKey = "CURLOPT_LOW_SPEED_LIMIT";
+string const ClientConfig::lowSpeedTimeKey = "CURLOPT_LOW_SPEED_TIME";
 string const ClientConfig::tcpKeepAliveKey = "CURLOPT_TCP_KEEPALIVE";
 string const ClientConfig::tcpKeepIdleKey = "CURLOPT_TCP_KEEPIDLE";
 string const ClientConfig::tcpKeepIntvlKey = "CURLOPT_TCP_KEEPINTVL";
 
-string const ClientConfig::sslVerifyHostKey = "SSL_VERIFYHOST";
-string const ClientConfig::sslVerifyPeerKey = "SSL_VERIFYPEER";
-string const ClientConfig::caPathKey = "CAPATH";
-string const ClientConfig::caInfoKey = "CAINFO";
-string const ClientConfig::caInfoValKey = "CAINFO_VAL";
+string const ClientConfig::sslVerifyHostKey = "CURLOPT_SSL_VERIFYHOST";
+string const ClientConfig::sslVerifyPeerKey = "CURLOPT_SSL_VERIFYPEER";
+string const ClientConfig::caPathKey = "CURLOPT_CAPATH";
+string const ClientConfig::caInfoKey = "CURLOPT_CAINFO";
+string const ClientConfig::caInfoValKey = "CURLOPT_CAINFO_VAL";
 
 string const ClientConfig::proxyKey = "CURLOPT_PROXY";
 string const ClientConfig::noProxyKey = "CURLOPT_NOPROXY";
 string const ClientConfig::httpProxyTunnelKey = "CURLOPT_HTTPPROXYTUNNEL";
-string const ClientConfig::proxySslVerifyHostKey = "PROXY_SSL_VERIFYHOST";
-string const ClientConfig::proxySslVerifyPeerKey = "PROXY_SSL_VERIFYPEER";
-string const ClientConfig::proxyCaPathKey = "PROXY_CAPATH";
-string const ClientConfig::proxyCaInfoKey = "PROXY_CAINFO";
-string const ClientConfig::proxyCaInfoValKey = "PROXY_CAINFO_VAL";
+string const ClientConfig::proxySslVerifyHostKey = "CURLOPT_PROXY_SSL_VERIFYHOST";
+string const ClientConfig::proxySslVerifyPeerKey = "CURLOPT_PROXY_SSL_VERIFYPEER";
+string const ClientConfig::proxyCaPathKey = "CURLOPT_PROXY_CAPATH";
+string const ClientConfig::proxyCaInfoKey = "CURLOPT_PROXY_CAINFO";
+string const ClientConfig::proxyCaInfoValKey = "CURLOPT_PROXY_CAINFO_VAL";
 
 string const ClientConfig::asyncProcLimitKey = "ASYNC_PROC_LIMIT";
 

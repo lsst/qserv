@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -118,7 +118,7 @@ void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
 
     for (auto&& worker : workerNames) {
         _replicaData.workers[worker] = false;
-        auto const request = controller()->serviceProvider()->qservMgtServices()->getReplicas(
+        auto const request = controller()->qservMgtServices()->getReplicas(
                 databaseFamily(), worker, inUseOnly(), id(),
                 [self](GetReplicasQservMgtRequest::Ptr const& request) { self->_onRequestFinish(request); });
         if (not request) {
@@ -133,7 +133,7 @@ void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
         _numLaunched++;
     }
 
-    // In case if no workers or database are present in the Configuration
+    // In case if no workers or database are present in the Config
     // at this time.
 
     if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
