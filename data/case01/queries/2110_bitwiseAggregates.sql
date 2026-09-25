@@ -1,0 +1,1 @@
+SELECT BIT_OR(flags), BIT_AND(flags), BIT_XOR(flags) FROM Object;
