@@ -30,6 +30,9 @@
 #include <mutex>
 #include <set>
 
+// qserv headers
+#include "util/Mutex.h"
+
 namespace lsst::qserv::util {
 
 /// A dynamic work queue is a pool of threads created with some initial
@@ -105,14 +108,14 @@ private:
     size_t const _minThreadsPerSession;
     size_t const _maxThreads;
 
-    std::mutex _mutex;
+    VMutex _mutex;
     size_t _numCallables;
     size_t _numThreads;
     bool _exitNow;
     SessionQueueMap _sessions;
     QueueSet _nonEmptyQueues;
-    std::condition_variable _workAvailable;
-    std::condition_variable _threadsExited;
+    std::condition_variable_any _workAvailable;
+    std::condition_variable_any _threadsExited;
 
     friend struct Runner;
 };

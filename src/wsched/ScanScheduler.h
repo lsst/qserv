@@ -25,7 +25,6 @@
 
 // System headers
 #include <atomic>
-#include <mutex>
 
 // Qserv headers
 #include "wsched/ChunkTaskCollection.h"

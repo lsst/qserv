@@ -265,13 +265,12 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     {
         // Make a lists of these while the mutex is held,
         // and then use the lists to make changes after the mutex is released.
-
-        lock_guard mapLg(wqsData->mapMtx);
+        VLOCK(mapLg, wqsData->mapMtx);
         // Cancelled queries where we want to keep the files
         bool const keepFiles = true;
         queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneKeepFiles, keepFiles,
                                                         cancelledList, deleteFilesList);
-        // Cancelled queries where the files can be deleted.
+        // Cancelled queries where the files can be deleted (different from the above call)
         queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneDeleteFiles, !keepFiles,
                                                         cancelledList, deleteFilesList);
         deadUberJobsList = wqsData->qIdDeadUberJobs;

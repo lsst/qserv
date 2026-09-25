@@ -53,6 +53,10 @@ string thisThreadId2str() {
     ss << this_thread::get_id();
     return ss.str();
 }
+
+void lockCompileTest(VLOCKPARAM const& lck) { LOGS_INFO("lockCompileTest" << thisThreadId2str()); }
+
+void lockUniqueCompileTest(VLOCKUNIQPARAM& lck) { LOGS_INFO("lockUniqueCompileTest" << thisThreadId2str()); }
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
@@ -139,15 +143,36 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
     // The mutex won't be locked by anyone
     VMutex mtx1;
     BOOST_CHECK(!mtx1.lockedByThread());
-    BOOST_CHECK_THROW(VMUTEX_HELD(mtx1), lsst::qserv::util::Bug);
+    BOOST_CHECK_THROW(VMUTEX_HELD(mtx1), lsst::qserv::util::VMtxException);
     BOOST_REQUIRE_NO_THROW(VMUTEX_NOT_HELD(mtx1));
 
     // The mutex will be locked by the current thread
     VMutex mtx2;
-    lock_guard<VMutex> const lockGuard2(mtx2);
+    VLOCK(lockGuard2, mtx2);
+    lockCompileTest(lockGuard2);  // just a compile check.
     BOOST_CHECK(mtx2.lockedByThread());
     BOOST_REQUIRE_NO_THROW(VMUTEX_HELD(mtx2));
-    BOOST_CHECK_THROW(VMUTEX_NOT_HELD(mtx2), lsst::qserv::util::Bug);
+    BOOST_CHECK_THROW(VMUTEX_NOT_HELD(mtx2), lsst::qserv::util::VMtxException);
+
+    // This should throw as lockGuard2 is already holding the lock on mtx2.
+    try {
+        VLOCK(tmpLck, mtx2);
+        BOOST_FAIL("VLOCK should have thrown an exception");
+    } catch (lsst::qserv::util::VMtxException const& e) {
+        LOGS_INFO("Caught expected exception: " << e.what());
+    } catch (...) {
+        BOOST_FAIL("VLOCK threw an unexpected exception type");
+    }
+
+    // Same test for VLOCKUNIQUE
+    try {
+        VLOCKUNIQUE(tmpLckU, mtx2);
+        BOOST_FAIL("VLOCKUNIQUE should have thrown an exception");
+    } catch (lsst::qserv::util::VMtxException const& e) {
+        LOGS_INFO("Caught expected exception: " << e.what());
+    } catch (...) {
+        BOOST_FAIL("VLOCKUNIQUE threw an unexpected exception type");
+    }
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before
@@ -206,6 +231,10 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
+
+    VMutex mtxCompTest;
+    VLOCKUNIQUE(unique, mtxCompTest);
+    lockUniqueCompileTest(unique);
 
     LOGS_INFO("VMutexTest ends");
 }

@@ -124,7 +124,7 @@ void BlendScheduler::_sortScanSchedulers() {
 
     string str = "sort:";
     {
-        lock_guard<mutex> lg(_schedMtx);
+        VLOCK(lg, _schedMtx);
         sort(_schedulers.begin(), _schedulers.end(), lessThan);
 
         for (auto const& sched : _schedulers) {
@@ -136,7 +136,7 @@ void BlendScheduler::_sortScanSchedulers() {
 
 void BlendScheduler::queTaskLoad(util::Command::Ptr const& cmd) {
     {
-        lock_guard guardA(util::CommandQueue::_mx);
+        VLOCK(guardA, util::CommandQueue::_mx);
         _taskLoadQueue.push_back(cmd);
     }
     notify(false);
@@ -166,7 +166,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 throw util::Bug(ERR_LOC, "BlendScheduler::queCmd cmds.size() > 1 when no task was set.");
             }
             {
-                lock_guard guardA(util::CommandQueue::_mx);
+                VLOCK(guardA, util::CommandQueue::_mx);
                 _ctrlCmdQueue.queCmd(cmd);
             }
 
@@ -178,7 +178,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
         }
 
-        lock_guard guardB(util::CommandQueue::_mx);
+        VLOCK(guardB, util::CommandQueue::_mx);
         // Check for scan tables. The information for all tasks should be the same
         // as they all belong to the same query, so only examine the first task.
         if (first) {
@@ -205,7 +205,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     LOGS(_log, LOG_LVL_TRACE, ss.str());
                 }
                 {  // Find the scheduler responsible for this 'scanPriority'.
-                    lock_guard<mutex> lg(_schedMtx);
+                    VLOCK(lg, _schedMtx);
                     for (auto const& sched : _schedulers) {
                         ScanScheduler::Ptr scan = dynamic_pointer_cast<ScanScheduler>(sched);
                         if (scan != nullptr) {
@@ -297,7 +297,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
 bool BlendScheduler::ready() {
     bool ready = false;
     {
-        util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::ready");
+        VLOCK(guard, util::CommandQueue::_mx);
         ready = _ready();
     }
     if (ready) {
@@ -307,11 +307,12 @@ bool BlendScheduler::ready() {
 }
 
 /// Returns true when any sub-scheduler has a command ready.
-/// Precondition util::CommandQueue::_mx must be locked when this is called.
 bool BlendScheduler::_ready() {
+    VMUTEX_HELD(util::CommandQueue::_mx);
     ostringstream os;
     bool ready = false;
 
+    // At least one new UberJob has been received and needs Tasks created.
     if (_taskLoadQueue.size() > 0) {
         ready = true;
         return ready;
@@ -325,8 +326,7 @@ bool BlendScheduler::_ready() {
     bool changed = _infoChanged.exchange(false);
 
     if (!ready) {
-        lock_guard<mutex> lg(_schedMtx);
-
+        VLOCK(lg, _schedMtx);
         // Get the total number of threads schedulers want reserved
         int availableThreads = _calcAvailableTheads();
         for (auto const& sched : _schedulers) {
@@ -359,7 +359,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     util::Command::Ptr cmd;
     bool ready = false;
     {
-        unique_lock<mutex> lock(util::CommandQueue::_mx);
+        VLOCKUNIQUE(lock, util::CommandQueue::_mx);
         if (wait) {
             util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
             ready = true;
@@ -368,6 +368,8 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         }
 
         if (ready && _taskLoadQueue.size() > 0) {
+            // A new UberJob has been received, create and queue
+            // its Tasks so they will be grouped with other Tasks ASAP.
             cmd = _taskLoadQueue.front();
             _taskLoadQueue.pop_front();
             notify(false);
@@ -421,12 +423,13 @@ int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
 }
 
 int BlendScheduler::calcAvailableTheads() {
-    lock_guard lck(_schedMtx);
+    VLOCK(lck, _schedMtx);
     return _calcAvailableTheads();
 }
 
 /// @return the number of threads that are not reserved by any sub-scheduler.
 int BlendScheduler::_calcAvailableTheads() {
+    VMUTEX_HELD(_schedMtx);
     int reserve = 0;
     {
         for (auto const& sched : _schedulers) {
@@ -443,7 +446,7 @@ int BlendScheduler::_calcAvailableTheads() {
 /// Returns the number of Tasks queued in all sub-schedulers.
 size_t BlendScheduler::getSize() const {
     size_t sz = 0;
-    lock_guard<mutex> lg(_schedMtx);
+    VLOCK(lg, _schedMtx);
     for (auto const& sched : _schedulers) {
         sz += sched->getSize();
     }
@@ -453,7 +456,7 @@ size_t BlendScheduler::getSize() const {
 /// Returns the number of Tasks inFlight.
 int BlendScheduler::getInFlight() const {
     int inFlight = 0;
-    lock_guard<mutex> lg(_schedMtx);
+    VLOCK(lg, _schedMtx);
     for (auto const& sched : _schedulers) {
         inFlight += sched->getInFlight();
     }
@@ -464,7 +467,7 @@ void BlendScheduler::_logChunkStatus() {
     if (LOG_CHECK_LVL(_log, LOG_LVL_INFO)) {
         string str;
         {
-            lock_guard<mutex> lg(_schedMtx);
+            VLOCK(lg, _schedMtx);
             for (auto const& sched : _schedulers) {
                 if (sched != nullptr) str += sched->chunkStatusStr() + " ";
             }
@@ -481,7 +484,7 @@ nlohmann::json BlendScheduler::statusToJsonBlend() {
     status["num_tasks_in_flight"] = getInFlight();
     nlohmann::json schedulers = nlohmann::json::array();
     {
-        lock_guard<mutex> lg(_schedMtx);
+        VLOCK(lg, _schedMtx);
         for (auto&& sched : _schedulers) {
             schedulers.push_back(sched->statusToJsonBase());
         }
@@ -539,23 +542,23 @@ void BlendScheduler::_logSchedulers() {
 }
 
 void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {
-    lock_guard<mutex> lock{_mx};
-    _qu.push_back(cmd);
+    VLOCK(lock, _ctrlCmdQMtx);
+    _ctrlCmdQ.push_back(cmd);
 }
 
 util::Command::Ptr ControlCommandQueue::getCmd() {
-    lock_guard<mutex> lock{_mx};
-    if (_qu.empty()) {
+    VLOCK(lock, _ctrlCmdQMtx);
+    if (_ctrlCmdQ.empty()) {
         return nullptr;
     }
-    auto cmd = _qu.front();
-    _qu.pop_front();
+    auto cmd = _ctrlCmdQ.front();
+    _ctrlCmdQ.pop_front();
     return cmd;
 }
 
 bool ControlCommandQueue::ready() {
-    lock_guard<mutex> lock{_mx};
-    return !_qu.empty();
+    VLOCK(lock, _ctrlCmdQMtx);
+    return !_ctrlCmdQ.empty();
 }
 
 }  // namespace lsst::qserv::wsched

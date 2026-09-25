@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "util/EventThread.h"
+#include "util/Mutex.h"
 
 namespace lsst::qserv::util {
 
@@ -98,7 +99,7 @@ private:
     void _setPoolEventThread(PoolEventThread::Ptr const& poolEventThread);
 
     std::weak_ptr<PoolEventThread> _poolEventThread;
-    std::mutex _poolMtx;
+    VMUTEX _poolMtx;  ///< Protects _poolEventThread reset logic.
 };
 
 /// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
@@ -115,6 +116,7 @@ private:
 ///  and those that have left the pool but have not finished.
 ///  _poolThreadCount total should not exceed _maxThreadCount.
 ///  _maxThreadCount can be significantly larger than the _targetThrdCount.
+/// Note: This class contains multiple mutex, only one lock should be held at a time.
 ///
 class ThreadPool : public std::enable_shared_from_this<ThreadPool> {
 public:
@@ -138,12 +140,9 @@ public:
 
     void shutdownPool();
     CommandQueue::Ptr getQueue() { return _q; }
-    unsigned int getTargetThrdCount() {
-        std::lock_guard<std::mutex> lock(_countMutex);
-        return _targetThrdCount;
-    }
+
     unsigned int size() {
-        std::lock_guard<std::mutex> lock(_poolMutex);
+        VLOCK(lock, _poolMutex);
         return _pool.size();
     }
 
@@ -162,13 +161,11 @@ private:
                EventThreadJoiner::Ptr const& joiner);
     void _resize();
 
-    std::mutex _poolMutex;                                ///< Protects _pool
+    VMUTEX _poolMutex;                                    ///< Protects _pool and _targetThrdCount.
     std::vector<std::shared_ptr<PoolEventThread>> _pool;  ///< All the threads in our pool.
-
-    std::mutex _countMutex;            ///< protects _targetThrdCount
-    unsigned int _targetThrdCount{0};  ///< How many threads wanted in the pool.
-    std::condition_variable _countCV;  ///< Notifies about changes to _pool size, uses _countMutex.
-    CommandQueue::Ptr _q;              ///< The queue used by all threads in the _pool.
+    unsigned int _targetThrdCount = 0;                    ///< How many threads are wanted in the pool.
+    std::condition_variable_any _countCV;  ///< Notifies about changes to _pool size, uses _poolMutex.
+    CommandQueue::Ptr _q;                  ///< The queue used by all threads in the _pool.
 
     EventThreadJoiner::Ptr _joinerThread;  ///< Tracks and joins threads removed from the pool.
     std::atomic<bool> _shutdown{false};    ///< True after shutdownPool has been called.
@@ -188,10 +185,10 @@ private:
     /// Decrease the count of existing threads.
     void _decrPoolThreadCount();
 
-    unsigned int _poolThreadCount = 0;    ///< Number of threads that exist.
-    unsigned int _maxThreadCount = 5000;  ///< Max number of thread allowed, set from config.
-    std::condition_variable _cvPool{};    ///< Signal when threads deleted.
-    mutable std::mutex _mxPool{};         ///< Protects _poolThreadCount, _cvPool, _mxPool
+    unsigned int _poolThreadCount = 0;      ///< Number of threads that exist.
+    unsigned int _maxThreadCount = 5000;    ///< Max number of thread allowed, set from config.
+    std::condition_variable_any _poolTCcv;  ///< Signal when threads deleted, paired with _poolTCMtx.
+    mutable VMUTEX _poolTCMtx;              ///< Protects _poolThreadCount
 };
 
 }  // namespace lsst::qserv::util

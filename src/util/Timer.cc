@@ -65,18 +65,8 @@ std::ostream& operator<<(std::ostream& os, Timer const& timer) {
     return os;
 }
 
-LockGuardTimed::LockGuardTimed(std::mutex& mtx, std::string const& note) : _mtx(mtx), _note(note) {
-    timeToLock.start();
-    _mtx.lock();
-    timeToLock.stop();
-    timeHeld.start();
-}
-
-LockGuardTimed::~LockGuardTimed() {
-    _mtx.unlock();
-    timeHeld.stop();
-    LOGS(_log, LOG_LVL_DEBUG,
-         "lockTime " << _note << " toLock=" << timeToLock.getElapsed() << " held=" << timeHeld.getElapsed());
+void LockGuardLog(double timeToLock, double timeHeld, std::string const& note) {
+    LOGS(_log, LOG_LVL_DEBUG, "lockTime " << note << " toLock=" << timeToLock << " held=" << timeHeld);
 }
 
 TimerHistogram::TimerHistogram(std::string const& label, std::vector<double> const& times) : _label(label) {
@@ -91,7 +81,7 @@ TimerHistogram::TimerHistogram(std::string const& label, std::vector<double> con
 }
 
 std::string TimerHistogram::addTime(double time, std::string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VLOCK(lock, _mtx);
     _total += time;
     ++_totalCount;
     bool found = false;
@@ -113,13 +103,14 @@ std::string TimerHistogram::addTime(double time, std::string const& note) {
 }
 
 std::string TimerHistogram::getString(std::string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    VLOCK(lock, _mtx);
     return _getString(note);
 }
 
 /// _mtx must be locked before calling this function.
 ///
 std::string TimerHistogram::_getString(std::string const& note) {
+    VMUTEX_HELD(_mtx);
     std::stringstream os;
     os << _label << " " << note << " avg=" << (_total / _totalCount) << " ";
     double maxB = -std::numeric_limits<double>::infinity();

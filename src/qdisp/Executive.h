@@ -82,7 +82,18 @@ namespace lsst::qserv::qdisp {
 class JobQuery;
 class UberJob;
 
-/// class Executive manages the execution of jobs for a UserQuery.
+/** class Executive manages the execution of jobs for a UserQuery.
+ *  Note: There are several mutex in this class. Mutex in this class
+ *   should be held one at a time for the shortest duration possible.
+ *   The exceptions to this are:
+ *    1) _buildUberJobMtx, which should be locked before all other mutex in this class.
+ *    2) _mtxLimitSquash, which should be locked before all other mutex in this class,
+ *       except _buildUberJobMtx (they should probably not be locked concurrently by the
+ *       same thread).
+ *    3) _errorMtx, may be locked last to facilitate error reporting, but avoid if
+ *       possible
+ *
+ */
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
@@ -236,10 +247,7 @@ public:
     /// `_resultFileSizeExceeded`.
     void checkForResultFileSizeExceededErr(std::vector<util::Error> const& errors);
 
-    /// Returns a pointer to a lock on _mtxLimitSquash.
-    std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
-
-    void collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+    void collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
                      std::string const& idStr);
 
     /// Return true if the result size limit has been exceeded.
@@ -274,6 +282,9 @@ private:
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
     std::string _getIncompleteJobsString(int maxToList);
 
+    void _collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+                      std::string const& idStr);
+
     void _waitAllUntilEmpty();
 
     void _squashSuperfluous();
@@ -294,8 +305,12 @@ private:
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
-    JobMap _jobMap;          ///< Contains information about all jobs.
-    JobMap _incompleteJobs;  ///< Map of incomplete jobs.
+    JobMap _jobMap;                                ///< Contains information about all jobs.
+    mutable VMUTEX _jobMapMtx;                     ///< Protects _jobMap.
+    JobMap _incompleteJobs;                        ///< Map of incomplete jobs.
+    mutable VMUTEX _incompleteJobsMutex;           ///< protects _incompleteJobs.
+    std::condition_variable_any _allJobsComplete;  ///< paired with _incompleteJobsMutex
+
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
@@ -304,9 +319,11 @@ private:
     std::shared_ptr<util::QdispPool> _qdispPool;
 
     std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
+    mutable VMUTEX _jobStartCmdListMtx;                                   ///< protects _jobStartCmdList.
 
     /** Execution errors */
     util::MultiError _multiError;
+    mutable VMUTEX _errorsMutex;  ///< Protects _multiError.
 
     std::atomic<int> _requestCount{0};   ///< Count of submitted jobs
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
@@ -314,40 +331,35 @@ private:
     /// Set to true when LIMIT conditions have been satisfied.
     std::atomic<bool> _superfluous{false};
 
-    // Mutexes
-    mutable std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
-
-    /// Used to record execution errors
-    mutable std::mutex _errorsMutex;
-
-    std::condition_variable _allJobsComplete;
-
-    mutable std::mutex _jobMapMtx;  ///< Protects _jobMap.
-
-    QueryId _id = 0;  ///< Unique identifier for this query.
+    /// Unique identifier for this query, it's set to a dummy value until it is provided by
+    /// the database instance. See setQueryId().
+    QueryId _id = 0;
+    /// Identifier for this executive,
+    /// @see setQueryId() and _id.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
 
     std::shared_ptr<qmeta::QProgress> _queryProgress;  ///< Query progress, used to update QMeta.
-    std::shared_ptr<qmeta::QProgressHistory>
-            _queryProgressHistory;  ///< Query progress history, used to update QMeta.
+    /// Query progress history, used to update QMeta.
+    std::shared_ptr<qmeta::QProgressHistory> _queryProgressHistory;
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
+    mutable VMUTEX _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
     /// Minimum number of seconds between QMeta chunk updates (set by config)
     std::chrono::seconds _secondsBetweenQMetaUpdates;
-    std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
     /// true for interactive scans, once set it doesn't change.
+    /// This is set before multi-threading, then treated as a constant.
     bool _scanInteractive = false;
 
     // Add a job to the _chunkToJobMap
     void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
-    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap
     ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId
+    mutable VMUTEX _chunkToJobMapMtx;  ///< protects _chunkToJobMap
 
     /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
     /// to handle failed UberJobs.
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
-    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
+    mutable VMUTEX _uberJobsMapMtx;  ///< protects _uberJobs.
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
@@ -370,12 +382,15 @@ private:
     std::atomic<bool> _queryIdSet{false};  ///< Set to true when _id is set.
 
     /// Weak pointer to the UserQuerySelect object for this query.
+    /// Set before multi-threading, then treated as a constant.
     std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
 
     /// Flag that is set to true when all jobs have been created.
     std::atomic<bool> _allJobsCreated{false};
 
-    protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
+    /// Scan rating and tables.
+    /// This is set before multi-threading, then treated as a constant.
+    protojson::ScanInfo::Ptr _scanInfo;
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
 
@@ -383,7 +398,7 @@ private:
     /// but only when the executive will squash the query when the limit is reached.
     /// This keeps data transfers (and temporary storage requirements) from
     /// getting out of hand.
-    std::mutex _mtxLimitSquash;
+    mutable VMUTEX _mtxLimitSquash;
 
     /// Set to true if the result file is too large.
     std::atomic<bool> _resultFileSizeExceeded{false};
@@ -391,15 +406,19 @@ private:
     std::atomic<int64_t> _resultFileSizeErr{0};
 
     /// The maximum number of chunks allowed in an UberJob, set from config.
-    int const _uberJobMaxChunks;         ///< Maximum number of chunks in an UberJob, from config.
-    std::atomic<int> _uberJobIdSeq{1};   ///< Sequence number for UberJobs in this query.
-    std::shared_ptr<TmpTableName> _ttn;  ///< Temporary table name generator.
+    int const _uberJobMaxChunks;        ///< Maximum number of chunks in an UberJob, from config.
+    std::atomic<int> _uberJobIdSeq{1};  ///< Sequence number for UberJobs in this query.
+
+    /// Temporary table name generator.
+    /// This is set before multi-threading, then treated as a constant.
+    std::shared_ptr<TmpTableName> _ttn;
 
     /// Primary database name for the query, unknown at the time of Executive construction.
+    /// This is set before multi-threading, then treated as a constant.
     std::string _queryDbName;
 
     /// Only one thread should run buildAndSendUberJobs() for this query at a time.
-    std::mutex _buildUberJobMtx;
+    mutable VMUTEX _buildUberJobMtx;
 };
 
 }  // namespace lsst::qserv::qdisp

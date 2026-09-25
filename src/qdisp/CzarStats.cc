@@ -46,10 +46,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarStats");
 namespace lsst::qserv::qdisp {
 
 CzarStats::Ptr CzarStats::_globalCzarStats;
-MUTEX CzarStats::_globalMtx;
+VMUTEX CzarStats::_globalMtx;
 
 void CzarStats::setup(util::QdispPool::Ptr const& qdispPool) {
-    std::lock_guard lg(_globalMtx);
+    VLOCK(lg, _globalMtx);
     if (_globalCzarStats != nullptr || qdispPool == nullptr) {
         throw util::Bug(ERR_LOC, "Error CzarStats::setup called after global pointer set or qdispPool=null.");
     }
@@ -77,7 +77,7 @@ CzarStats::CzarStats(util::QdispPool::Ptr const& qdispPool)
 }
 
 CzarStats::Ptr CzarStats::get() {
-    std::lock_guard lg(_globalMtx);
+    VLOCK(lg, _globalMtx);
     if (_globalCzarStats == nullptr) {
         throw util::Bug(ERR_LOC, "Error CzarStats::get called before CzarStats::setup.");
     }

@@ -32,6 +32,9 @@
 #include <mutex>
 #include <vector>
 
+// qserv headers
+#include "util/Mutex.h"
+
 namespace lsst::qserv::util {
 
 /// A dirt-simple class for instrumenting ops in qserv.
@@ -66,17 +69,29 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm);
 
 /// This class is used to log how long it takes to lock a mutex
 /// and how long the mutex is held.
+void LockGuardLog(double timeToLock, double timeHeld, std::string const& note);
+template <typename MutexType>
 class LockGuardTimed {
 public:
-    LockGuardTimed(std::mutex& mtx, std::string const& note);
     LockGuardTimed() = delete;
     LockGuardTimed(LockGuardTimed const&) = delete;
-    ~LockGuardTimed();
+    LockGuardTimed(MutexType& mtx, std::string const& note) : _mtx(mtx), _note(note) {
+        timeToLock.start();
+        _mtx.lock();
+        timeToLock.stop();
+        timeHeld.start();
+    }
+
+    ~LockGuardTimed() {
+        _mtx.unlock();
+        timeHeld.stop();
+        LockGuardLog(timeToLock.getElapsed(), timeHeld.getElapsed(), _note);
+    }
 
     LockGuardTimed& operator=(LockGuardTimed const&) = delete;
 
 private:
-    std::mutex& _mtx;
+    MutexType& _mtx;
     std::string _note;
     Timer timeToLock;
     Timer timeHeld;
@@ -114,8 +129,8 @@ public:
 private:
     std::string _getString(std::string const& note);
 
-    std::string _label;
-    std::mutex _mtx;
+    std::string const _label;
+    mutable VMUTEX _mtx;
     std::vector<bucket> _buckets;
     uint64_t _overMaxCount{0};
     double _total{0.0};

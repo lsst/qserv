@@ -39,7 +39,13 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Mutex");
 namespace lsst::qserv::util {
 
 mutex Mutex::_lockedIdMtx;
-set<unsigned int> Mutex::_lockedId;
+set<uint64_t> Mutex::_lockedId;
+
+VMtxException::VMtxException(util::Issue::Context const& ctx, VMutex const& vmtx, std::string const& msg)
+        : util::Issue(ctx, "VMtxException vmtx.tag=" + vmtx.getTag() + " " + msg) {
+    // Log the error immediately so it appears in the thread that is throwing.
+    LOGS(_log, LOG_LVL_ERROR, what());
+}
 
 void Lock::_lock() {
     if (!_context.empty()) {
