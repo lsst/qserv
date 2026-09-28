@@ -43,6 +43,7 @@
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
 #include "query/FromList.h"
+#include "query/JoinRef.h"
 #include "query/PassTerm.h"
 #include "query/NullPredicate.h"
 #include "query/OrTerm.h"
@@ -66,9 +67,8 @@ using lsst::qserv::query::WhereClause;
 
 namespace lsst::qserv::qana {
 
-/// MatchTablePlugin fixes up queries on match tables which are not joins
-/// so that they do not return duplicate rows potentially introduced by
-/// the partitioning process.
+/// MatchTablePlugin fixes up queries on match tables so that they do not return duplicate rows potentially
+/// introduced by the partitioning process.
 ///
 /// Recall that a match table provides a spatially constrained N-to-M mapping
 /// between two director-tables via their primary keys. The partitioner
@@ -87,41 +87,43 @@ namespace lsst::qserv::qana {
 /// set to 2 are removed, then duplicates introduced by the partitioner will
 /// not be returned.
 ///
-/// This plugin's task is to recognize queries on match tables which are not
-/// joins, and to add the filtering logic described above to their WHERE
-/// clauses.
-///
 /// Determining whether a table is a match table or not requires a metadata
 /// lookup. This in turn requires knowledge of that table's containing
 /// database. As a result, MatchTablePlugin must run after TablePlugin.
 
 void MatchTablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& ctx) {
-    if (stmt.getFromList().isJoin()) {
-        // Do nothing. Query analysis and transformation for match table
-        // joins is handled by the more general TablePlugin.
-        return;
+    TableRef::Ptr match;
+    css::MatchTableParams mtParams;
+    auto pending = stmt.getFromList().getTableRefList();
+    while (!pending.empty()) {
+        auto const table = pending.back();
+        pending.pop_back();
+        auto const params = ctx.css->getTableParams(table->getDb(), table->getTable());
+        if (params.match.isMatchTable()) {
+            if (match != nullptr) return;
+            match = table;
+            mtParams = params.match;
+        } else if (params.partitioning.partitioned) {
+            // Non-match; handled by TablePlugin / RelationGraph instead
+            return;
+        }
+        for (auto const& join : table->getJoins()) {
+            pending.push_back(join->getRight());
+        }
     }
-    TableRef& t = *(stmt.getFromList().getTableRefList()[0]);
-    css::CssAccess& css = *ctx.css;
-    css::MatchTableParams mt = css.getMatchTableParams(t.getDb(), t.getTable());
-    if (!mt.isMatchTable()) {
-        return;
-    }
-    // Build the IR for the for duplicate filtering logic. Note that when
-    // creating column references, there is no need to qualify the column name
-    // (as db.table.column or alias.column). This is because the query is
-    // guaranteed to operate on a single table and no column name ambiguities
-    // are possible.
-    //
+
+    if (match == nullptr) return;
+
+    // Build the IR for the for duplicate filtering logic.
     // First, create IR nodes for "dirCol1 IS NULL".
     std::shared_ptr<NullPredicate> nullPred = std::make_shared<NullPredicate>();
     nullPred->hasNot = false;
-    nullPred->value = ValueExpr::newSimple(
-            ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("", "", mt.dirColName1)));
+    nullPred->value = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>(
+            match->getDb(), match->getTable(), match->getAlias(), mtParams.dirColName1)));
     // Then create IR nodes for "flagCol<>2".
     std::shared_ptr<CompPredicate> compPred = std::make_shared<CompPredicate>();
-    compPred->left = ValueExpr::newSimple(
-            ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("", "", mt.flagColName)));
+    compPred->left = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>(
+            match->getDb(), match->getTable(), match->getAlias(), mtParams.flagColName)));
     compPred->op = CompPredicate::NOT_EQUALS_OP;
     compPred->right = ValueExpr::newSimple(ValueFactor::newConstFactor("2"));
     // Create BoolFactors for each Predicate node.

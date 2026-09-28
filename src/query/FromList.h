@@ -53,8 +53,6 @@ public:
     /// @return a list of TableRef that occur
     TableRefList const& getTableRefList() const { return *_tableRefs; }
 
-    bool isJoin() const;
-
     /// @return a flattened string representation.
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;

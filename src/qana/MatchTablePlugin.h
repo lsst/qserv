@@ -28,34 +28,10 @@
 
 namespace lsst::qserv::qana {
 
-/// MatchTablePlugin fixes up queries on match tables which are not joins
-/// so that they do not return duplicate rows potentially introduced by
-/// the partitioning process.
-///
-/// Recall that a match table provides a spatially constrained N-to-M mapping
-/// between two director-tables via their primary keys. The partitioner
-/// assigns a row from a match table to a chunk S whenever either matched
-/// entity belongs to S. Therefore, if the two matched entities lie in
-/// different chunks, a copy of the corresponding match will be stored in
-/// two chunks. The partitioner also stores partitioning flags F for each
-/// output row as follows:
-///
-/// - Bit 0 (the LSB of F), is set if the chunk of the first entity in the
-///   match is equal to the chunk containing the row.
-/// - Bit 1 is set if the chunk of the second entity is equal to the
-///   chunk containing the row.
-///
-/// So, if rows with a non-null first-entity reference and partitioning flags
-/// set to 2 are removed, then duplicates introduced by the partitioner will
-/// not be returned.
-///
-/// This plugin's task is to recognize queries on match tables which are not
-/// joins, and to add the filtering logic described above to their WHERE
-/// clauses.
-///
-/// Determining whether a table is a match table or not requires a metadata
-/// lookup. This in turn requires knowledge of that table's containing
-/// database. As a result, MatchTablePlugin must run after TablePlugin.
+/// Rewrites queries on match tables so that they do not return duplicate rows potentially introduced by the
+/// partitioning process. This applies to match tables alone or those that have been joined to replicated
+/// tables. Joins with other partitioned tables are handled by TablePlugin. This plugin assumes that
+/// TablePlugin has already run beforehand.
 class MatchTablePlugin : public QueryPlugin {
 public:
     typedef std::shared_ptr<MatchTablePlugin> Ptr;
