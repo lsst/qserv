@@ -29,7 +29,6 @@
 // System headers
 #include <atomic>
 #include <memory>
-#include <mutex>
 
 // Qserv headers
 #include "qdisp/Executive.h"
@@ -75,20 +74,17 @@ public:
 
     /// If the UberJob is unassigned, change the _uberJobId to ujId.
     bool setUberJobId(UberJobId ujId) {
-        VMUTEX_NOT_HELD(_jqMtx);
-        std::lock_guard lock(_jqMtx);
+        VLOCK(lock, _jqMtx);
         return _setUberJobId(ujId);
     }
 
     UberJobId getUberJobId() const {
-        VMUTEX_NOT_HELD(_jqMtx);
-        std::lock_guard lock(_jqMtx);
+        VLOCK(lock, _jqMtx);
         return _getUberJobId();
     }
 
     bool isInUberJob() const {
-        VMUTEX_NOT_HELD(_jqMtx);
-        std::lock_guard lock(_jqMtx);
+        VLOCK(lock, _jqMtx);
         return _isInUberJob();
     }
 
@@ -146,7 +142,7 @@ protected:
     std::string const _idStr;  ///< Identifier string for logging.
 
     // Values that need mutex protection
-    mutable MUTEX _jqMtx;  ///< protects _jobDescription, _queryRequestPtr, _uberJobId
+    mutable VMUTEX _jqMtx;  ///< protects _jobDescription, _queryRequestPtr, _uberJobId
 
     // Cancellation
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.

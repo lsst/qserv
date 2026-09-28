@@ -123,7 +123,7 @@ struct DynamicWorkQueue::Runner {
 };
 
 void DynamicWorkQueue::Runner::operator()() {
-    std::unique_lock<std::mutex> lock(wq._mutex);
+    VLOCKUNIQUE(lock, wq._mutex);
     do {
         // Wait for work or an exit signal.
         while (wq._nonEmptyQueues.empty() && !wq._exitNow) {
@@ -206,14 +206,23 @@ DynamicWorkQueue::DynamicWorkQueue(size_t minThreads, size_t minThreadsPerSessio
 }
 
 DynamicWorkQueue::~DynamicWorkQueue() {
-    std::unique_lock<std::mutex> lock(_mutex);
-    // Signal all threads to exit, and wait until they do. This
-    // is necessary because each Runner created by this DynamicWorkQueue
-    // has a reference to *this which must not be invalidated from underfoot.
-    _exitNow = true;
-    _workAvailable.notify_all();
-    while (_numThreads != 0) {
-        _threadsExited.wait(lock);
+    try {
+        VLOCKUNIQUE(lock, _mutex);
+        // Signal all threads to exit, and wait until they do. This
+        // is necessary because each Runner created by this DynamicWorkQueue
+        // has a reference to *this which must not be invalidated from underfoot.
+        _exitNow = true;
+        _workAvailable.notify_all();
+        while (_numThreads != 0) {
+            _threadsExited.wait(lock);
+        }
+    } catch (util::VMtxException const& e) {
+        // If the mutex is already locked, we can't safely destroy the
+        // DynamicWorkQueue. Throwing an exception from a destructor is
+        // not safe, so terminate the program.
+        // The creation of the VMtxException object should log an error message.
+        // Not catching this produces compiler warnings.
+        std::terminate();
     }
     _nonEmptyQueues.clear();
     // Destroy remaining queues.
@@ -224,7 +233,7 @@ DynamicWorkQueue::~DynamicWorkQueue() {
 }
 
 void DynamicWorkQueue::add(void const* session, DynamicWorkQueue::Callable* callable) {
-    std::lock_guard<std::mutex> lock(_mutex);
+    VLOCK(lock, _mutex);
     if (_shouldIncreaseThreadCount()) {
         std::thread t(_startRunner, std::ref(*this));
         t.detach();
@@ -275,7 +284,7 @@ void DynamicWorkQueue::add(void const* session, DynamicWorkQueue::Callable* call
 void DynamicWorkQueue::cancelQueued(void const* session) {
     Callable* c = nullptr;
     {
-        std::lock_guard<std::mutex> lock(_mutex);
+        VLOCK(lock, _mutex);
         SessionQueueMap::iterator i = _sessions.find(session);
         if (i != _sessions.end()) {
             Queue* q = i->second;

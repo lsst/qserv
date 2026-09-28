@@ -52,8 +52,8 @@ public:
     bool ready();
 
 private:
-    std::deque<util::Command::Ptr> _qu{};
-    std::mutex _mx{};
+    std::deque<util::Command::Ptr> _ctrlCmdQ;
+    VMUTEX _ctrlCmdQMtx;
 };
 
 /// BlendScheduler is a scheduler that places queries in one of
@@ -149,10 +149,10 @@ private:
     int _schedMaxThreads;  ///< maximum number of threads that can run.
 
     // Sub-schedulers.
-    std::shared_ptr<GroupScheduler> _group;       ///< group scheduler
-    std::shared_ptr<ScanScheduler> _scanSnail;    ///< extremely slow scheduler.
+    std::shared_ptr<GroupScheduler> const _group;     ///< group scheduler
+    std::shared_ptr<ScanScheduler> const _scanSnail;  ///< extremely slow scheduler.
     std::vector<SchedulerBase::Ptr> _schedulers;  ///< list of all schedulers including _group and _scanSnail
-    mutable std::mutex _schedMtx;  ///< Protects _schedulers. NEVER lock this before util::CommandQueue::mx.
+    mutable VMUTEX _schedMtx;  ///< Protects _schedulers. NEVER lock this before util::CommandQueue::mx.
 
     std::atomic<bool> _infoChanged{true};  //< Used to limit debug logging.
 
@@ -167,7 +167,6 @@ private:
     /// TODO: DM-??? set values from configuration, change values at runtime.
     std::chrono::system_clock::time_point _nextRecordPerformanceTime;
     std::chrono::milliseconds _intervalRecordPerformanceTime{15000};
-    std::mutex _mtxRecordPerformance;  ///< protects _nextRecordPerformanceTime
 };
 
 }  // namespace lsst::qserv::wsched

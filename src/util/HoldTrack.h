@@ -33,6 +33,7 @@
 
 // qserv headers
 #include "util/Issue.h"
+#include "util/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::util {
@@ -111,7 +112,7 @@ private:
     /// Time that needs to pass before this item should be logged.
     std::chrono::milliseconds _durationLimitMillisec;
     std::map<KeyType, std::string> _keyMap;  ///< Set of all marks sorted by thread id, time, and note.
-    std::mutex _mapMtx;                      ///< protects _keyMap;
+    VMUTEX _mapMtx;                          ///< protects _keyMap;
 };
 
 }  // namespace lsst::qserv::util

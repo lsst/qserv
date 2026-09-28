@@ -86,7 +86,7 @@ UberJob::~UberJob() {
 bool UberJob::addJob(JobQuery::Ptr const& job) {
     bool success = false;
     if (job->setUberJobId(getUjId())) {
-        lock_guard<mutex> lck(_jobsMtx);
+        VLOCK(lck, _jobsMtx);
         _jobs.push_back(job);
         success = true;
     }
@@ -101,7 +101,7 @@ void UberJob::runUberJob() {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
-    unique_lock<mutex> jobsLock(_jobsMtx);
+    VLOCKUNIQUE(jobsLock, _jobsMtx);
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive shutdown");
@@ -173,7 +173,7 @@ void UberJob::runUberJob() {
 
 void UberJob::_unassignJobs() {
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
-    lock_guard<mutex> lck(_jobsMtx);
+    VLOCK(lck, _jobsMtx);
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " exec is null");
@@ -195,7 +195,7 @@ void UberJob::_unassignJobs() {
 }
 
 bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg) {
-    // must be locked _jobsMtx
+    VMUTEX_HELD(_jobsMtx);
     auto currentState = _jobStatus->getState();
     // Setting the same state twice indicates that the system is trying to do something it
     // has already done, so doing it a second time would be an error.
@@ -224,7 +224,7 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 void UberJob::callMarkCompleteFunc(bool success) {
     LOGS(_log, LOG_LVL_DEBUG, "UberJob::callMarkCompleteFunc success=" << success);
 
-    lock_guard<mutex> lck(_jobsMtx);
+    VLOCK(lck, _jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
     // the status for each job when it is called.
     // "COMPLETE" and "CANCEL" are used by QmetaMysql to reduce the rows used in qmeta.
@@ -519,8 +519,8 @@ bool UberJob::killUberJob() {
 }
 
 std::ostream& UberJob::dump(std::ostream& os) const {
+    VLOCK(lockJobsMtx, _jobsMtx);
     os << "(jobs sz=" << _jobs.size() << "(";
-    lock_guard<mutex> lockJobsMtx(_jobsMtx);
     for (auto const& job : _jobs) {
         JobDescription::Ptr desc = job->getDescription();
         ResourceUnit ru = desc->resource();

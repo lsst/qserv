@@ -146,7 +146,7 @@ public:
     /// Change host and port info to those provided in `other`.
     void changeBaseInfo(WorkerContactInfo const& other) {
         auto [oWId, oWHostAddr, oWHostName, oWPort] = other.getAll();
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         _wHostAddr = oWHostAddr;
         _wHostName = oWHostName;
         _wPort = oWPort;
@@ -157,27 +157,27 @@ public:
     /// @return _wManagementHost - management host
     /// @return _wPort - worker port
     std::tuple<std::string, std::string, std::string, int> getAll() const {
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         return {wId, _wHostAddr, _wHostName, _wPort};
     }
 
     /// Return true if communication related items are the same.
     bool isSameContactInfo(WorkerContactInfo const& other) const {
         auto [oWId, oWHost, oWManagementHost, oWPort] = other.getAll();
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         return (wId == oWId && _wHostAddr == oWHost && _wHostName == oWManagementHost && _wPort == oWPort);
     }
 
     void setRegUpdateTime(TIMEPOINT updateTime);
 
     double timeSinceRegUpdateSeconds() const {
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         double secs = std::chrono::duration<double>(CLOCK::now() - _regUpdateTime).count();
         return secs;
     }
 
     TIMEPOINT getRegUpdateTime() const {
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         return _regUpdateTime;
     }
 
@@ -186,7 +186,7 @@ public:
     /// @return false indicates the worker was restarted and all associated jobs need
     ///   re-assignment.
     bool checkWStartupTime(uint64_t startupTime) {
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         if (_wStartupTime == startupTime) {
             return true;
         }
@@ -199,7 +199,7 @@ public:
     }
 
     uint64_t getWStartupTime() const {
-        std::lock_guard lg(_rMtx);
+        VLOCK(lg, _rMtx);
         return _wStartupTime;
     }
 
@@ -233,7 +233,7 @@ private:
     /// foreman()->getStartupTime();
     uint64_t _wStartupTime = 0;
 
-    mutable MUTEX _rMtx;  ///< protects _regUpdate
+    mutable VMUTEX _rMtx;  ///< protects _regUpdateTime
 };
 
 /// This class's purpose is to be a structure to store and transfer information
@@ -265,7 +265,7 @@ public:
     void setWInfo(WorkerContactInfo::Ptr const& wInfo_);
 
     WorkerContactInfo::Ptr getWInfo() const {
-        std::lock_guard lgI(_infoMtx);
+        VLOCK(lgI, _infoMtx);
         return _wInfo;
     }
     CzarContactInfo::Ptr getCzInfo() const { return _czInfo; }
@@ -293,7 +293,7 @@ public:
     void removeDeadUberJobsFor(QueryId qId);
 
     void setCzarCancelAfterRestart(CzarId czId, QueryId lastQId) {
-        std::lock_guard mapLg(mapMtx);
+        VLOCK(mapLg, mapMtx);
         czarCancelAfterRestart = true;
         czarCancelAfterRestartCzId = czId;
         czarCancelAfterRestartQId = lastQId;
@@ -366,7 +366,7 @@ public:
 
     /// Protects _qIdDoneKeepFiles, _qIdDoneDeleteFiles, _qIdDeadUberJobs,
     /// and czarCancelAfter variables.
-    mutable MUTEX mapMtx;
+    mutable VMUTEX mapMtx;
 
 private:
     WorkerQueryStatusData(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_,
@@ -375,7 +375,7 @@ private:
 
     WorkerContactInfo::Ptr _wInfo;       ///< Information needed to contact the worker.
     CzarContactInfo::Ptr const _czInfo;  ///< Information needed to contact the czar.
-    mutable MUTEX _infoMtx;              ///< protects _wInfo
+    mutable VMUTEX _infoMtx;             ///< protects logic that sets _wInfo
 
     AuthContext const _authContext;  ///< Used for message verification.
 

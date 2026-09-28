@@ -79,7 +79,7 @@ public:
     void commandFinish(util::Command::Ptr const&) override;
 
     // SchedulerBase overrides
-    bool ready() override;
+    bool ready() override;  ///< This should only be called by the BlendScheduler.
     std::size_t getSize() const override;
 
 private:

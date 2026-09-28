@@ -32,6 +32,9 @@
 #include <memory>
 #include <mutex>
 
+// qserv headers
+#include "util/Mutex.h"
+
 namespace lsst::qserv::util {
 
 /// Tracker provides an interface for indicating an action is complete.
@@ -48,8 +51,8 @@ public:
 
 private:
     Status _trStatus{Status::INPROGRESS};
-    std::mutex _trMutex;
-    std::condition_variable _trCV;
+    mutable VMUTEX _trMutex;
+    std::condition_variable_any _trCV;
 };
 
 /// Base class to allow arbitrary data to be passed to or returned from

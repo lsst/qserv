@@ -60,8 +60,7 @@ bool JobQuery::cancel(bool superfluous, bool logLvlErr) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     if (_cancelled.exchange(true) == false) {
         LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel() " << superfluous);
-        VMUTEX_NOT_HELD(_jqMtx);
-        lock_guard lock(_jqMtx);
+        VLOCK(lock, _jqMtx);
 
         string const context = _idStr + " job cancel";
         LOGS(_log, LOG_LVL_DEBUG, context);
@@ -108,8 +107,7 @@ bool JobQuery::_setUberJobId(UberJobId ujId) {
 
 bool JobQuery::unassignFromUberJob(UberJobId ujId) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
-    VMUTEX_NOT_HELD(_jqMtx);
-    lock_guard lock(_jqMtx);
+    VLOCK(lock, _jqMtx);
     if (_uberJobId < 0) {
         LOGS(_log, LOG_LVL_INFO, __func__ << " UberJobId already unassigned. attempt by ujId=" << ujId);
         return true;
@@ -128,16 +126,14 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
 
 void JobQuery::avoidWorker(protojson::WorkerContactInfo::Ptr const& workerContactInfo,
                            TIMEPOINT familyMapTime) {
-    VMUTEX_NOT_HELD(_jqMtx);
-    lock_guard lock(_jqMtx);
+    VLOCK(lock, _jqMtx);
     _workerAvoidMap[workerContactInfo->wId] = make_pair(workerContactInfo, familyMapTime);
 }
 
 bool JobQuery::isWorkerInAvoidMap(protojson::WorkerContactInfo::Ptr const& workerContactInfo,
                                   TIMEPOINT familyMapTime) {
     if (workerContactInfo == nullptr) return false;
-    VMUTEX_NOT_HELD(_jqMtx);
-    lock_guard lock(_jqMtx);
+    VLOCK(lock, _jqMtx);
     auto iter = _workerAvoidMap.find(workerContactInfo->wId);
     if (iter == _workerAvoidMap.end()) return false;
     WorkerAvoidType const& wat = iter->second;
@@ -156,8 +152,7 @@ bool JobQuery::isWorkerInAvoidMap(protojson::WorkerContactInfo::Ptr const& worke
 }
 
 int JobQuery::getAttemptCount() const {
-    VMUTEX_NOT_HELD(_jqMtx);
-    lock_guard lock(_jqMtx);
+    VLOCK(lock, _jqMtx);
     return _jobDescription->getAttemptCount();
 }
 
