@@ -56,7 +56,7 @@ JobDescription::JobDescription(CzarId czarId, QueryId qId, JobId jobId, Resource
           _chunkQuerySpec(chunkQuerySpec),
           _mock(mock) {}
 
-bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase) {
+bool JobDescription::incrAttemptCount(shared_ptr<Executive> const& exec, bool increase) {
     if (increase) {
         ++_attemptCount;
     }
@@ -69,9 +69,10 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
         if (_attemptCount > maxAttempts) {
             LOGS(_log, LOG_LVL_ERROR,
                  cName(__func__) << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts
-                                 << ") cancelling");
+                                 << ") cancelling ");
             exec->addMultiError(util::Error::RETRY_FAILS, util::Error::NONE,
-                                "max attempts for chunk reached " + to_string(_attemptCount) + " " + _qIdStr,
+                                "max attempts for chunkId=" + to_string(_resource.chunk()) +
+                                        " reached, attempts=" + to_string(_attemptCount) + " " + _qIdStr,
                                 true);
             exec->squash(string("incrAttemptCount ") + to_string(_attemptCount));
             return false;

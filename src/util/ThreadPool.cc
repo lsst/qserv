@@ -205,20 +205,7 @@ bool ThreadPool::release(PoolEventThread* thrd) {
         thrdPtr = *iter;
         LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::release erasing " << thrd);
         _pool.erase(iter);
-#if 0  // &&&
-        if (!_joinerThread->addThread(thrdPtr)) {  // Add to list of threads to join.
-            // It is only possible to get here if this has been called after _joinerThread->shutdownJoin(),
-            // has been called, which shouldn't happen.
-            LOGS(_log, LOG_LVL_ERROR, "ThreadPool::release failed to add thread to joiner " << thrdPtr.get());
-            // Join the thread in a detached thread since it can't be added to the joiner
-            // and this cannot cause deadlock.
-            thread thrd([thrdPtr]() {
-                thrdPtr->join();
-                LOGS(_log, LOG_LVL_WARN, "ThreadPool::release joined thread " << thrdPtr.get());
-            });
-            thrd.detach();
-        }
-#else  // &&&
+
         try {
             _joinerThread->addThread(thrdPtr);  // Add to list of threads to join.
         } catch (std::logic_error const& ex) {
@@ -235,7 +222,6 @@ bool ThreadPool::release(PoolEventThread* thrd) {
             });
             thrd.detach();
         }
-#endif  // &&&
     }
     _resize();  // Check if more threads need to be released.
     return true;

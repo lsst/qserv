@@ -69,7 +69,10 @@ public:
 
     virtual ~JobDescription() = default;
 
-    std::string cName(const char* fnc) { return std::string("JobDescription::") + fnc + " " + _qIdStr; }
+    std::string cName(const char* fnc) {
+        return std::string("JobDescription::") + fnc + " " + _qIdStr +
+               " chunk=" + std::to_string(_resource.chunk());
+    }
 
     JobId id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
