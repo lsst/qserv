@@ -1520,18 +1520,82 @@ BOOST_FIXTURE_TEST_SUITE(Match, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(OrWithFiltering) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
-            {{"LSST", {{"RefObjMatch", {"refObjectId", "objectId", "flags"}}}}}));
+            {{"LSST", {{"RefObjMatch", {"refObjectId", "objectId", "flags"}}, {"Filter", {"filterId"}}}}}));
     std::vector<std::string> const statements = {
             "SELECT m.objectId FROM RefObjMatch m WHERE m.objectId=1 OR m.refObjectId IS NULL",
-            "SELECT m.objectId FROM RefObjMatch m WHERE (m.objectId=1 OR m.refObjectId IS NULL)"};
+            "SELECT m.objectId FROM RefObjMatch m WHERE (m.objectId=1 OR m.refObjectId IS NULL)",
+            "SELECT m.objectId FROM Filter f JOIN RefObjMatch m ON f.filterId=1 "
+            "WHERE m.objectId=1 OR m.refObjectId IS NULL"};
     for (auto const& stmt : statements) {
         BOOST_TEST_CONTEXT(stmt) {
             auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
             BOOST_REQUIRE(qs->getError().empty());
             auto const parallel = queryAnaHelper.buildFirstParallelQuery(false);
-            BOOST_CHECK_NE(parallel.find("WHERE (`refObjectId` IS NULL OR `flags`<>2) "
+            BOOST_CHECK_NE(parallel.find("WHERE (`m`.`refObjectId` IS NULL OR `m`.`flags`<>2) "
                                          "AND (`m`.`objectId`=1 OR `m`.`refObjectId` IS NULL)"),
                            std::string::npos);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(ReplicatedJoinFiltered) {
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST",
+                                                      {{"RefObjMatch", {"refObjectId", "objectId", "flags"}},
+                                                       {"Filter", {"filterId", "refObjectId", "flags"}}}}}));
+    std::vector<std::string> const statements = {
+            "SELECT m.objectId FROM RefObjMatch m JOIN Filter f ON f.filterId=1",
+            "SELECT m.objectId FROM Filter f JOIN RefObjMatch m ON f.filterId=1",
+            "SELECT m.objectId FROM RefObjMatch m LEFT JOIN Filter f ON f.filterId=1",
+            "SELECT m.objectId FROM Filter f RIGHT JOIN RefObjMatch m ON f.filterId=1",
+            "SELECT m.objectId FROM RefObjMatch m CROSS JOIN Filter f",
+            "SELECT m.objectId FROM RefObjMatch m, Filter f WHERE f.filterId=1",
+            "SELECT m.objectId FROM Filter f, Filter g JOIN RefObjMatch m ON g.filterId=1 "
+            "WHERE f.filterId=1"};
+    for (auto const& stmt : statements) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+            BOOST_REQUIRE(qs->getError().empty());
+            auto const parallel = queryAnaHelper.buildFirstParallelQuery(false);
+            BOOST_CHECK_NE(parallel.find("(`m`.`refObjectId` IS NULL OR `m`.`flags`<>2)"), std::string::npos);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(PartitionedJoin) {
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST",
+                                                      {{"RefObjMatch", {"refObjectId", "objectId"}},
+                                                       {"Object", {"objectIdObjTest"}},
+                                                       {"Source", {"objectIdSourceTest"}},
+                                                       {"Filter", {"filterId"}}}}}));
+    std::vector<std::string> const statements = {
+            "SELECT m.objectId FROM RefObjMatch m JOIN Object o ON m.objectId=o.objectIdObjTest "
+            "JOIN Filter f ON f.filterId=1",
+            "SELECT m.objectId FROM Filter f JOIN RefObjMatch m ON f.filterId=1 "
+            "JOIN Source s ON m.objectId=s.objectIdSourceTest"};
+    for (auto const& stmt : statements) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+            BOOST_REQUIRE(qs->getError().empty());
+            auto const parallel = queryAnaHelper.buildFirstParallelQuery(false);
+            BOOST_CHECK_EQUAL(parallel.find("`flags`"), std::string::npos);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(RejectReplicatedOuterJoins) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"RefObjMatch", {"objectId"}}, {"Filter", {"filterId"}}}}}));
+    std::vector<std::pair<std::string, std::string>> const statements = {
+            {"SELECT m.objectId FROM Filter f LEFT JOIN RefObjMatch m ON f.filterId=1",
+             "AnalysisError:Query contains a LEFT JOIN between unpartitioned and partitioned tables."},
+            {"SELECT m.objectId FROM RefObjMatch m RIGHT JOIN Filter f ON f.filterId=1",
+             "AnalysisError:Query contains a RIGHT JOIN between partitioned and unpartitioned tables."}};
+    for (auto const& [stmt, expected] : statements) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+            BOOST_CHECK_EQUAL(qs->getError(), expected);
         }
     }
 }
@@ -1540,7 +1604,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch;";
     std::string expected =
             "SELECT * FROM `LSST`.`RefObjMatch_100` AS `LSST.RefObjMatch` WHERE "
-            "(`refObjectId` IS NULL OR `flags`<>2)";
+            "(`LSST.RefObjMatch`.`refObjectId` IS NULL OR `LSST.RefObjMatch`.`flags`<>2)";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"RefObjMatch", {}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -1562,7 +1626,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
             "foo!=bar AND baz<3.14159;";
     std::string expected =
             "SELECT * FROM `LSST`.`RefObjMatch_100` AS `LSST.RefObjMatch` WHERE "
-            "(`refObjectId` IS NULL OR `flags`<>2) "
+            "(`LSST.RefObjMatch`.`refObjectId` IS NULL OR `LSST.RefObjMatch`.`flags`<>2) "
             "AND `LSST.RefObjMatch`.`foo`" PARSER_EXPECTED("<>", "!=") "`LSST.RefObjMatch`.`bar`"
             " AND `LSST.RefObjMatch`.`baz`<3.14159";
     qsTest.sqlConfig =
