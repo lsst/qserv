@@ -10,4 +10,4 @@ It spans three databases:
 
 With `qcase05_matches.RefDeepSrcMatch` referring to two external directors.
 
-The data, schemas, and partition configs were copied directly from case03.
+The data, schemas, and partition configs were based on case03.
