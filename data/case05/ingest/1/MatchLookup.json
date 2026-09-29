@@ -1,0 +1,13 @@
+{
+    "version": 12,
+    "auth_key": "",
+    "database": "qcase05_1",
+    "table": "MatchLookup",
+    "is_partitioned": 0,
+    "schema": [
+        {"name": "lookupId", "type": "int NOT NULL"},
+        {"name": "refObjectId", "type": "bigint(20) DEFAULT NULL"},
+        {"name": "flags", "type": "int(11) NOT NULL"}
+    ],
+    "fields_terminated_by": ","
+}
