@@ -11,6 +11,9 @@ ingestHelperPullPolicy: IfNotPresent
 mode: full  # full | db-only
 podManagementPolicy: Parallel  # Parallel | OrderedReady
 
+
+openshift: false
+
 czars:
   replicas: 1
   # tier: []

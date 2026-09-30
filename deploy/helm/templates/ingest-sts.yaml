@@ -35,7 +35,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
           volumeMounts:
             - name: tmp
               mountPath: /tmp
@@ -45,6 +45,10 @@ spec:
               readOnly: true
             - name: ingest-data
               mountPath: /qserv/data
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
         - name: ingest-helper
           image: {{ .Values.ingestHelperImageName | quote }}
           imagePullPolicy: {{ .Values.ingestHelperPullPolicy | quote }}
@@ -66,6 +70,13 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+
+        - name: nginx-cache
+          emptyDir: {}
+
+        - name: nginx-run
+          emptyDir: {}
+
         - name: ingest-config
           configMap:
             name: ingest-config
