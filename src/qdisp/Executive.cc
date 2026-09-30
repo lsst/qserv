@@ -105,13 +105,13 @@ Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> 
           _jobMaxAttempts(jobMaxAttempts),
           _uberJobMaxChunks(uberJobMaxChunks) {
     _setupLimit();
-    qdisp::CzarStats::get()->addQuery();
+    CzarStats::get()->addQuery();
 }
 
 Executive::~Executive() {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::~Executive() " << getIdStr());
-    qdisp::CzarStats::get()->deleteQuery();
-    qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
+    CzarStats::get()->deleteQuery();
+    CzarStats::get()->deleteJobs(_incompleteJobs.size());
     // Remove this executive from the map.
     auto cz = czar::Czar::getCzar();  // cz can be null in unit tests.
     if (cz != nullptr && cz->getExecutiveFromMap(getId()) != nullptr) {
@@ -627,7 +627,7 @@ bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
         }
         _incompleteJobs[jobId] = r;
         size = _incompleteJobs.size();
-        qdisp::CzarStats::get()->addJob();
+        CzarStats::get()->addJob();
     }
     LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING size=" << size);
     return true;
@@ -646,7 +646,7 @@ void Executive::_unTrack(int jobId) {
             untracked = true;
             incompleteJobs = _incompleteJobs.size();
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
-            qdisp::CzarStats::get()->deleteJobs(1);
+            CzarStats::get()->deleteJobs(1);
         }
         auto sz = _incompleteJobs.size();
         logSome = (sz < 50) || (sz % 1000 == 0) || !untracked;
@@ -761,8 +761,8 @@ void Executive::_waitAllUntilEmpty() {
 }
 
 void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
-    int chunkId = job->getDescription()->resource().chunk();
-    auto entry = pair<ChunkIdType, JobQuery::Ptr>(chunkId, job);
+    ChunkId chunkId = job->getDescription()->resource().chunk();
+    auto entry = pair<ChunkId, JobQuery::Ptr>(chunkId, job);
     VLOCK(lck, _chunkToJobMapMtx);
     bool inserted = _chunkToJobMap.insert(entry).second;
     if (!inserted) {
@@ -928,8 +928,7 @@ void Executive::_collectFile(std::shared_ptr<UberJob> const& ujPtr, protojson::F
 }
 
 bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,
-                     protojson::WorkerContactInfo::WCMapPtr const& wContactMap,
-                     qdisp::JobQuery::Ptr const& jqPtr,
+                     protojson::WorkerContactInfo::WCMapPtr const& wContactMap, JobQuery::Ptr const& jqPtr,
                      std::shared_ptr<czar::CzarFamilyMap> const& czFamilyMap) {
     if (targetWorker == nullptr) return false;
     auto iter = wContactMap->find(targetWorker->getWorkerId());
@@ -1017,12 +1016,12 @@ void Executive::buildAndSendUberJobs() {
     //          are alive or dead.
     struct WInfoAndUJPtr {
         using Ptr = shared_ptr<WInfoAndUJPtr>;
-        qdisp::UberJob::Ptr uberJobPtr;
+        UberJob::Ptr uberJobPtr;
         protojson::WorkerContactInfo::Ptr wInf;
     };
     map<string, WInfoAndUJPtr::Ptr> workerJobMap;
-    vector<qdisp::Executive::ChunkIdType> missingChunks;
-    vector<qdisp::UberJob::Ptr> uberJobs;
+    vector<ChunkId> missingChunks;
+    vector<UberJob::Ptr> uberJobs;
 
     int attemptCountIncreased = 0;
     // unassignedChunks needs to be in numerical order so that UberJobs contain chunk numbers in
@@ -1101,8 +1100,8 @@ void Executive::buildAndSendUberJobs() {
             string uberResultName = _ttn->make(ujId);
             auto respHandler = ccontrol::MergingHandler::Ptr(
                     new ccontrol::MergingHandler(uqs->getInfileMerger(), shared_from_this()));
-            auto uJob = qdisp::UberJob::create(shared_from_this(), respHandler, ujId, uqs->getCzarId(),
-                                               wInfUJ->wInf, czFamilyMap->getLastUpdateTime());
+            auto uJob = UberJob::create(shared_from_this(), respHandler, ujId, uqs->getCzarId(), wInfUJ->wInf,
+                                        czFamilyMap->getLastUpdateTime());
             uJob->setWorkerContactInfo(wInfUJ->wInf);
             wInfUJ->uberJobPtr = uJob;
         };

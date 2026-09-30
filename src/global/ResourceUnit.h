@@ -25,11 +25,13 @@
 #define LSST_QSERV_RESOURCEUNIT_H
 
 // System headers
+#include <cstdint>
 #include <map>
 #include <string>
 
 // Qserv headers
 #include "global/constants.h"  // For DUMMY_CHUNK
+#include "global/intTypes.h"
 
 namespace lsst::qserv {
 
@@ -51,7 +53,7 @@ public:
 
     UnitType unitType() const { return _unitType; }
     std::string const& db() const { return _db; }
-    int chunk() const { return _chunk; }
+    ChunkId chunk() const { return _chunk; }
 
     /// @return the path prefix element for a given request type.
     static std::string prefix(UnitType const& r);

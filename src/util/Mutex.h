@@ -130,6 +130,23 @@ namespace lsst::qserv::util {
  *  like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
  *  which can be desirable.
  *  VMutex does work with std::condition_variable_any.
+ *
+ * Normal operations should look like this. VLOCKPARAM is optional, it could just be funcB() without the
+ * parameter. Using VMUTEX_HELD before accessing `_x` is important when the mutex is locked by a
+ * different function:
+ *
+ *  int _x = 0;
+ *  VMUTEX _xMtx;  // Protects _x
+ *  void funcB(VLOCKPARAM vlock) {  // There is no guarantee `vlock` locked the correct mutex.
+ *     VMUTEX_HELD(_xMtx);          // This verifies the correct mutex is locked.
+ *     _x +=1;
+ *  }
+ *  void funcA() {
+ *     VLOCK(lck, _xMtx);
+ *     funcB(lck);
+ *  }
+ *
+ *  If a unique_lock is needed, use VLOCKUNIQUE and VLOCKUNIQPARAM instead of VLOCK and VLOCKPARAM.
  */
 class VMutex {
 public:
@@ -145,14 +162,14 @@ public:
         _mutex.lock();
         _holder = std::this_thread::get_id();
         // Note that wait() can lock and unlock the mutex and setTag() will not be called.
-        _tag += "!";
+        appendToTag("!");
     }
 
     /** Release the mutex (replaces the corresponding method of the base class) */
     void unlock() {
         _holder = std::thread::id();
         // Note that wait() can lock and unlock the mutex and setTag() will not be called.
-        _tag += "~";
+        appendToTag("~");
         _mutex.unlock();
     }
 
@@ -160,7 +177,7 @@ public:
         bool res = _mutex.try_lock();
         if (res) {
             _holder = std::this_thread::get_id();
-            _tag = "#";
+            appendToTag("#");
         }
         return res;
     }
@@ -193,6 +210,19 @@ protected:
     /** The thread that currently holds the lock. std::thread::id() indicates no thread holds the lock.
      */
     std::atomic<std::thread::id> _holder{std::thread::id()};
+
+    /** Append `msg` to `_tag`.
+     * If `_tag` is already over 600 characters, truncate back to 400 characters and then add "..." + `msg`.
+     * Not reducing the length of the string wastes memory and could result in an eventual out of memory
+     * segfault. 400 characters should be adequate to help identify the problem. Extreme lengths are most
+     * likely if lock_guards and unique_locks are defined without using the VLOCK macros. */
+    void appendToTag(std::string const& msg) {
+        if (_tag.length() < 600)
+            _tag += msg;
+        else {
+            _tag = _tag.substr(0, 400) + "..." + msg;
+        }
+    }
 
 private:
     /** While functioning as a mutex for the caller, this also protects the members of this class. */

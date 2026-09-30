@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
             BlockPost blockPost(10, 20);
             blockPost.wait();
             wasLockedBeforeBy1 = mtx.lockedByThread();
-            lock_guard<VMutex> const lock(mtx);
+            VLOCK(lock, mtx);
             wasLockedAfterBy1 = mtx.lockedByThread();
         });
         bool wasLockedBeforeBy2 = false;
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
             BlockPost blockPost(10, 20);
             blockPost.wait();
             wasLockedBeforeBy2 = mtx.lockedByThread();
-            lock_guard<VMutex> const lock(mtx);
+            VLOCK(lock, mtx);
             wasLockedAfterBy2 = mtx.lockedByThread();
         });
         thr1.join();
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
         for (auto&& t : threads) {
             t = make_unique<thread>([&mtx, &counter]() {
                 for (unsigned int i = 0; i < steps; ++i) {
-                    lock_guard<VMutex> const lock(mtx);
+                    VLOCK(lock, mtx);
                     ++counter;
                 }
             });
@@ -241,6 +241,23 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
     VMutex mtxCompTest;
     VLOCKUNIQUE(unique, mtxCompTest);
     vlockMacroUniqueCompileTest(unique);
+
+    // Test to verify that the tag length is limited.
+    {
+        VMutex xMtx;  // protects x
+        int x = 0;
+        size_t prevTagLength = 0;
+        for (int i = 0; i < 10000; ++i) {
+            // Using a lock_guard here prevents call setTag(), which would reset the length.
+            lock_guard lock(xMtx);
+            ++x;
+            std::string tag = xMtx.getTag();
+            size_t tagLength = tag.length();
+            BOOST_CHECK(tagLength != prevTagLength);
+            prevTagLength = tagLength;
+            BOOST_CHECK(tag.length() < 610);
+        }
+    }
 
     LOGS_INFO("VMutexTest ends");
 }

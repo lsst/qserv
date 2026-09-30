@@ -98,8 +98,7 @@ class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
-    typedef int ChunkIdType;
-    typedef std::map<ChunkIdType, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
+    typedef std::map<ChunkId, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
 
     /// Construct an Executive.
     static Executive::Ptr create(int secsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,

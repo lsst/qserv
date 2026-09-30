@@ -40,6 +40,7 @@ typedef std::uint64_t QueryId;
 typedef std::int64_t JobId;
 typedef std::int64_t UberJobId;
 typedef std::uint32_t CzarId;
+typedef int ChunkId;
 
 /// Class to provide a consistent format for QueryIds in the log file
 class QueryIdHelper {
