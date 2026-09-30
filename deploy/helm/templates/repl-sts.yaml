@@ -29,7 +29,7 @@ spec:
                     values: {{ .Values.replication.tier | toJson }}
       {{- end }}
       {{- if .Values.openshift }}
-      serviceAccountName: rsp-qserv-repl
+      serviceAccountName: rsp-qserv-czar
       {{- end }}
       securityContext:
         runAsUser: 1000
