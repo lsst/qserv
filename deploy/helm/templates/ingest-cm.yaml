@@ -6,10 +6,13 @@ metadata:
   labels:
     {{- include "qserv.labels" . | nindent 4 }}
 data:
-  # change 80 to 8080 as openshift does not allow binds to ports < 1024
   default.conf: |
     server {
+      {{- if .Values.openshift }}
       listen 8080;
+      {{- else }}
+      listen 80;
+      {{- end }}
       server_name localhost;
       location / {
         root /qserv/data/html;
