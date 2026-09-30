@@ -2361,6 +2361,32 @@ BOOST_AUTO_TEST_CASE(ChildChildDifferentDirectorsSharedPartitioning) {
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 }
 
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+BOOST_AUTO_TEST_CASE(NotRestrictions) {
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest", "ra_Test"}}}}}));
+    std::vector<std::pair<std::string, bool>> const predicates = {
+            {"NOT objectIdObjTest IN (1,2,NULL)", false},
+            {"NOT objectIdObjTest BETWEEN 1 AND 2", false},
+            {"NOT -objectIdObjTest IN (-1,-2)", false},
+            {"NOT objectIdObjTest IN (1,2) OR objectIdObjTest=3", false},
+            {"NOT objectIdObjTest NOT IN (1,2)", true},
+            {"NOT NOT objectIdObjTest=1", true},
+            {"NOT objectIdObjTest IN (1,2) AND objectIdObjTest=3", true}};
+    for (auto const& [predicate, shouldRestrict] : predicates) {
+        BOOST_TEST_CONTEXT(predicate) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest,
+                                                       "SELECT ra_Test FROM Object WHERE " + predicate, true);
+            BOOST_CHECK_MESSAGE(qs->getError().empty(), qs->getError());
+            if (qs->getError().empty()) {
+                auto const restrictors = qs->getSecIdxRestrictors();
+                BOOST_CHECK_EQUAL(restrictors && !restrictors->empty(), shouldRestrict);
+            }
+        }
+    }
+}
+#endif
+
 BOOST_AUTO_TEST_SUITE_END()
 
 // SELECT o1.id as o1id,o2.id as o2id,

@@ -2692,4 +2692,38 @@ BOOST_AUTO_TEST_CASE(AreaRestrictorUnderNotRejected) {
                           parser::ParseException, areaRestrictorNotAllowed);
 }
 
+// NOT precedence: implicit precedence vs explicit precedence enforced by parentheses.
+BOOST_AUTO_TEST_CASE(NotPrecedence) {
+    vector<pair<string, string>> const predicates = {
+            {"NOT x IN (1,2,NULL)", "NOT (x IN (1,2,NULL))"},
+            {"NOT x BETWEEN 0 AND 1", "NOT (x BETWEEN 0 AND 1)"},
+            {"NOT x = 1", "NOT (x = 1)"},
+            {"NOT x IS NULL", "NOT (x IS NULL)"},
+            {"NOT x IS NOT NULL", "NOT (x IS NOT NULL)"},
+            {"NOT x NOT IN (1,2,NULL)", "NOT (x NOT IN (1,2,NULL))"},
+            {"NOT x NOT BETWEEN 0 AND 1", "NOT (x NOT BETWEEN 0 AND 1)"},
+            {"NOT NOT x IN (1,2)", "NOT (NOT (x IN (1,2)))"},
+            {"NOT -x IN (-1,0)", "NOT (-x IN (-1,0))"},
+            {"NOT -x BETWEEN -2 AND 1", "NOT (-x BETWEEN -2 AND 1)"},
+            {"NOT x+1 IN (1,2)", "NOT (x+1 IN (1,2))"},
+            {"NOT x IN (1,2) AND y=3", "NOT (x IN (1,2)) AND y=3"},
+            {"NOT x BETWEEN 0 AND 1 OR y=3", "NOT (x BETWEEN 0 AND 1) OR y=3"}};
+    vector<string> const contexts = {"SELECT x FROM Object WHERE ",
+                                     "SELECT x FROM Object o JOIN Source s ON ",
+                                     "SELECT x FROM Object GROUP BY x HAVING "};
+    for (auto const& prefix : contexts) {
+        for (auto const& [predicate, reference] : predicates) {
+            BOOST_TEST_CONTEXT(prefix << predicate) {
+                auto const expected = ccontrol::ParseRunner::makeSelectStmt(prefix + reference);
+                query::SelectStmt::Ptr actual;
+                BOOST_CHECK_NO_THROW(actual = ccontrol::ParseRunner::makeSelectStmt(prefix + predicate));
+                if (actual) {
+                    BOOST_CHECK_EQUAL(actual->getQueryTemplate().sqlFragment(),
+                                      expected->getQueryTemplate().sqlFragment());
+                }
+            }
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
