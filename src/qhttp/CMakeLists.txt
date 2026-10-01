@@ -8,6 +8,7 @@ target_sources(qhttp PRIVATE
     Response.cc
     Server.cc
     StaticContent.cc
+    Status.cc
 )
 
 target_link_libraries(qhttp PUBLIC
