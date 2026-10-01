@@ -154,7 +154,7 @@ test_cases:
           metadata: case05/ingest/1/metadata.json
           database: case05/ingest/1/database.json
           table: case05/ingest/1/{table_name}.json
-        tables: [RefObject]
+        tables: [RefObject, MatchLookup]
       - root: /tmp/qserv/data
         data: case05/data/{table_name}.csv.gz
         schema: case05/data/schema/{table_name}.schema
