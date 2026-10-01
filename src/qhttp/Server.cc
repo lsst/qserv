@@ -247,7 +247,9 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                 }
                 auto const pathHandler = self->_findPathHandler(request);
                 if (pathHandler == nullptr) {
-                    LOGLS_DEBUG(_log, logger(self) << logger(socket) << "no handler found");
+                    LOGLS_DEBUG(_log, logger(self) << logger(socket) << "no handler found, method: "
+                                                   << request->method << ", target: " << request->target
+                                                   << ", path: " << request->path);
                     response->sendStatus(STATUS_NOT_FOUND);
                     return;
                 }
