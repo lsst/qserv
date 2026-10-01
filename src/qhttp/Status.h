@@ -21,6 +21,9 @@
 #ifndef LSST_QSERV_QSTATUS_H
 #define LSST_QSERV_QSTATUS_H
 
+// System headers
+#include <string>
+
 // This header declarations
 
 namespace lsst::qserv::qhttp {
@@ -72,6 +75,7 @@ enum Status : unsigned int {
     STATUS_UNPROCESSIBLE = 422,
     STATUS_LOCKED = 423,
     STATUS_FAILED_DEP = 424,
+    STATUS_TOO_EARLY = 425,
     STATUS_UPGRADE_REQUIRED = 426,
     STATUS_PRECOND_REQUIRED = 428,
     STATUS_TOO_MANY_REQS = 429,
@@ -80,7 +84,7 @@ enum Status : unsigned int {
     STATUS_NOT_IMPL = 501,
     STATUS_BAD_GATEWAY = 502,
     STATUS_SERVICE_UNAVAIL = 503,
-    STATUS_GSATEWAY_TIMEOUT = 504,
+    STATUS_GATEWAY_TIMEOUT = 504,
     STATUS_UNDSUPPORT_VERSION = 505,
     STATUS_VARIANT_NEGOTIATES = 506,
     STATUS_NO_STORAGE = 507,
@@ -88,6 +92,8 @@ enum Status : unsigned int {
     STATUS_NOT_EXTENDED = 510,
     STATUS_NET_AUTH_REQUIRED = 511
 };
+
+std::string status2str(Status status);
 
 }  // namespace lsst::qserv::qhttp
 
