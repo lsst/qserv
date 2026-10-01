@@ -40,6 +40,7 @@
 // Qserv headers
 #include "http/Method.h"
 #include "http/Url.h"
+#include "qhttp/Status.h"
 
 // This header declarations
 namespace lsst::qserv::http {
@@ -263,6 +264,7 @@ public:
     http::Method method() const { return _method; }
     HostPort const& hostPort() const { return _hostPort; }
     std::string const& target() const { return _target; }
+    std::string const& data() const { return _data; }
     size_t maxResponseBodySize() const { return _maxResponseBodySize; }
     unsigned int expirationIval() const { return _expirationIvalSec; }
 
@@ -322,7 +324,7 @@ public:
     /// @return The completion code (HTTP).
     /// @throw std::logic_error If the operation didn't start or it was still in progress.
     /// @note The code is available in states State::FINISHED and State::BODY_LIMIT_ERROR.
-    int responseCode() const;
+    qhttp::Status responseCode() const;
 
     /// @return The content of response header represented by the key/value map.
     /// @throw std::logic_error If the operation didn't start or it was still in progress.
