@@ -25,7 +25,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "global/stringUtil.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/jobs/SqlJobResult.h"
 #include "replica/requests/SqlRowStatsRequest.h"
 #include "replica/services/DatabaseServices.h"

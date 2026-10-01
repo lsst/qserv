@@ -23,6 +23,12 @@ x-log-volume:
       source: ./log/
       target: /config-etc/log/
 
+x-repl-cfg-volume:
+    &repl-cfg-volume
+    - type: bind
+      source: ./repl-cfg/
+      target: /config-etc/repl-cfg/
+
 x-worker-cmsd:
     &worker-cmsd
     image: "${QSERV_IMAGE:?err}"
@@ -68,9 +74,6 @@ volumes:
     volume_repl_mariadb_data:
     volume_repl_mariadb_home:
     volume_repl_mariadb_lib:
-
-    volume_repl_worker_0_cfg:
-    volume_repl_worker_1_cfg:
 
 networks:
 
@@ -178,9 +181,12 @@ services:
           --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --config=/config-etc/repl-cfg/worker.json
+          --database-repl-db-conn=mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --database-worker-db-conn=mysql://root:CHANGEME@worker-mariadb-0:3306/qservw_worker
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --registry-host=repl-registry
           --debug
         volumes:
@@ -188,12 +194,10 @@ services:
               source: volume_worker_0_data
               target: /qserv/data
             - type: volume
-              source: volume_repl_worker_0_cfg
-              target: /config-etc
-            - type: volume
               source: volume_worker_0_home
               target: /home/qserv
             - << : *log-volume
+            - << : *repl-cfg-volume
 
     # worker 1 uses and validates socket file (where possible) to connect to the worker-mariadb
     worker-mariadb-1:
@@ -290,9 +294,12 @@ services:
           --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --config=/config-etc/repl-cfg/worker.json
+          --database-repl-db-conn=mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --database-worker-db-conn=mysql://root:CHANGEME@worker-mariadb-1:3306/qservw_worker
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --registry-host=repl-registry
           --debug
         volumes:
@@ -300,12 +307,10 @@ services:
               source: volume_worker_1_data
               target: /qserv/data
             - type: volume
-              source: volume_repl_worker_1_cfg
-              target: /config-etc
-            - type: volume
               source: volume_worker_1_home
               target: /home/qserv
             - << : *log-volume
+            - << : *repl-cfg-volume
 
     czar-xrootd:
         image: "${QSERV_IMAGE:?err}"
@@ -477,17 +482,16 @@ services:
           entrypoint --log-level DEBUG replication-controller
           --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
-          --qserv-czar-db=mysql://root:CHANGEME@czar-mariadb:3306/qservMeta
           --log-cfg-file=/config-etc/log/log-repl-controller.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --config=/config-etc/repl-cfg/controller.json
+          --database-repl-db-conn=mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --database-czar-db-conn=mysql://root:CHANGEME@czar-mariadb:3306/qservMeta
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --xrootd-host=czar-xrootd
           --registry-host=repl-registry
-          --controller-auto-register-workers=1
-          --qserv-sync-force
-          --qserv-chunk-map-update
           --debug
         volumes:
             - type: volume
@@ -500,6 +504,7 @@ services:
               source: ../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
+            - << : *repl-cfg-volume
         ports:
             - "127.0.0.1:${QSERV_DASHBOARD_PORT:-25081}:25081"
 
@@ -515,12 +520,14 @@ services:
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-registry.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --config=/config-etc/repl-cfg/registry.json
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --debug
         volumes:
             - << : *log-volume
+            - << : *repl-cfg-volume
 
     cluster-ready:
         image: "${QSERV_IMAGE:?err}"
@@ -530,7 +537,7 @@ services:
             repl-registry:
                 condition: service_started
         healthcheck:
-            test: ["CMD-SHELL", "curl -sf 'http://repl-registry:25082/services?instance_id=qserv_proj' | python3 -c \"import sys,json; d=json.load(sys.stdin)['services']; exit(0 if len(d['workers'])>=2 and len(d['czars'])>=1 else 1)\""]
+            test: ["CMD-SHELL", "curl -sf 'http://repl-controller:25081/replication/config' | python3 -c \"import sys,json; d=json.load(sys.stdin)['config']; exit(0 if len(d['workers'])>=2 and len(d['czars'])>=1 else 1)\""]
             start_period: 120s
             interval: 5s
             timeout: 5s

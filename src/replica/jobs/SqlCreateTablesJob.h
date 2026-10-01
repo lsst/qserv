@@ -73,7 +73,7 @@ public:
      *   workers regardless of their status. If the flag is set to 'false' then
      *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
      *   involved into the operation.
-     * @param controller This is needed launching requests and accessing the Configuration.
+     * @param controller This is needed launching requests and accessing the Config.
      * @param parentJobId An identifier of a parent job.
      * @param onFinish A callback function to be called upon a completion of the job.
      * @param priority The priority level of the job.

@@ -1,0 +1,849 @@
+/*
+ * LSST Data Management System
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+
+// Class header
+#include "replica/config/Config.h"
+
+// System headers
+#include <algorithm>
+#include <chrono>
+#include <fstream>
+#include <thread>
+
+// Qserv headers
+#include "http/Auth.h"
+#include "replica/config/ConfigParserJSON.h"
+#include "replica/config/ConfigParserMySQL.h"
+#include "replica/mysql/DatabaseMySQLExceptions.h"
+#include "replica/mysql/DatabaseMySQLGenerator.h"
+#include "replica/util/Performance.h"
+#include "util/Timer.h"
+#include "util/TimeUtils.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
+
+using namespace std;
+using namespace std::chrono_literals;
+using json = nlohmann::json;
+using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
+
+#define _THROW_IF_EMPTY(param)                                                                        \
+    if ((param).empty()) {                                                                            \
+        throw invalid_argument("Config::" + string(__func__) + "  empty " #param " is not allowed."); \
+    }
+
+#define _THROW_IF_ZERO(param)                                                                              \
+    if ((param) == 0) {                                                                                    \
+        throw invalid_argument("Config::" + string(__func__) + "  0 value in " #param " is not allowed."); \
+    }
+
+namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Config");
+
+/**
+ * @param connectionUrl The connection URL.
+ * @param database The optional name of a database to replace the one defined in the url.
+ * @return The MySQL connection descriptor.
+ */
+database::mysql::ConnectionParams connectionParams(string const& connectionUrl, string const& database) {
+    database::mysql::ConnectionParams params = database::mysql::ConnectionParams::parse(connectionUrl);
+    if (!database.empty()) params.database = database;
+    return params;
+}
+}  // namespace
+
+namespace lsst::qserv::replica {
+
+// ---------------
+// The static API.
+// ---------------
+
+shared_ptr<Config> Config::load(ConfigSchema const& _configSchema, json const& obj) {
+    shared_ptr<Config> const ptr(new Config(_configSchema));
+    replica::Lock const lock(ptr->_mtx, _context(__func__));
+    ptr->_loadFromJSON(lock, obj);
+    return ptr;
+}
+
+string Config::_context(string const& func) { return "CONFIG  " + func; }
+
+// -----------------
+// The instance API.
+// -----------------
+
+Config::Config(ConfigSchema const& configSchema)
+        : _configSchema(configSchema), _data(configSchema.defaultConfigData()) {}
+
+void Config::update() {
+    replica::Lock const lock(_mtx, _context(__func__));
+    _loadFromMySQL(lock);
+}
+
+void Config::update(json const& obj) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    _loadFromJSON(lock, obj);
+}
+
+void Config::update(string const& configFile) {
+    ifstream input(configFile);
+    if (!input.is_open()) {
+        throw invalid_argument(_context(__func__) + " unable to open file: " + configFile);
+    }
+
+    // The loader method called below requires the JSON object to have a "general" section.
+    // Shifting the parameters into this section also prevents an injection of parameters outside
+    // the "general" section (such as "database_families", "databases", etc.).
+    json obj = {{"general", json::object()}};
+    try {
+        json generalParametersObj;
+        input >> generalParametersObj;
+        obj["general"] = generalParametersObj;
+    } catch (json::parse_error const& ex) {
+        throw invalid_argument(_context(__func__) + " unable to parse JSON from file: " + configFile +
+                               " error: " + string(ex.what()));
+    }
+    replica::Lock const lock(_mtx, _context(__func__));
+    _loadFromJSON(lock, obj);
+}
+
+database::mysql::ConnectionParams Config::replDbParams() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return connectionParams(_get(lock, "database", "repl-db-conn").get<string>(), string());
+}
+
+database::mysql::ConnectionParams Config::qservCzarDbParams(string const& database) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return connectionParams(_get(lock, "database", "czar-db-conn").get<string>(), database);
+}
+
+database::mysql::ConnectionParams Config::qservWorkerDbParams(string const& database) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return connectionParams(_get(lock, "database", "worker-db-conn").get<string>(), database);
+}
+
+map<string, set<string>> Config::parameters() const { return _configSchema.parameters(); }
+
+bool Config::exists(string const& category) const { return _configSchema.exists(category); }
+
+bool Config::exists(string const& category, string const& param) const {
+    return _configSchema.exists(category, param);
+}
+
+string Config::getAsString(string const& category, string const& param) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _configSchema.json2string(
+            _context(__func__) + " category: '" + category + "' param: '" + param + "' ",
+            _get(lock, category, param));
+}
+
+void Config::setFromString(string const& category, string const& param, string const& val) {
+    json obj;
+    {
+        replica::Lock const lock(_mtx, _context(__func__));
+        obj = _get(lock, category, param);
+    }
+    if (obj.is_string()) {
+        Config::set<string>(category, param, val);
+    } else if (obj.is_number_unsigned()) {
+        Config::set<uint64_t>(category, param, stoull(val));
+    } else if (obj.is_number_integer()) {
+        Config::set<int64_t>(category, param, stoll(val));
+    } else if (obj.is_number_float()) {
+        Config::set<double>(category, param, stod(val));
+    } else {
+        throw invalid_argument(_context(__func__) + " unsupported data type of category: '" + category +
+                               "' param: '" + param + "' value: " + val + "'.");
+    }
+}
+
+http::AuthContext Config::httpAuthContext() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return http::AuthContext(_get(lock, "security", "http-user").get<string>(),
+                             _get(lock, "security", "http-password").get<string>(),
+                             _get(lock, "security", "auth-key").get<string>(),
+                             _get(lock, "security", "admin-auth-key").get<string>());
+}
+
+void Config::_loadFromJSON(replica::Lock const& lock, json const& obj) {
+    _workers.clear();
+    _databaseFamilies.clear();
+    _databases.clear();
+    _czars.clear();
+
+    // Validate and update configuration parameters.
+    // Catch exceptions for error reporting.
+    ConfigParserJSON parser(_configSchema, _data, _workers, _databaseFamilies, _databases, _czars);
+    parser.parse(obj);
+
+    bool const showPassword = false;
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << " " << _toJson(lock, showPassword).dump());
+}
+
+void Config::_loadFromMySQL(replica::Lock const& lock) {
+    _workers.clear();
+    _databaseFamilies.clear();
+    _databases.clear();
+    _czars.clear();
+
+    // The schema upgrade timer is used for limiting a duration of time when
+    // tracking (if enabled) the schema upgrade. The timeout includes
+    // the connect (or reconnect) time.
+    util::Timer schemaUpgradeTimer;
+    schemaUpgradeTimer.start();
+
+    // Read data, validate and update configuration parameters.
+    auto const connectionParams =
+            database::mysql::ConnectionParams::parse(_get(lock, "database", "repl-db-conn").get<string>());
+    _connectionPtr = database::mysql::Connection::open(connectionParams);
+    _g = database::mysql::QueryGenerator(_connectionPtr);
+    while (true) {
+        try {
+            _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+                ConfigParserMySQL parser(conn, _workers, _databaseFamilies, _databases);
+                parser.parse();
+            });
+            break;
+        } catch (ConfigVersionMismatch const& ex) {
+            if (_get(lock, "database", "schema-upgrade-wait").get<unsigned int>() != 0) {
+                if (ex.version > ex.requiredVersion) {
+                    LOGS(_log, LOG_LVL_ERROR,
+                         _context(__func__) << "Database schema version is newer than"
+                                            << " the one required by the application, ex: " << ex.what());
+                    throw;
+                }
+                schemaUpgradeTimer.stop();
+                if (schemaUpgradeTimer.getElapsed() >
+                    _get(lock, "database", "schema-upgrade-wait-timeout").get<unsigned int>()) {
+                    LOGS(_log, LOG_LVL_ERROR,
+                         _context(__func__)
+                                 << "The maximum duration of time ("
+                                 << _get(lock, "database", "schema-upgrade-wait-timeout").get<unsigned int>()
+                                 << " seconds) has expired"
+                                 << " while waiting for the database schema upgrade. The schema version "
+                                    "is still older than"
+                                 << " the one required by the application, ex: " << ex.what());
+                    throw;
+                } else {
+                    LOGS(_log, LOG_LVL_WARN,
+                         _context(__func__)
+                                 << "Database schema version is still older than the one"
+                                 << " required by the application after " << schemaUpgradeTimer.getElapsed()
+                                 << " seconds of waiting for the schema upgrade, ex: " << ex.what());
+                }
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, _context(__func__) << ex.what());
+                throw;
+            }
+        }
+        std::this_thread::sleep_for(5000ms);
+    }
+    bool const showPassword = false;
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << _toJson(lock, showPassword).dump());
+}
+
+vector<string> Config::workers(bool isEnabled, bool isReadOnly) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& [name, worker] : _workers) {
+        if (isEnabled) {
+            if (worker.isEnabled && (isReadOnly == worker.isReadOnly)) {
+                names.push_back(name);
+            }
+        } else {
+            if (!worker.isEnabled) {
+                names.push_back(name);
+            }
+        }
+    }
+    return names;
+}
+
+size_t Config::numWorkers(bool isEnabled, bool isReadOnly) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _numWorkers(lock, isEnabled, isReadOnly);
+}
+
+size_t Config::_numWorkers(replica::Lock const& lock, bool isEnabled, bool isReadOnly) const {
+    size_t result = 0;
+    for (auto&& [name, worker] : _workers) {
+        if (isEnabled) {
+            if (worker.isEnabled && (isReadOnly == worker.isReadOnly)) result++;
+        } else {
+            if (!worker.isEnabled) result++;
+        }
+    }
+    return result;
+}
+
+vector<string> Config::allWorkers() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& [name, worker] : _workers) {
+        names.push_back(name);
+    }
+    return names;
+}
+
+vector<string> Config::databaseFamilies() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& [name, family] : _databaseFamilies) {
+        names.push_back(name);
+    }
+    return names;
+}
+
+void Config::assertDatabaseFamilyIsValid(string const& familyName) const {
+    if (!isKnownDatabaseFamily(familyName)) {
+        throw ConfigUnknownDatabaseFamily(_context(__func__) + " the family '" + familyName + "' is unknown.",
+                                          familyName);
+    }
+}
+
+bool Config::isKnownDatabaseFamily(string const& familyName) const {
+    _THROW_IF_EMPTY(familyName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _databaseFamilies.count(familyName) != 0;
+}
+
+DatabaseFamilyInfo Config::databaseFamilyInfo(string const& familyName) const {
+    _THROW_IF_EMPTY(familyName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _databaseFamilyInfo(lock, familyName);
+}
+
+DatabaseFamilyInfo Config::addDatabaseFamily(DatabaseFamilyInfo const& family) {
+    _THROW_IF_EMPTY(family.name);
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_databaseFamilies.find(family.name) != _databaseFamilies.end()) {
+        throw logic_error(_context(__func__) + " the family '" + family.name + "' already exists.");
+    }
+    string errors;
+    if (family.replicationLevel == 0) errors += " replicationLevel(0)";
+    if (family.numStripes == 0) errors += " numStripes(0)";
+    if (family.numSubStripes == 0) errors += " numSubStripes(0)";
+    if (family.overlap <= 0) errors += " overlap(<=0)";
+    if (!errors.empty()) throw invalid_argument(_context(__func__) + errors);
+    if (_updatePersistentState(lock)) {
+        string const query = _g.insert("config_database_family", family.name, family.replicationLevel,
+                                       family.numStripes, family.numSubStripes, family.overlap);
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    _databaseFamilies[family.name] = family;
+    return family;
+}
+
+void Config::deleteDatabaseFamily(string const& familyName, bool force) {
+    _THROW_IF_EMPTY(familyName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
+    vector<string> databasesToBeRemoved;
+    for (auto&& [name, database] : _databases) {
+        if (database.family == family.name) {
+            databasesToBeRemoved.push_back(name);
+        }
+    }
+    if (!force && !databasesToBeRemoved.empty()) {
+        throw ConfigNotEmpty(_context(__func__) + " the family '" + family.name + "' has " +
+                             to_string(databasesToBeRemoved.size()) +
+                             " member databases. Use 'force' flag to delete the family anyway.");
+    }
+    if (_updatePersistentState(lock)) {
+        string const query = _g.delete_("config_database_family") + _g.where(_g.eq("name", family.name));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    // In order to maintain consistency of the persistent state also delete all
+    // dependent databases.
+    // NOTE: if using MySQL-based persistent backend the removal of the dependent
+    //       tables from MySQL happens automatically since it's enforced by the PK/FK
+    //       relationship between the corresponding tables.
+    for (string const& databaseName : databasesToBeRemoved) {
+        _databases.erase(databaseName);
+    }
+    _databaseFamilies.erase(family.name);
+}
+
+size_t Config::replicationLevel(string const& familyName) const {
+    _THROW_IF_EMPTY(familyName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _databaseFamilyInfo(lock, familyName).replicationLevel;
+}
+
+size_t Config::effectiveReplicationLevel(string const& familyName, size_t desiredReplicationLevel,
+                                         bool workerIsEnabled, bool workerIsReadOnly) const {
+    _THROW_IF_EMPTY(familyName);
+    // IMPORTANT: Obtain a value of the hard limit before acquiring the lock
+    // on the mutex in order to avoid a deadlock.
+    size_t const hardLimit = this->get<size_t>("controller", "max-repl-level");
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseFamilyInfo const& family = _databaseFamilyInfo(lock, familyName);
+    size_t const adjustedReplicationLevel =
+            desiredReplicationLevel == 0 ? family.replicationLevel : desiredReplicationLevel;
+    return std::min(
+            {adjustedReplicationLevel, hardLimit, _numWorkers(lock, workerIsEnabled, workerIsReadOnly)});
+}
+
+void Config::setReplicationLevel(string const& familyName, size_t newReplicationLevel) {
+    _THROW_IF_EMPTY(familyName);
+    _THROW_IF_ZERO(newReplicationLevel);
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
+    if (_updatePersistentState(lock)) {
+        string const query =
+                _g.update("config_database_family", make_pair("min_replication_level", newReplicationLevel)) +
+                _g.where(_g.eq("name", family.name));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    family.replicationLevel = newReplicationLevel;
+}
+
+vector<string> Config::databases(string const& familyName, bool allDatabases, bool isPublished) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (!familyName.empty()) {
+        // The family must be known if specified. The method will throw otherwise.
+        _databaseFamilyInfo(lock, familyName);
+    }
+    vector<string> names;
+    for (auto&& [name, database] : _databases) {
+        if (!familyName.empty() && (familyName != database.family)) {
+            continue;
+        }
+        if (!allDatabases) {
+            if (isPublished != database.isPublished) continue;
+        }
+        names.push_back(name);
+    }
+    return names;
+}
+
+void Config::assertDatabaseIsValid(string const& databaseName) {
+    if (!isKnownDatabase(databaseName)) {
+        throw ConfigUnknownDatabase(_context(__func__) + " database name is not valid: " + databaseName,
+                                    databaseName);
+    }
+}
+
+bool Config::isKnownDatabase(string const& databaseName) const {
+    _THROW_IF_EMPTY(databaseName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _databases.count(databaseName) != 0;
+}
+
+DatabaseInfo Config::databaseInfo(string const& databaseName) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _databaseInfo(lock, databaseName);
+}
+
+DatabaseInfo Config::addDatabase(string const& databaseName, string const& familyName) {
+    _THROW_IF_EMPTY(databaseName);
+    _THROW_IF_EMPTY(familyName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto itr = _databases.find(databaseName);
+    if (itr != _databases.end()) {
+        throw logic_error(_context(__func__) + " the database '" + databaseName + "' already exists.");
+    }
+    // This will throw an exception if the family isn't valid
+    _databaseFamilyInfo(lock, familyName);
+
+    // Create a new empty database.
+    DatabaseInfo const database = DatabaseInfo::create(databaseName, familyName);
+    if (_updatePersistentState(lock)) {
+        string const query =
+                _g.insert("config_database", database.name, database.family, database.isPublished ? 1 : 0,
+                          database.createTime, database.publishTime);
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    _databases[database.name] = database;
+    return database;
+}
+
+DatabaseInfo Config::publishDatabase(string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    bool const publish = true;
+    return _publishDatabase(lock, databaseName, publish);
+}
+
+DatabaseInfo Config::unPublishDatabase(string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    bool const publish = false;
+    return _publishDatabase(lock, databaseName, publish);
+}
+
+void Config::deleteDatabase(string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
+    if (_updatePersistentState(lock)) {
+        string const query = _g.delete_("config_database") + _g.where(_g.eq("database", database.name));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    _databases.erase(database.name);
+}
+
+DatabaseInfo Config::addTable(TableInfo const& table_) {
+    _THROW_IF_EMPTY(table_.database);
+    _THROW_IF_EMPTY(table_.name);
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& database = _databaseInfo(lock, table_.database);
+    if (database.isPublished) {
+        throw logic_error(_context(__func__) + " adding tables to the published databases isn't allowed.");
+    }
+
+    // Make sure the input is sanitized & validated before attempting to register
+    // the new table in the persistent store. After that the table could be also
+    // registered in the transient state.
+    bool const sanitize = true;
+    TableInfo const table = database.validate(_databases, table_, sanitize);
+    if (_updatePersistentState(lock)) {
+        vector<string> queries;
+        string const query =
+                _g.insert("config_database_table", table.database, table.name, table.isPartitioned,
+                          table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
+                          table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
+                          table.flagColName, table.angSep, table.uniquePrimaryKey ? 1 : 0, table.charsetName,
+                          table.collationName, table.latitudeColName, table.longitudeColName,
+                          table.isPublished ? 1 : 0, table.createTime, table.publishTime);
+        queries.emplace_back(query);
+        int colPosition = 0;
+        for (auto&& column : table.columns) {
+            string const query = _g.insert("config_database_table_schema", table.database, table.name,
+                                           colPosition++, column.name, column.type);
+            queries.emplace_back(query);
+        }
+        _connectionPtr->executeInOwnTransaction([&queries](decltype(_connectionPtr) conn) {
+            for (auto&& query : queries) {
+                conn->execute(query);
+            }
+        });
+    }
+    bool const validate = false;
+    database.addTable(_databases, table, validate);
+    return database;
+}
+
+DatabaseInfo Config::deleteTable(string const& databaseName, string const& tableName) {
+    _THROW_IF_EMPTY(databaseName);
+    _THROW_IF_EMPTY(tableName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
+    database.removeTable(tableName);
+    if (_updatePersistentState(lock)) {
+        string const query = _g.delete_("config_database_table") +
+                             _g.where(_g.eq("database", database.name), _g.eq("table", tableName));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    return database;
+}
+
+void Config::assertWorkerIsValid(string const& workerName) {
+    if (!isKnownWorker(workerName)) {
+        throw ConfigUnknownWorker(_context(__func__) + " worker name is not valid: " + workerName,
+                                  workerName);
+    }
+}
+
+void Config::assertWorkersAreDifferent(string const& workerOneName, string const& workerTwoName) {
+    assertWorkerIsValid(workerOneName);
+    assertWorkerIsValid(workerTwoName);
+    if (workerOneName == workerTwoName) {
+        throw logic_error(_context(__func__) + " worker names are the same: " + workerOneName);
+    }
+}
+
+bool Config::isKnownWorker(string const& workerName) const {
+    _THROW_IF_EMPTY(workerName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _workers.count(workerName) != 0;
+}
+
+ConfigWorker Config::worker(string const& workerName) const {
+    _THROW_IF_EMPTY(workerName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto const itr = _workers.find(workerName);
+    if (itr != _workers.cend()) return itr->second;
+    throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + workerName + "'.", workerName);
+}
+
+ConfigWorker Config::addWorker(ConfigWorker const& worker) {
+    _THROW_IF_EMPTY(worker.name);
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_workers.find(worker.name) == _workers.cend()) return _updateWorker(lock, worker);
+    throw logic_error(_context(__func__) + " worker '" + worker.name + "' already exists.");
+}
+
+void Config::deleteWorker(string const& workerName) {
+    _THROW_IF_EMPTY(workerName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto itr = _workers.find(workerName);
+    if (itr == _workers.end()) {
+        throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + workerName + "'.", workerName);
+    }
+    if (_updatePersistentState(lock)) {
+        string const query = _g.delete_("config_worker") + _g.where(_g.eq("name", workerName));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    _workers.erase(itr);
+}
+
+ConfigWorker Config::disableWorker(string const& workerName) {
+    _THROW_IF_EMPTY(workerName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto itr = _workers.find(workerName);
+    if (itr == _workers.end()) {
+        throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + workerName + "'.", workerName);
+    }
+    ConfigWorker& worker = itr->second;
+    if (worker.isEnabled) {
+        if (_updatePersistentState(lock)) {
+            string const query = _g.update("config_worker", make_pair("is_enabled", 0)) +
+                                 _g.where(_g.eq("name", worker.name));
+            _connectionPtr->executeInOwnTransaction(
+                    [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+        }
+        worker.isEnabled = false;
+    }
+    return worker;
+}
+
+ConfigWorker Config::updateWorker(ConfigWorker const& worker) {
+    _THROW_IF_EMPTY(worker.name);
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_workers.find(worker.name) != _workers.end()) return _updateWorker(lock, worker);
+    throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + worker.name + "'.", worker.name);
+}
+
+vector<std::string> Config::allCzars() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& [name, czar] : _czars) {
+        names.push_back(name);
+    }
+    return names;
+}
+
+size_t Config::numCzars() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _czars.size();
+}
+
+bool Config::isKnownCzar(string const& czarName) const {
+    _THROW_IF_EMPTY(czarName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _czars.count(czarName) != 0;
+}
+
+ConfigCzar Config::czar(string const& czarName) const {
+    _THROW_IF_EMPTY(czarName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto const itr = _czars.find(czarName);
+    if (itr != _czars.cend()) return itr->second;
+    throw ConfigUnknownCzar(_context(__func__) + " unknown Czar '" + czarName + "'.", czarName);
+}
+
+ConfigCzar Config::addCzar(ConfigCzar const& czar) {
+    _THROW_IF_EMPTY(czar.name);
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_czars.find(czar.name) == _czars.cend()) {
+        _czars[czar.name] = czar;
+        return czar;
+    }
+    throw logic_error(_context(__func__) + " Czar '" + czar.name + "' already exists.");
+}
+
+void Config::deleteCzar(string const& czarName) {
+    _THROW_IF_EMPTY(czarName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto itr = _czars.find(czarName);
+    if (itr == _czars.end()) {
+        throw ConfigUnknownCzar(_context(__func__) + " unknown Czar '" + czarName + "'.", czarName);
+    }
+    _czars.erase(itr);
+}
+
+ConfigCzar Config::updateCzar(ConfigCzar const& czar) {
+    _THROW_IF_EMPTY(czar.name);
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_czars.find(czar.name) != _czars.end()) {
+        _czars[czar.name] = czar;
+        return czar;
+    }
+    throw ConfigUnknownCzar(_context(__func__) + " unknown Czar '" + czar.name + "'.", czar.name);
+}
+
+map<qmeta::CzarId, string> Config::czarIds() const {
+    map<qmeta::CzarId, string> ids;
+    replica::Lock const lock(_mtx, _context(__func__));
+    for (auto&& [name, czar] : _czars) {
+        ids[czar.id] = name;
+    }
+    return ids;
+}
+
+json Config::toJson(bool showPassword) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _toJson(lock, showPassword);
+}
+
+json Config::_toJson(replica::Lock const& lock, bool showPassword) const {
+    json data;
+    data["general"] = _data;
+    if (!showPassword) {
+        for (auto const& [category, params] : data["general"].items()) {
+            for (auto const& [param, _] : params.items()) {
+                if (_configSchema.securityContext(category, param)) {
+                    data["general"][category][param] = "******";
+                }
+            }
+        }
+    }
+    json& workersJson = data["workers"];
+    for (auto&& [name, worker] : _workers) {
+        workersJson.push_back(worker.toJson());
+    }
+    json& databaseFamilies = data["database_families"];
+    for (auto&& [name, family] : _databaseFamilies) {
+        databaseFamilies.push_back(family.toJson());
+    }
+    json& databases = data["databases"];
+    for (auto&& [name, database] : _databases) {
+        databases.push_back(database.toJson());
+    }
+    json& czarsJson = data["czars"];
+    for (auto&& [name, czar] : _czars) {
+        czarsJson.push_back(czar.toJson());
+    }
+    return data;
+}
+
+json const& Config::_get(replica::Lock const& lock, string const& category, string const& param) const {
+    json::json_pointer const pointer("/" + category + "/" + param);
+    if (!_data.contains(pointer)) {
+        throw ConfigNoSuchParameter(_context(__func__) + " no such parameter for category: '" + category +
+                                    "', param: '" + param + "'");
+    }
+    return _data.at(pointer);
+}
+
+json& Config::_get(replica::Lock const& lock, string const& category, string const& param) {
+    return _data[json::json_pointer("/" + category + "/" + param)];
+}
+
+ConfigWorker Config::_updateWorker(replica::Lock const& lock, ConfigWorker const& worker) {
+    _THROW_IF_EMPTY(worker.name);
+
+    // Update a subset of parameters in the persistent state.
+    bool const update = _workers.count(worker.name) != 0;
+    if (_updatePersistentState(lock)) {
+        string query;
+        if (update) {
+            query = _g.update("config_worker", make_pair("is_enabled", worker.isEnabled),
+                              make_pair("is_read_only", worker.isReadOnly)) +
+                    _g.where(_g.eq("name", worker.name));
+        } else {
+            query = _g.insert("config_worker", worker.name, worker.isEnabled, worker.isReadOnly);
+        }
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+
+    // Update all parameters in the transient state.
+    _workers[worker.name] = worker;
+    return worker;
+}
+
+DatabaseFamilyInfo& Config::_databaseFamilyInfo(replica::Lock const& lock, string const& familyName) {
+    _THROW_IF_EMPTY(familyName);
+    auto const itr = _databaseFamilies.find(familyName);
+    if (itr != _databaseFamilies.cend()) return itr->second;
+    throw ConfigUnknownDatabaseFamily(_context(__func__) + " no such database family '" + familyName + "'.",
+                                      familyName);
+}
+
+DatabaseInfo& Config::_databaseInfo(replica::Lock const& lock, string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
+    auto const itr = _databases.find(databaseName);
+    if (itr != _databases.cend()) return itr->second;
+    throw ConfigUnknownDatabase(_context(__func__) + " no such database '" + databaseName + "'.",
+                                databaseName);
+}
+
+DatabaseInfo& Config::_publishDatabase(replica::Lock const& lock, string const& databaseName, bool publish) {
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
+    if (publish && database.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + database.name + "' is already published.");
+    } else if (!publish && !database.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + database.name + "' is not published.");
+    }
+    if (publish) {
+        uint64_t const publishTime = util::TimeUtils::now();
+        // Firstly, publish all tables that were not published.
+        for (auto const& tableName : database.tables()) {
+            TableInfo& table = database.findTable(tableName);
+            if (!table.isPublished) {
+                if (_updatePersistentState(lock)) {
+                    string const query =
+                            _g.update("config_database_table", make_pair("is_published", 1),
+                                      make_pair("publish_time", publishTime)) +
+                            _g.where(_g.eq("database", database.name), _g.eq("table", table.name));
+                    _connectionPtr->executeInOwnTransaction(
+                            [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+                }
+                table.isPublished = true;
+                table.publishTime = publishTime;
+            }
+        }
+        // Then publish the database.
+        if (_updatePersistentState(lock)) {
+            string const query = _g.update("config_database", make_pair("is_published", 1),
+                                           make_pair("publish_time", publishTime)) +
+                                 _g.where(_g.eq("database", database.name));
+            _connectionPtr->executeInOwnTransaction(
+                    [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+        }
+        database.isPublished = true;
+        database.publishTime = publishTime;
+    } else {
+        // Do not unpublish individual tables. The operation only affects
+        // the general status of the database to allow adding more tables.
+        if (_updatePersistentState(lock)) {
+            string const query = _g.update("config_database", make_pair("is_published", 0)) +
+                                 _g.where(_g.eq("database", database.name));
+            _connectionPtr->executeInOwnTransaction(
+                    [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+        }
+        database.isPublished = false;
+    }
+    return database;
+}
+
+}  // namespace lsst::qserv::replica

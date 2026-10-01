@@ -26,7 +26,7 @@
 #include <functional>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/util/Performance.h"
 #include "replica/util/ProtocolBuffer.h"
 

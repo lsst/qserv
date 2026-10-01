@@ -59,7 +59,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * @param serviceProvider A reference to a provider of services for accessing
-     *   Configuration, saving the request's persistent state to the database.
+     *   Config, saving the request's persistent state to the database.
      * @param czarName The name of a Czar to send the request to.
      * @param queryIds The optional selector for queries. If empty then all queries will
      *   be considered.

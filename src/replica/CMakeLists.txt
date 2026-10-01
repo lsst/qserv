@@ -88,9 +88,10 @@ replica_tests(
     testConnectionParams
     testCsv
     testFileUtils
+    testHttpMessenger
     testIngestRequestMgr
     testJson
-    testMessageQueue
+    testPriorityQueue
     testNamedMutexRegistry
     testMySQLObjNameTrans
     testQueryGenerator
@@ -100,7 +101,7 @@ replica_tests(
     testSqlSchemaUtils
     testTaskSelector
     testTypes
-    testConfiguration
+    testConfig
     testProtocolRequestParams
 )
 

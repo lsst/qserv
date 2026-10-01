@@ -83,14 +83,6 @@ option_debug = partial(
 )
 
 
-option_instance_id = partial(
-    click.option,
-    "--instance-id",
-    help="The unique identifier of a Qserv instance served by the Replication System.",
-    required=True,
-)
-
-
 log_level_choices = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
 option_log_level = partial(
     click.option,

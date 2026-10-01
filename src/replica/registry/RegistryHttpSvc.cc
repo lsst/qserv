@@ -26,7 +26,7 @@
 #include "http/MetaModule.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/registry/RegistryHttpSvcMod.h"
 #include "replica/registry/RegistryServices.h"
 
@@ -61,7 +61,8 @@ void RegistryHttpSvc::registerServices() {
                                     json const info = json::object(
                                             {{"kind", "replication-registry"},
                                              {"id", ""},
-                                             {"instance_id", self->serviceProvider()->instanceId()}});
+                                             {"instance_id", self->serviceProvider()->config()->get<string>(
+                                                                     "security", "instance-id")}});
                                     http::MetaModule::process(context_, info, req, resp, "VERSION");
                                 }},
                                {"GET", "/services",
