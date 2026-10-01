@@ -24,6 +24,8 @@
 // System headers
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #define BOOST_TEST_MODULE HyriseGeneratedIR
 
@@ -2364,7 +2366,7 @@ static const vector<HyriseTestQueries> HYRISE_TEST_QUERIES = {
 
 };
 
-BOOST_DATA_TEST_CASE(hyrise_test, HYRISE_TEST_QUERIES, queryInfo) {
+BOOST_DATA_TEST_CASE(HyriseTest, HYRISE_TEST_QUERIES, queryInfo) {
     query::SelectStmt::Ptr selectStatement;
     BOOST_REQUIRE_NO_THROW(selectStatement = ccontrol::ParseRunner::makeSelectStmt(queryInfo.query));
     BOOST_REQUIRE(selectStatement != nullptr);
@@ -2387,7 +2389,7 @@ static std::vector<std::string> const IMPLICIT_JOIN_QUERIES = {
         "SELECT * FROM Object o INNER JOIN Source s WHERE o.objectId = s.objectId",
 };
 
-BOOST_DATA_TEST_CASE(implicit_join, IMPLICIT_JOIN_QUERIES, sql) {
+BOOST_DATA_TEST_CASE(ImplicitJoin, IMPLICIT_JOIN_QUERIES, sql) {
     auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(sql);
     BOOST_REQUIRE(selectStatement != nullptr);
     auto const& tables = selectStatement->getFromList().getTableRefList();
@@ -2402,7 +2404,7 @@ BOOST_DATA_TEST_CASE(implicit_join, IMPLICIT_JOIN_QUERIES, sql) {
                       "`o`.`objectId`=`s`.`objectId`");
 }
 
-BOOST_AUTO_TEST_CASE(rsp_implicit_join) {
+BOOST_AUTO_TEST_CASE(RspImplicitJoin) {
     auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(
             "SELECT ut1.objid AS ut1_objid, ut1.ra AS ut1_ra, ut1.dec AS ut1_dec, "
             "objectId, coord_ra, coord_dec, u_cModelMag, g_cModelMag, r_cModelMag, "
@@ -2420,7 +2422,7 @@ BOOST_AUTO_TEST_CASE(rsp_implicit_join) {
     BOOST_CHECK(joins.front()->getSpec() == nullptr);
 }
 
-BOOST_AUTO_TEST_CASE(float_literal_text_preserved) {
+BOOST_AUTO_TEST_CASE(FloatLiteralTextPreserved) {
     auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(
             "SELECT objectId FROM Object WHERE ra_PS = 0.12345678901234567890123456789");
     BOOST_REQUIRE(selectStatement != nullptr);
@@ -2429,7 +2431,7 @@ BOOST_AUTO_TEST_CASE(float_literal_text_preserved) {
 }
 
 // mySQL compatibility
-BOOST_AUTO_TEST_CASE(double_quoted_string_literal) {
+BOOST_AUTO_TEST_CASE(DoubleQuotedStringLiteral) {
     auto selectStatement =
             ccontrol::ParseRunner::makeSelectStmt("SELECT objectId FROM Object WHERE filterName = \"g\"");
     BOOST_REQUIRE(selectStatement != nullptr);
@@ -2438,7 +2440,7 @@ BOOST_AUTO_TEST_CASE(double_quoted_string_literal) {
 }
 
 // mySQL compatibility
-BOOST_AUTO_TEST_CASE(double_quoted_string_escaping) {
+BOOST_AUTO_TEST_CASE(DoubleQuotedStringEscaping) {
     auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(
             "SELECT objectId FROM Object WHERE filterName IN (\"a\\\"b\", \"a\\'b\")");
     BOOST_REQUIRE(selectStatement != nullptr);
@@ -2454,11 +2456,11 @@ static std::vector<std::string> const ORDER_BY_FUNCTION_QUERIES = {
         "SELECT objectId FROM Object ORDER BY (ABS(ra_PS))",
 };
 
-BOOST_DATA_TEST_CASE(order_by_function_not_supported, ORDER_BY_FUNCTION_QUERIES, query) {
+BOOST_DATA_TEST_CASE(OrderByFunctionNotSupported, ORDER_BY_FUNCTION_QUERIES, query) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(query), parser::ParseException);
 }
 
-BOOST_AUTO_TEST_CASE(order_by_arithmetic_supported) {
+BOOST_AUTO_TEST_CASE(OrderByArithmeticSupported) {
     auto selectStatement =
             ccontrol::ParseRunner::makeSelectStmt("SELECT objectId FROM Object ORDER BY ra_PS + 1");
     BOOST_REQUIRE(selectStatement != nullptr);
@@ -2467,19 +2469,19 @@ BOOST_AUTO_TEST_CASE(order_by_arithmetic_supported) {
 }
 
 // OFFSET is not supported by qserv.
-BOOST_AUTO_TEST_CASE(offset_not_supported) {
+BOOST_AUTO_TEST_CASE(OffsetNotSupported) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt("SELECT objectId FROM Object LIMIT 10 OFFSET 5"),
                       parser::ParseException);
 }
 
 // DISTINCT inside an aggregate function is not supported by qserv.
-BOOST_AUTO_TEST_CASE(aggregate_distinct_not_supported) {
+BOOST_AUTO_TEST_CASE(AggregateDistinctNotSupported) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt("SELECT COUNT(DISTINCT objectId) FROM Object"),
                       parser::ParseException);
 }
 
 // Window functions (OVER clause) are not supported by qserv.
-BOOST_AUTO_TEST_CASE(window_function_not_supported) {
+BOOST_AUTO_TEST_CASE(WindowFunctionNotSupported) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(
                               "SELECT SUM(ra_PS) OVER (PARTITION BY objectId) FROM Object"),
                       parser::ParseException);
@@ -2492,7 +2494,7 @@ static std::vector<std::string> const UNSUPPORTED_AGGREGATE_QUERIES = {
         "SELECT JSON_OBJECTAGG(objectId, ra_PS) FROM Object",
 };
 
-BOOST_DATA_TEST_CASE(unsupported_aggregate_not_supported, UNSUPPORTED_AGGREGATE_QUERIES, query) {
+BOOST_DATA_TEST_CASE(UnsupportedAggregateNotSupported, UNSUPPORTED_AGGREGATE_QUERIES, query) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(query), parser::ParseException);
 }
 
@@ -2509,7 +2511,7 @@ static std::vector<std::string> const HAVING_QUERIES = {
         "SELECT objectId FROM Object GROUP BY objectId HAVING objectId > 1",
 };
 
-BOOST_DATA_TEST_CASE(having_supported, HAVING_QUERIES, query) {
+BOOST_DATA_TEST_CASE(HavingSupported, HAVING_QUERIES, query) {
     BOOST_CHECK_NO_THROW(ccontrol::ParseRunner::makeSelectStmt(query));
 }
 
@@ -2523,7 +2525,7 @@ static std::vector<std::string> const AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES =
         "SELECT SUM(MAX(objectId)) FROM Object",
 };
 
-BOOST_DATA_TEST_CASE(aggregate_argument_not_supported, AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES, query) {
+BOOST_DATA_TEST_CASE(AggregateArgumentNotSupported, AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES, query) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(query), parser::ParseException);
 }
 
@@ -2536,7 +2538,7 @@ static std::vector<std::string> const AGGREGATE_ARGUMENT_SUPPORTED_QUERIES = {
         "SELECT MAX(objectId) + 1 FROM Object",
 };
 
-BOOST_DATA_TEST_CASE(aggregate_argument_supported, AGGREGATE_ARGUMENT_SUPPORTED_QUERIES, query) {
+BOOST_DATA_TEST_CASE(AggregateArgumentSupported, AGGREGATE_ARGUMENT_SUPPORTED_QUERIES, query) {
     BOOST_CHECK_NO_THROW(ccontrol::ParseRunner::makeSelectStmt(query));
 }
 
@@ -2547,7 +2549,7 @@ static std::vector<std::string> const SCHEMA_QUALIFIED_FUNCTION_QUERIES = {
         "SELECT objectId FROM Object WHERE custom.qserv_areaspec_box(0, 0, 3, 10)",
 };
 
-BOOST_DATA_TEST_CASE(schema_qualified_function_not_supported, SCHEMA_QUALIFIED_FUNCTION_QUERIES, query) {
+BOOST_DATA_TEST_CASE(SchemaQualifiedFunctionNotSupported, SCHEMA_QUALIFIED_FUNCTION_QUERIES, query) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(query), parser::ParseException);
 }
 
@@ -2555,7 +2557,7 @@ bool tableAliasColumnListNotSupported(parser::ParseException const& err) {
     return std::string(err.what()).find("table alias column list") != std::string::npos;
 }
 
-BOOST_AUTO_TEST_CASE(table_alias_column_list_not_supported) {
+BOOST_AUTO_TEST_CASE(TableAliasColumnListNotSupported) {
     BOOST_CHECK_EXCEPTION(ccontrol::ParseRunner::makeSelectStmt("SELECT * FROM Object AS o(id, ra)"),
                           parser::ParseException, tableAliasColumnListNotSupported);
     BOOST_CHECK_EXCEPTION(
@@ -2565,21 +2567,46 @@ BOOST_AUTO_TEST_CASE(table_alias_column_list_not_supported) {
 }
 
 // Row locking clauses (FOR UPDATE / LOCK IN SHARE MODE) are not supported by qserv.
-BOOST_AUTO_TEST_CASE(row_locking_not_supported) {
+BOOST_AUTO_TEST_CASE(RowLockingNotSupported) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt("SELECT objectId FROM Object FOR UPDATE"),
                       parser::ParseException);
 }
 
 // NULLS FIRST/LAST ordering is not supported by qserv.
-BOOST_AUTO_TEST_CASE(nulls_ordering_not_supported) {
+BOOST_AUTO_TEST_CASE(NullsOrderingNotSupported) {
     BOOST_CHECK_THROW(
             ccontrol::ParseRunner::makeSelectStmt("SELECT objectId FROM Object ORDER BY objectId NULLS LAST"),
             parser::ParseException);
 }
 
+// Double negations are canceled out. Test round trip:
+BOOST_AUTO_TEST_CASE(NestedNotPreservesPredicateSemantics) {
+    std::vector<std::pair<std::string, std::string>> const predicates = {
+            {"NOT (x NOT IN (1,2,NULL))", "x IN (1,2,NULL)"},
+            {"NOT (x NOT BETWEEN 0 AND 1)", "x BETWEEN 0 AND 1"},
+            {"NOT (x IS NOT NULL)", "x IS NULL"},
+            {"NOT (NOT (x=1))", "x=1"},
+            {"NOT (NOT (x=NULL))", "x=NULL"},
+            {"NOT (NOT (NULL))", "NULL"},
+            {"NOT (NOT (x NOT LIKE 'a%'))", "x NOT LIKE 'a%'"},
+            {"NOT (NOT (NOT (x=1)))", "NOT (x=1)"},
+            {"NOT (NOT (NOT (NOT (x=1))))", "x=1"},
+            {"NOT (NOT (x=1 OR y IS NULL))", "x=1 OR y IS NULL"},
+            {"NOT (NOT (NOT (x=1 AND y IS NULL)))", "NOT (x=1 AND y IS NULL)"}};
+    for (auto const& [input, expected] : predicates) {
+        BOOST_TEST_CONTEXT(input) {
+            auto actualStmt = ccontrol::ParseRunner::makeSelectStmt("SELECT x FROM Object WHERE " + input);
+            auto expectedStmt =
+                    ccontrol::ParseRunner::makeSelectStmt("SELECT x FROM Object WHERE " + expected);
+            BOOST_CHECK_EQUAL(actualStmt->getQueryTemplate().sqlFragment(),
+                              expectedStmt->getQueryTemplate().sqlFragment());
+        }
+    }
+}
+
 // A qserv area restrictor may appear bare or compared against an integer literal ("= 1"). Comparing it
 // against a column must be rejected.
-BOOST_AUTO_TEST_CASE(area_restrictor_against_column_not_supported) {
+BOOST_AUTO_TEST_CASE(AreaRestrictorAgainstColumnNotSupported) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(
                               "SELECT objectId FROM Object WHERE qserv_areaspec_box(0, 0, 3, 10) = objectId"),
                       parser::ParseException);
@@ -2607,7 +2634,7 @@ void checkAreaRestrictorConjunctionIr(std::string const& query, std::string cons
     BOOST_REQUIRE_EQUAL(rootTermTemplate.sqlFragment(), expectedRootTerm);
 }
 
-BOOST_AUTO_TEST_CASE(area_restrictor_in_conjunction_supported) {
+BOOST_AUTO_TEST_CASE(AreaRestrictorInConjunctionSupported) {
     checkAreaRestrictorConjunctionIr(
             "SELECT objectId FROM Object "
             "WHERE filterName='g' AND (qserv_areaspec_box(0, 0, 3, 10) AND ra_PS > 1)",
@@ -2624,7 +2651,7 @@ BOOST_AUTO_TEST_CASE(area_restrictor_in_conjunction_supported) {
 
 // A qserv area restrictor under OR would be silently extracted to an AND side-channel, changing
 // semantics: "restrictor OR x=1" would become effectively "restrictor AND x=1". Reject explicitly.
-BOOST_AUTO_TEST_CASE(area_restrictor_under_or_rejected) {
+BOOST_AUTO_TEST_CASE(AreaRestrictorUnderOrRejected) {
     BOOST_CHECK_EXCEPTION(
             ccontrol::ParseRunner::makeSelectStmt(
                     "SELECT objectId FROM Object WHERE qserv_areaspec_box(0, 0, 3, 10) OR filterName='g'"),
@@ -2651,7 +2678,7 @@ BOOST_AUTO_TEST_CASE(area_restrictor_under_or_rejected) {
                           parser::ParseException, areaRestrictorNotAllowed);
 }
 
-BOOST_AUTO_TEST_CASE(area_restrictor_under_not_rejected) {
+BOOST_AUTO_TEST_CASE(AreaRestrictorUnderNotRejected) {
     BOOST_CHECK_EXCEPTION(ccontrol::ParseRunner::makeSelectStmt(
                                   "SELECT objectId FROM Object WHERE NOT qserv_areaspec_box(0, 0, 3, 10)"),
                           parser::ParseException, areaRestrictorNotAllowed);
@@ -2663,6 +2690,40 @@ BOOST_AUTO_TEST_CASE(area_restrictor_under_not_rejected) {
                                   "SELECT objectId FROM Object "
                                   "WHERE NOT (qserv_areaspec_box(0, 0, 3, 10) OR filterName='g')"),
                           parser::ParseException, areaRestrictorNotAllowed);
+}
+
+// NOT precedence: implicit precedence vs explicit precedence enforced by parentheses.
+BOOST_AUTO_TEST_CASE(NotPrecedence) {
+    vector<pair<string, string>> const predicates = {
+            {"NOT x IN (1,2,NULL)", "NOT (x IN (1,2,NULL))"},
+            {"NOT x BETWEEN 0 AND 1", "NOT (x BETWEEN 0 AND 1)"},
+            {"NOT x = 1", "NOT (x = 1)"},
+            {"NOT x IS NULL", "NOT (x IS NULL)"},
+            {"NOT x IS NOT NULL", "NOT (x IS NOT NULL)"},
+            {"NOT x NOT IN (1,2,NULL)", "NOT (x NOT IN (1,2,NULL))"},
+            {"NOT x NOT BETWEEN 0 AND 1", "NOT (x NOT BETWEEN 0 AND 1)"},
+            {"NOT NOT x IN (1,2)", "NOT (NOT (x IN (1,2)))"},
+            {"NOT -x IN (-1,0)", "NOT (-x IN (-1,0))"},
+            {"NOT -x BETWEEN -2 AND 1", "NOT (-x BETWEEN -2 AND 1)"},
+            {"NOT x+1 IN (1,2)", "NOT (x+1 IN (1,2))"},
+            {"NOT x IN (1,2) AND y=3", "NOT (x IN (1,2)) AND y=3"},
+            {"NOT x BETWEEN 0 AND 1 OR y=3", "NOT (x BETWEEN 0 AND 1) OR y=3"}};
+    vector<string> const contexts = {"SELECT x FROM Object WHERE ",
+                                     "SELECT x FROM Object o JOIN Source s ON ",
+                                     "SELECT x FROM Object GROUP BY x HAVING "};
+    for (auto const& prefix : contexts) {
+        for (auto const& [predicate, reference] : predicates) {
+            BOOST_TEST_CONTEXT(prefix << predicate) {
+                auto const expected = ccontrol::ParseRunner::makeSelectStmt(prefix + reference);
+                query::SelectStmt::Ptr actual;
+                BOOST_CHECK_NO_THROW(actual = ccontrol::ParseRunner::makeSelectStmt(prefix + predicate));
+                if (actual) {
+                    BOOST_CHECK_EQUAL(actual->getQueryTemplate().sqlFragment(),
+                                      expected->getQueryTemplate().sqlFragment());
+                }
+            }
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
