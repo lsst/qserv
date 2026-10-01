@@ -206,11 +206,11 @@ string AsyncReq::errorMessage() const {
     return _error;
 }
 
-int AsyncReq::responseCode() const {
+qhttp::Status AsyncReq::responseCode() const {
     lock_guard<mutex> const lock(_mtx);
     _assertState(lock, CONTEXT_, {State::FINISHED, State::BODY_LIMIT_ERROR});
     auto const& header = _res.get().base();
-    return header.result_int();
+    return static_cast<qhttp::Status>(header.result_int());
 }
 
 unordered_map<string, string> const& AsyncReq::responseHeader() const {
