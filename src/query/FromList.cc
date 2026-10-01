@@ -41,26 +41,6 @@
 
 namespace lsst::qserv::query {
 
-bool FromList::isJoin() const {
-    if (_tableRefs) {
-        int count = 0;
-        typedef TableRefList::const_iterator Iter;
-        for (Iter i = _tableRefs->begin(), e = _tableRefs->end(); i != e; ++i) {
-            if (*i) {
-                if ((**i).isSimple()) {
-                    ++count;
-                }
-            } else {
-                count += 2;
-            }
-            if (count > 1) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 std::string FromList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);

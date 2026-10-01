@@ -1,0 +1,6 @@
+CREATE TABLE `MatchLookup` (
+  `lookupId` int NOT NULL,
+  `refObjectId` bigint(20) DEFAULT NULL,
+  `flags` int(11) NOT NULL,
+  PRIMARY KEY (`lookupId`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
