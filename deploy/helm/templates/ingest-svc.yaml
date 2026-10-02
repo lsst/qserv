@@ -12,10 +12,6 @@ spec:
     app.kubernetes.io/component: ingest
   ports:
     - name: http
-      {{- if .Values.openshift }}
-      port: 8080
-      {{- else }}
       port: 80
-      {{- end }}
       targetPort: http
 {{- end }}
