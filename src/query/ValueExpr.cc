@@ -47,11 +47,13 @@
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include <boost/algorithm/string/predicate.hpp>
+
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qana/CheckAggregation.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/SubsetHelper.h"
@@ -222,15 +224,19 @@ void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
     }
 }
 
-/** Check if the current ValueExpr contains an aggregation function.
- *  This function assume the ValueExpr was part of a SelectList
- * @return true if the object contains an aggregation function
- */
+/// @return true if the expression contains an aggregation function at any depth.
 bool ValueExpr::hasAggregation() const {
-    bool hasAgg = false;
-    qana::CheckAggregation ca(hasAgg);
-    std::for_each(_factorOps.begin(), _factorOps.end(), ca);
-    return hasAgg;
+    for (auto const& factorOp : _factorOps) {
+        if (factorOp.factor->hasAggregation()) return true;
+    }
+    return false;
+}
+
+bool ValueExpr::hasVolatileFunction() const {
+    for (auto const& factorOp : _factorOps) {
+        if (factorOp.factor->hasVolatileFunction()) return true;
+    }
+    return false;
 }
 
 ColumnRef::Ptr ValueExpr::getColumnRef() const {

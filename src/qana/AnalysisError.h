@@ -28,7 +28,7 @@
 
 namespace lsst::qserv::qana {
 
-/// AnalysisError is a trivial exception for query analys problems
+/// AnalysisError represents user-facing query analysis errors.
 class AnalysisError : public std::runtime_error {
 public:
     explicit AnalysisError(char const* msg) : std::runtime_error(msg) {}

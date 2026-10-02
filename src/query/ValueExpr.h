@@ -133,6 +133,9 @@ public:
      */
     bool hasAggregation() const;
 
+    /// @return true if this factor has a known volatile / nondeterministic function at any depth.
+    bool hasVolatileFunction() const;
+
     /**
      * @return The ColumnRef in current object if there is exactly one factor and it is a ColumnRef factor,
      *         otherwise returns nullptr.
