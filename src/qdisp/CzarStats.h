@@ -39,6 +39,7 @@
 #include "global/intTypes.h"
 #include "util/Histogram.h"
 #include "util/Mutex.h"
+#include "util/Raii.h"
 
 // Third party headers
 #include <nlohmann/json.hpp>
@@ -48,6 +49,22 @@ class QdispPool;
 }
 
 namespace lsst::qserv::qdisp {
+
+class CzarStats;
+
+class CzarStatsRaii {
+public:
+    CzarStatsRaii(std::shared_ptr<CzarStats> const& czarStats, std::atomic<int64_t>& count)
+    : counter(count), czarStats(czarStats)  {
+        ++counter;
+    }
+    virtual ~CzarStatsRaii() { --counter; }
+protected:
+    std::atomic<int64_t>& counter;
+    std::shared_ptr<CzarStats> czarStats;  ///< This keeps _count valid.
+};
+
+
 
 /// This class is used to track statistics for the czar.
 /// setup() needs to be called before get().
@@ -148,6 +165,59 @@ public:
     /// Get a json object describing the current transmit/merge stats for this czar.
     nlohmann::json getTransmitStatsJson() const;
 
+    typedef util::RaiiCounter<std::int64_t> RaiiC;
+    RaiiC::Ptr getNumTotalUberJobs() { return _numTotalUberJobs; }
+    RaiiC::Ptr getNumCreatedUberJobs() { return _numCreatedUberJobs; }
+    RaiiC::Ptr getNumSentUberJobs() { return _numSentUberJobs; }
+    RaiiC::Ptr getNumCollectingUberJobs() { return _numCollectingUberJobs; }
+    RaiiC::Ptr getNumMergingUberJobs() { return _numMergingUberJobs; }
+    RaiiC::Ptr getNumDoneUberJobs() { return _numDoneUberJobs; }
+    RaiiC::Ptr getNumCancelledUberJobs() { return _numCancelledUberJobs; }
+
+#if 0 //&&&
+    class UberJobTotalRaii : public CzarStatsRaii {
+    public:
+        UberJobTotalRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numTotalUberJobs) {}
+        virtual ~UberJobTotalRaii() {}
+    };
+
+    class UberJobCreatedRaii : public CzarStatsRaii {
+    public:
+        UberJobCreatedRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numCreatedUberJobs) {}
+        virtual ~UberJobCreatedRaii() {}
+    };
+
+    class UberJobSentRaii : public CzarStatsRaii {
+    public:
+        UberJobSentRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numSentUberJobs) {}
+        virtual ~UberJobSentRaii() {}
+    };
+
+    class UberJobCollectingRaii : public CzarStatsRaii {
+    public:
+        UberJobCollectingRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numCollectingUberJobs) {}
+        virtual ~UberJobCollectingRaii() {}
+    };
+
+    class UberJobMergingRaii : public CzarStatsRaii {
+    public:
+        UberJobMergingRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numMergingUberJobs) {}
+        virtual ~UberJobMergingRaii() {}
+    };
+
+    class UberJobDoneRaii : public CzarStatsRaii {
+    public:
+        UberJobDoneRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numDoneUberJobs) {}
+        virtual ~UberJobDoneRaii() {}
+    };
+
+    class UberJobCancelledRaii : public CzarStatsRaii {
+    public:
+        UberJobCancelledRaii(CzarStats::Ptr const& czarStats) : CzarStatsRaii(czarStats, czarStats->_numCancelledUberJobs) {}
+        virtual ~UberJobCancelledRaii() {}
+    };
+#endif //&&&
+
 private:
     CzarStats(std::shared_ptr<util::QdispPool> const& qdispPool);
 
@@ -189,6 +259,23 @@ private:
     std::atomic<uint64_t> _numJobs{0};          ///< The current number of incomplete jobs across all queries
     std::atomic<uint64_t> _numResultFiles{0};   ///< The current number of the result files being read
     std::atomic<uint64_t> _numResultMerges{0};  ///< The current number of the results being merged
+
+    /// UberJob counts
+    /// The total number of existing UberJobs for all queries
+    RaiiC::Ptr _numTotalUberJobs = RaiiC::create("numTotalUberJobs");
+    /// The current number of UberJobs created but not sent
+    RaiiC::Ptr _numCreatedUberJobs = RaiiC::create("numCreatedUberJobs");
+    /// The current number of UberJobs sent to workers
+    RaiiC::Ptr _numSentUberJobs = RaiiC::create("numSentUberJobs");
+    /// The current number of UberJobs that need to collect results
+    RaiiC::Ptr _numCollectingUberJobs = RaiiC::create("numCollectingUberJobs");
+    /// The current number of UberJobs that are merging results
+    RaiiC::Ptr _numMergingUberJobs = RaiiC::create("numMergingUberJobs");
+    /// The current number of UberJobs that are done and have results on the czar
+    RaiiC::Ptr _numDoneUberJobs = RaiiC::create("numDoneUberJobs");
+    /// The current number of UberJobs that have been cancelled
+    RaiiC::Ptr _numCancelledUberJobs = RaiiC::create("numCancelledUberJobs");
+
 };
 
 }  // namespace lsst::qserv::qdisp

@@ -63,6 +63,7 @@ util_tests(
     testHistogram
     testMultiError
     testMutex
+    testRaii
     testString
     testTablePrinter
 )
