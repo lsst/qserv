@@ -47,6 +47,9 @@
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include <boost/algorithm/string/predicate.hpp>
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -225,6 +228,13 @@ void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) const {
 bool ValueExpr::hasAggregation() const {
     for (auto const& factorOp : _factorOps) {
         if (factorOp.factor->hasAggregation()) return true;
+    }
+    return false;
+}
+
+bool ValueExpr::hasVolatileFunction() const {
+    for (auto const& factorOp : _factorOps) {
+        if (factorOp.factor->hasVolatileFunction()) return true;
     }
     return false;
 }

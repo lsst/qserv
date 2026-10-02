@@ -38,12 +38,14 @@
 
 // System headers
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
+#include "boost/algorithm/string/predicate.hpp"
 
 // Qserv headers
 #include "query/ColumnRef.h"
@@ -137,6 +139,30 @@ bool ValueFactor::hasAggregation() const {
             return false;
         case EXPR:
             return _valueExpr->hasAggregation();
+        default:
+            return false;
+    }
+}
+
+bool ValueFactor::hasVolatileFunction() const {
+    switch (_type) {
+        case FUNCTION:
+        case AGGFUNC: {
+            // The following functions do not produce deterministic outputs:
+            static constexpr std::array names = {"RAND",       "RANDOM_BYTES", "SYSDATE", "UUID",
+                                                 "UUID_SHORT", "UUID_V4",      "UUID_V7", "SYS_GUID"};
+            if (std::ranges::any_of(names, [this](auto const name) {
+                    return boost::iequals(_funcExpr->getName(), name);
+                })) {
+                return true;
+            }
+            for (auto const& param : _funcExpr->params) {
+                if (param->hasVolatileFunction()) return true;
+            }
+            return false;
+        }
+        case EXPR:
+            return _valueExpr->hasVolatileFunction();
         default:
             return false;
     }
