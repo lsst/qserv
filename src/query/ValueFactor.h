@@ -105,6 +105,9 @@ public:
     /// @return true if this factor is an aggregation, or contains one at any depth
     bool hasAggregation() const;
 
+    /// @return true if this factor has a known volatile / nondeterministic function at any depth.
+    bool hasVolatileFunction() const;
+
     ValueFactorPtr clone() const;
 
     static ValueFactorPtr newColumnRefFactor(std::shared_ptr<ColumnRef const> cr);
