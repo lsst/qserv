@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2009-2017 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -33,25 +34,26 @@
  */
 
 // System headers
-#include <algorithm>
 #include <iostream>
-#include <iterator>
 #include <map>
+#include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnalysis
-#include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
 
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
-#include "mysql/MySqlConfig.h"
+#include "ccontrol/HyriseAdapter.h"
+#include "css/CssAccess.h"
 #include "parser/ParseException.h"
-#include "qdisp/ChunkMeta.h"
+#include "qproc/ChunkQuerySpec.h"
+#include "qproc/ChunkSpec.h"
 #include "qproc/QuerySession.h"
 #include "query/AreaRestrictor.h"
 #include "query/ColumnRef.h"
@@ -59,13 +61,11 @@
 #include "query/QueryContext.h"
 #include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
+#include "query/ValueExpr.h"
 #include "sql/SqlConfig.h"
-#include "tests/ParserExpected.h"
 #include "tests/QueryAnaFixture.h"
 
-using lsst::qserv::StringPair;
-using lsst::qserv::ccontrol::ParseRunner;
-using lsst::qserv::mysql::MySqlConfig;
+using lsst::qserv::ccontrol::HyriseAdapter;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
@@ -277,7 +277,7 @@ BOOST_AUTO_TEST_CASE(Triple) {
     std::string expected =
             "SELECT * FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
             "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2`,`LSST`.`Source_100` AS `LSST.Source` "
-            "WHERE `o1`.`id`" PARSER_EXPECTED("<>", "!=") "`o2`.`id` AND "
+            "WHERE `o1`.`id`<>`o2`.`id` AND "
             "0.024>scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`) AND "
             "`LSST.Source`.`objectIdSourceTest`=`o2`.`objectIdObjTest`";
 
@@ -1155,7 +1155,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
             SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS", "_chunkId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    // Remaining session state is undefined after unknown antlr error.
+    // Remaining session state is undefined after a parse error.
 }
 
 BOOST_AUTO_TEST_CASE(ChunkDensity) {
@@ -1315,13 +1315,13 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 BOOST_AUTO_TEST_CASE(Subquery) {  // ticket #2053
     std::string stmt =
             "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
-    BOOST_CHECK_THROW(ParseRunner::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
+    BOOST_CHECK_THROW(HyriseAdapter::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
     // Expected failure: Subqueries are unsupported.
 }
 
 BOOST_AUTO_TEST_CASE(FromParen) {  // Extra paren. Not supported by our grammar.
     std::string stmt = "SELECT * FROM (Object) WHERE rFlux_PS > 0.3;";
-    BOOST_CHECK_THROW(ParseRunner::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
+    BOOST_CHECK_THROW(HyriseAdapter::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
 }
 
 BOOST_AUTO_TEST_CASE(NewParser) {
@@ -1342,7 +1342,7 @@ BOOST_AUTO_TEST_CASE(NewParser) {
     for (int i = 0; i < 8; ++i) {
         std::string stmt = stmts[i];
         BOOST_TEST_MESSAGE("----" << stmt << "----");
-        BOOST_REQUIRE_NO_THROW(ParseRunner::makeSelectStmt(stmt));
+        BOOST_REQUIRE_NO_THROW(HyriseAdapter::makeSelectStmt(stmt));
     }
 }
 
@@ -1457,16 +1457,12 @@ BOOST_AUTO_TEST_CASE(dm681) {
 
     stmt = "SELECT foo from Filter f limit 5 garbage query !#$%!#$";
     stmt2 = "SELECT foo from Filter f limit 5; garbage query !#$%!#$";
-    char const expectedErr[] = PARSER_EXPECTED(
+    char const expectedErr[] =
             "ParseException:syntax error, unexpected IDENTIFIER, expecting end of file (line 0, column 33) "
-            "in query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\"",
-            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query "
-            "!#$%!#$\"");
-    char const expectedErr2[] = PARSER_EXPECTED(
+            "in query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\"";
+    char const expectedErr2[] =
             "ParseException:syntax error, unexpected IDENTIFIER, expecting end of file (line 0, column 34) "
-            "in query: \"SELECT foo from Filter f limit 5; garbage query !#$%!#$\"",
-            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; garbage query "
-            "!#$%!#$\"");
+            "in query: \"SELECT foo from Filter f limit 5; garbage query !#$%!#$\"";
 
     std::shared_ptr<QuerySession> qs;
     qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -1627,7 +1623,7 @@ BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
     std::string expected =
             "SELECT * FROM `LSST`.`RefObjMatch_100` AS `LSST.RefObjMatch` WHERE "
             "(`LSST.RefObjMatch`.`refObjectId` IS NULL OR `LSST.RefObjMatch`.`flags`<>2) "
-            "AND `LSST.RefObjMatch`.`foo`" PARSER_EXPECTED("<>", "!=") "`LSST.RefObjMatch`.`bar`"
+            "AND `LSST.RefObjMatch`.`foo`<>`LSST.RefObjMatch`.`bar`"
             " AND `LSST.RefObjMatch`.`baz`<3.14159";
     qsTest.sqlConfig =
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"RefObjMatch", {"foo", "bar", "baz"}}}}}));
@@ -1646,14 +1642,10 @@ BOOST_AUTO_TEST_CASE(Garbled) {
             "FROM LSST.Science_Ccd_Exposure AS sce "
             "WHERE sce.field=535 AND sce.camcol LIKE '%' ";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(
-            qs->getError(),
-            PARSER_EXPECTED(
-                    "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line 0, "
-                    "column 0) in query: \"LECT sce.filterName,sce.field FROM LSST.Science_Ccd_Exposure AS "
-                    "sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"",
-                    "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field FROM "
-                    "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""));
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line 0, "
+                      "column 0) in query: \"LECT sce.filterName,sce.field FROM LSST.Science_Ccd_Exposure AS "
+                      "sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -1725,13 +1717,10 @@ BOOST_AUTO_TEST_CASE(NegatedEquality) {
     std::vector<std::string> const statements = {
             "SELECT o.objectIdObjTest FROM Object o, Source s "
             "WHERE NOT (o.objectIdObjTest=s.objectIdSourceTest)",
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
-            // ANTLR rejects NOT in ON before query analysis.
             "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
             "ON NOT (o.objectIdObjTest=s.objectIdSourceTest)",
             "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
             "ON NOT (NOT (NOT (o.objectIdObjTest=s.objectIdSourceTest)))",
-#endif
     };
     for (auto const& stmt : statements) {
         BOOST_TEST_CONTEXT(stmt) {
@@ -1741,7 +1730,6 @@ BOOST_AUTO_TEST_CASE(NegatedEquality) {
     }
 }
 
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
 BOOST_AUTO_TEST_CASE(NegatedEqualityOuterJoin) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
             {{"LSST", {{"Object", {"objectIdObjTest"}}, {"Source", {"objectIdSourceTest"}}}}}));
@@ -1757,7 +1745,6 @@ BOOST_AUTO_TEST_CASE(NegatedEqualityOuterJoin) {
         }
     }
 }
-#endif
 
 BOOST_AUTO_TEST_CASE(NegatedEqualityWithLocality) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
@@ -1765,12 +1752,10 @@ BOOST_AUTO_TEST_CASE(NegatedEqualityWithLocality) {
     std::vector<std::string> const statements = {
             "SELECT o.objectIdObjTest FROM Object o, Source s "
             "WHERE o.objectIdObjTest=s.objectIdSourceTest AND NOT (o.foo=s.foo)",
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
             "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
             "ON o.objectIdObjTest=s.objectIdSourceTest AND NOT (o.foo=s.foo)",
             "SELECT o.objectIdObjTest FROM Object o JOIN Source s "
             "ON NOT (NOT (o.objectIdObjTest=s.objectIdSourceTest)) AND NOT (o.foo=s.foo)",
-#endif
     };
     for (auto const& stmt : statements) {
         BOOST_TEST_CONTEXT(stmt) {
@@ -1785,7 +1770,7 @@ BOOST_AUTO_TEST_CASE(NegatedEqualityWithLocality) {
 BOOST_AUTO_TEST_CASE(ImplicitJoin) {
     std::vector<std::pair<std::string, std::string>> const joinForms = {
             {"JOIN", "JOIN"},
-            {"INNER JOIN", PARSER_EXPECTED("JOIN", "INNER JOIN")},
+            {"INNER JOIN", "JOIN"},
     };
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
             {{"LSST",
@@ -1956,11 +1941,9 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     qsTest.sqlConfig =
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    char const* expectedErr = PARSER_EXPECTED(
+    char const* expectedErr =
             "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
-            "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".",
-            "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support "
-            "functions in ORDER BY.");
+            "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".";
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
 
@@ -1974,11 +1957,9 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
     qsTest.sqlConfig =
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    char const* expectedErr = PARSER_EXPECTED(
+    char const* expectedErr =
             "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
-            "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".",
-            "ParseException:Error parsing query, near \"ROUND(ABS(iE1_SG), 3)\", qserv does not "
-            "support functions in ORDER BY.");
+            "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".";
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
 
@@ -2046,18 +2027,22 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     std::string expected_100_subchunk_core =
             "SELECT count(*) AS `QS1_COUNT` "
             "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o` "
-            PARSER_EXPECTED("JOIN", "INNER JOIN") " `LSST`.`RefObjMatch_100` AS `o2t`"
+            "JOIN"
+            " `LSST`.`RefObjMatch_100` AS `o2t`"
             " ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
-            PARSER_EXPECTED("JOIN", "INNER JOIN") " `Subchunks_LSST_100`."
+            "JOIN"
+            " `Subchunks_LSST_100`."
             "`SimRefObject_100_%S\007S%` AS `t` ON "
             "`o2t`.`refObjectId`=`t`.`refObjectId` "
             "WHERE `o`.`closestToObj`=1 OR `o`.`closestToObj` IS NULL";
     std::string expected_100_subchunk_overlap =
             "SELECT count(*) AS `QS1_COUNT` "
             "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o` "
-            PARSER_EXPECTED("JOIN", "INNER JOIN") " `LSST`.`RefObjMatch_100` AS `o2t`"
+            "JOIN"
+            " `LSST`.`RefObjMatch_100` AS `o2t`"
             " ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
-            PARSER_EXPECTED("JOIN", "INNER JOIN") " `Subchunks_LSST_100`."
+            "JOIN"
+            " `Subchunks_LSST_100`."
             "`SimRefObjectFullOverlap_100_%S\007S%` AS `t` ON "
             "`o2t`.`refObjectId`=`t`.`refObjectId` "
             "WHERE `o`.`closestToObj`=1 OR `o`.`closestToObj` IS NULL";
@@ -2162,9 +2147,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
             "FROM Object WHERE rFlux_PS > 10;";
 
     // CASE in column spec is illegal.
-    char const* expectedErr = PARSER_EXPECTED(
-            "ParseException:qserv can not parse query: CASE expressions are not supported.",
-            "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\"");
+    char const* expectedErr = "ParseException:qserv can not parse query: CASE expressions are not supported.";
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
@@ -2204,9 +2187,7 @@ BOOST_AUTO_TEST_CASE(AngSepNotEqualsAlongsideValidEdgeStillFilters) {
     BOOST_CHECK(context->hasSubChunks());
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     // Hyrise normalizes "!=" and "<>" to the same rendering ("<>"), regardless of which the user typed;
-    // ANTLR preserves "!=" as-is. Accept either so this test is backend-agnostic.
-    BOOST_CHECK(actual.find("!=5") != std::string::npos || actual.find("!= 5") != std::string::npos ||
-                actual.find("<>5") != std::string::npos || actual.find("<> 5") != std::string::npos);
+    BOOST_CHECK(actual.find("<>5") != std::string::npos || actual.find("<> 5") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(NegatedSecondaryKeyPredicateNotUsedAsRestrictor) {
@@ -2247,7 +2228,6 @@ BOOST_AUTO_TEST_CASE(NegatedSecondaryKeyPredicateNotUsedAsRestrictor) {
     }
 }
 
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
 BOOST_AUTO_TEST_CASE(NestedNegationSecondaryIndexRestrictions) {
     qsTest.sqlConfig = SqlConfig(
             SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest", "ra_Test"}}}}}));
@@ -2267,7 +2247,6 @@ BOOST_AUTO_TEST_CASE(NestedNegationSecondaryIndexRestrictions) {
         }
     }
 }
-#endif
 
 BOOST_AUTO_TEST_CASE(DirectorChildSpatialJoin) {
     std::string stmt =
@@ -2425,7 +2404,6 @@ BOOST_AUTO_TEST_CASE(ChildChildDifferentDirectorsSharedPartitioning) {
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 }
 
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
 BOOST_AUTO_TEST_CASE(NotRestrictions) {
     qsTest.sqlConfig = SqlConfig(
             SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest", "ra_Test"}}}}}));
@@ -2449,7 +2427,6 @@ BOOST_AUTO_TEST_CASE(NotRestrictions) {
         }
     }
 }
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

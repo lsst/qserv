@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2026 LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,30 +18,25 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // System headers
-#include <algorithm>
 #include <chrono>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #define BOOST_TEST_MODULE ParserCorpus
 
 // Third-party headers
-#include <boost/algorithm/string.hpp>
 #include <boost/test/unit_test.hpp>
 
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
+#include "ccontrol/HyriseAdapter.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -75,7 +72,7 @@ BOOST_AUTO_TEST_CASE(parseCorpus) {
             cout << entry.path() << "\n";
             BOOST_TEST_CONTEXT("file=" << entry.path()) {
                 auto testSql = readFile(entry.path());
-                auto selectStmt = ccontrol::ParseRunner::makeSelectStmt(testSql);
+                auto selectStmt = ccontrol::HyriseAdapter::makeSelectStmt(testSql);
                 BOOST_REQUIRE_MESSAGE(selectStmt != nullptr,
                                       "Test produced null Qserv IR: " << entry.path() << " -> " << testSql);
             }

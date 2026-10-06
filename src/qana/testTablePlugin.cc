@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2019 LSST Corporation.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /**
  *
@@ -27,26 +28,30 @@
  */
 
 // System headers
+#include <cstddef>
 #include <fstream>
-#include <list>
+#include <memory>
+#include <ostream>
+#include <string>
 #include <vector>
 
 // Third-party headers
 
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
-#include "ccontrol/UserQueryFactory.h"
+#include "ccontrol/HyriseAdapter.h"
 #include "css/CssAccess.h"
 #include "qana/TablePlugin.h"
+#include "query/ColumnRef.h"
+#include "query/FromList.h"
 #include "query/OrderByClause.h"
-#include "query/SelectList.h"
 #include "query/QueryContext.h"
+#include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TestFactory.h"
+#include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "sql/SqlConfig.h"
-#include "sql/SqlConnection.h"
 #include "util/IterableFormatter.h"
 
 // Boost unit test header
@@ -73,7 +78,7 @@ struct TestFixture {
 
     query::SelectStmt::Ptr makeStmtAndRunLogical(std::string query) {
         query::SelectStmt::Ptr selectStmt;
-        BOOST_REQUIRE_NO_THROW(selectStmt = ccontrol::ParseRunner::makeSelectStmt(query));
+        BOOST_REQUIRE_NO_THROW(selectStmt = ccontrol::HyriseAdapter::makeSelectStmt(query));
         BOOST_REQUIRE(selectStmt != nullptr);
         query::TestFactory factory;
         std::shared_ptr<query::QueryContext> queryContext = factory.newContext(css, schemaCfg);
