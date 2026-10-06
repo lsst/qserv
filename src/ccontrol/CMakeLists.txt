@@ -67,6 +67,7 @@ ENDFUNCTION()
 
 ccontrol_tests(
     testCControl
+    testHyriseGeneratedIR
     testParserCorpus
     testUserQueryType
 )
@@ -74,13 +75,3 @@ ccontrol_tests(
 target_compile_definitions(testParserCorpus PRIVATE
     QSERV_PARSER_CORPUS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/parser-corpus"
 )
-
-if(QSERV_USE_HYRISE_SQL_PARSER)
-    ccontrol_tests(
-        testHyriseGeneratedIR
-    )
-else()
-    ccontrol_tests(
-        testAntlr4GeneratedIR
-    )
-endif()

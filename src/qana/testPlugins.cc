@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /**
  *
@@ -28,21 +29,18 @@
 
 // System headers
 #include <fstream>
-// list must be included before boost/test/data/test_case.hpp, because it is used there but not included.
-// (or that file could be included after boost/test/unit_test.hpp, which does cause list to be
-// included. But, we like to include our headers alphabetically so I'm including list here.
-#include <list>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <vector>
 
 // Qserv headers
-#include "ccontrol/UserQueryFactory.h"
 #include "css/CssAccess.h"
 #include "mysql/MySqlConfig.h"
-#include "parser/ParseException.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
-#include "qana/PostPlugin.h"
-#include "qana/QueryPlugin.h"
 #include "qana/QservRestrictorPlugin.h"
+#include "qana/QueryPlugin.h"
 #include "query/ColumnRef.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
@@ -51,7 +49,6 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryPlugins_1
-#include "boost/test/data/test_case.hpp"
 #include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
