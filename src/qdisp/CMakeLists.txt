@@ -24,7 +24,6 @@ target_link_libraries(testQDisp
     czar
     global
     mysql
-    parser
     qana
     qdisp
     qproc

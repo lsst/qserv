@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2012-2017 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /**
  * @file
@@ -31,22 +32,17 @@
 // SelectList design notes:
 // Idea was to have this as an intermediate query tree representation.
 // This might be practical through the use of factories to hide enough
-// of the ANTLR-specific parts. Because we have inserted nodes in the
-// ANTLR tree, node navigation should be sensible enough that the
-// ANTLR-specific complexity can be minimized to only a dependence on
-// the tree node structure.
+// of the parser-specific parts.
 
 // Should we keep a hash table when column refs are detected, so we can
-// map them?
-// For now, just build the syntax tree without evaluating.
+// map them? For now, just build the syntax tree without evaluating.
 
 // Class header
 #include "query/SelectList.h"
 
 // System headers
-#include <algorithm>
-#include <iostream>
-#include <iterator>
+#include <memory>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 
@@ -55,10 +51,10 @@
 
 // Qserv headers
 #include "query/QueryTemplate.h"
-#include "query/typedefs.h"
 #include "query/ValueFactor.h"
-#include "util/PointerCompare.h"
+#include "query/typedefs.h"
 #include "util/IterableFormatter.h"
+#include "util/PointerCompare.h"
 
 namespace lsst::qserv::query {
 

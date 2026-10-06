@@ -37,7 +37,7 @@
 
 // Qserv headers
 #include "ccontrol/HyriseAdapter.h"
-#include "parser/ParseException.h"
+#include "ccontrol/ParseException.h"
 #include "query/AndTerm.h"
 #include "query/AreaRestrictor.h"
 #include "query/BetweenPredicate.h"
@@ -2459,7 +2459,7 @@ static std::vector<std::string> const ORDER_BY_FUNCTION_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(OrderByFunctionNotSupported, ORDER_BY_FUNCTION_QUERIES, query) {
-    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), parser::ParseException);
+    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), ccontrol::ParseException);
 }
 
 BOOST_AUTO_TEST_CASE(OrderByArithmeticSupported) {
@@ -2474,20 +2474,20 @@ BOOST_AUTO_TEST_CASE(OrderByArithmeticSupported) {
 BOOST_AUTO_TEST_CASE(OffsetNotSupported) {
     BOOST_CHECK_THROW(
             ccontrol::HyriseAdapter::makeSelectStmt("SELECT objectId FROM Object LIMIT 10 OFFSET 5"),
-            parser::ParseException);
+            ccontrol::ParseException);
 }
 
 // DISTINCT inside an aggregate function is not supported by qserv.
 BOOST_AUTO_TEST_CASE(AggregateDistinctNotSupported) {
     BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt("SELECT COUNT(DISTINCT objectId) FROM Object"),
-                      parser::ParseException);
+                      ccontrol::ParseException);
 }
 
 // Window functions (OVER clause) are not supported by qserv.
 BOOST_AUTO_TEST_CASE(WindowFunctionNotSupported) {
     BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(
                               "SELECT SUM(ra_PS) OVER (PARTITION BY objectId) FROM Object"),
-                      parser::ParseException);
+                      ccontrol::ParseException);
 }
 
 // Aggregate functions outside the supported set (COUNT/MIN/MAX/SUM/AVG) are not supported by qserv.
@@ -2498,7 +2498,7 @@ static std::vector<std::string> const UNSUPPORTED_AGGREGATE_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(UnsupportedAggregateNotSupported, UNSUPPORTED_AGGREGATE_QUERIES, query) {
-    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), parser::ParseException);
+    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), ccontrol::ParseException);
 }
 
 static std::vector<std::string> const HAVING_QUERIES = {
@@ -2529,7 +2529,7 @@ static std::vector<std::string> const AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES =
 };
 
 BOOST_DATA_TEST_CASE(AggregateArgumentNotSupported, AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES, query) {
-    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), parser::ParseException);
+    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), ccontrol::ParseException);
 }
 
 static std::vector<std::string> const AGGREGATE_ARGUMENT_SUPPORTED_QUERIES = {
@@ -2553,33 +2553,33 @@ static std::vector<std::string> const SCHEMA_QUALIFIED_FUNCTION_QUERIES = {
 };
 
 BOOST_DATA_TEST_CASE(SchemaQualifiedFunctionNotSupported, SCHEMA_QUALIFIED_FUNCTION_QUERIES, query) {
-    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), parser::ParseException);
+    BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(query), ccontrol::ParseException);
 }
 
-bool tableAliasColumnListNotSupported(parser::ParseException const& err) {
+bool tableAliasColumnListNotSupported(ccontrol::ParseException const& err) {
     return std::string(err.what()).find("table alias column list") != std::string::npos;
 }
 
 BOOST_AUTO_TEST_CASE(TableAliasColumnListNotSupported) {
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt("SELECT * FROM Object AS o(id, ra)"),
-                          parser::ParseException, tableAliasColumnListNotSupported);
+                          ccontrol::ParseException, tableAliasColumnListNotSupported);
     BOOST_CHECK_EXCEPTION(
             ccontrol::HyriseAdapter::makeSelectStmt(
                     "SELECT * FROM Object AS o(id) JOIN Source AS s(sourceId) ON o.id=s.sourceId"),
-            parser::ParseException, tableAliasColumnListNotSupported);
+            ccontrol::ParseException, tableAliasColumnListNotSupported);
 }
 
 // Row locking clauses (FOR UPDATE / LOCK IN SHARE MODE) are not supported by qserv.
 BOOST_AUTO_TEST_CASE(RowLockingNotSupported) {
     BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt("SELECT objectId FROM Object FOR UPDATE"),
-                      parser::ParseException);
+                      ccontrol::ParseException);
 }
 
 // NULLS FIRST/LAST ordering is not supported by qserv.
 BOOST_AUTO_TEST_CASE(NullsOrderingNotSupported) {
     BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(
                               "SELECT objectId FROM Object ORDER BY objectId NULLS LAST"),
-                      parser::ParseException);
+                      ccontrol::ParseException);
 }
 
 // Double negations are canceled out. Test round trip:
@@ -2612,10 +2612,10 @@ BOOST_AUTO_TEST_CASE(NestedNotPreservesPredicateSemantics) {
 BOOST_AUTO_TEST_CASE(AreaRestrictorAgainstColumnNotSupported) {
     BOOST_CHECK_THROW(ccontrol::HyriseAdapter::makeSelectStmt(
                               "SELECT objectId FROM Object WHERE qserv_areaspec_box(0, 0, 3, 10) = objectId"),
-                      parser::ParseException);
+                      ccontrol::ParseException);
 }
 
-bool areaRestrictorNotAllowed(parser::ParseException const& err) {
+bool areaRestrictorNotAllowed(ccontrol::ParseException const& err) {
     return std::string(err.what())
                    .find("qserv area restrictors are only supported in conjunctive (AND) contexts") !=
            std::string::npos;
@@ -2658,41 +2658,41 @@ BOOST_AUTO_TEST_CASE(AreaRestrictorUnderOrRejected) {
     BOOST_CHECK_EXCEPTION(
             ccontrol::HyriseAdapter::makeSelectStmt(
                     "SELECT objectId FROM Object WHERE qserv_areaspec_box(0, 0, 3, 10) OR filterName='g'"),
-            parser::ParseException, areaRestrictorNotAllowed);
+            ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(
             ccontrol::HyriseAdapter::makeSelectStmt(
                     "SELECT objectId FROM Object WHERE filterName='g' OR qserv_areaspec_box(0, 0, 3, 10)"),
-            parser::ParseException, areaRestrictorNotAllowed);
+            ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object "
                                   "WHERE (qserv_areaspec_box(0, 0, 3, 10) AND ra_PS > 1) OR filterName='g'"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object "
                                   "WHERE filterName='g' OR (qserv_areaspec_box(0, 0, 3, 10) AND ra_PS > 1)"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object "
                                   "WHERE qserv_areaspec_box(0, 0, 3, 10) = 1 OR filterName='g'"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object "
                                   "WHERE filterName='g' OR 1 = qserv_areaspec_box(0, 0, 3, 10)"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
 }
 
 BOOST_AUTO_TEST_CASE(AreaRestrictorUnderNotRejected) {
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object WHERE NOT qserv_areaspec_box(0, 0, 3, 10)"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object "
                                   "WHERE NOT (qserv_areaspec_box(0, 0, 3, 10) AND filterName='g')"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
     BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(
                                   "SELECT objectId FROM Object "
                                   "WHERE NOT (qserv_areaspec_box(0, 0, 3, 10) OR filterName='g')"),
-                          parser::ParseException, areaRestrictorNotAllowed);
+                          ccontrol::ParseException, areaRestrictorNotAllowed);
 }
 
 // NOT precedence: implicit precedence vs explicit precedence enforced by parentheses.

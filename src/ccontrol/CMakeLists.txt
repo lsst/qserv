@@ -1,16 +1,9 @@
 add_library(ccontrol SHARED)
 
-target_include_directories(ccontrol PRIVATE
-    ${ANTLR4_INCLUDE_DIR}
-)
-
 target_sources(ccontrol PRIVATE
     HyriseAdapter.cc
     HyriseDiagnostics.cc
     MergingHandler.cc
-    ParseAdapters.cc
-    ParseListener.cc
-    ParseRunner.cc
     QueryState.cc
     UserQueryAsyncResult.cc
     UserQueryExplain.cc
@@ -32,13 +25,8 @@ target_link_libraries(ccontrol PUBLIC
     global
     hyrise_sql_parser::sqlparser
     log
-    parser
     sphgeom
 )
-
-if(QSERV_USE_HYRISE_SQL_PARSER)
-    target_compile_definitions(ccontrol PUBLIC QSERV_USE_HYRISE_SQL_PARSER)
-endif()
 
 install(TARGETS ccontrol)
 
@@ -50,7 +38,6 @@ FUNCTION(ccontrol_tests)
             ccontrol
             czar
             global
-            parser
             qana
             qdisp
             qproc

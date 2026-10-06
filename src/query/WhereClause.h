@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2012-2019 LSST Corporation.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /**
  * @file
@@ -32,20 +33,16 @@
 #define LSST_QSERV_QUERY_WHERECLAUSE_H
 
 // System headers
-#include <iostream>
+#include <iosfwd>
 #include <memory>
-#include <stack>
+#include <string>
 #include <vector>
 
 // Qserv headers
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace parser {
-class WhereFactory;
-}
-namespace query {
+namespace lsst::qserv::query {
 class AndTerm;
 class AreaRestrictor;
 class BoolTerm;
@@ -54,8 +51,7 @@ class LogicalTerm;
 class OrTerm;
 class QueryTemplate;
 class ValueExpr;
-}  // namespace query
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::query
 
 namespace lsst::qserv::query {
 
@@ -112,8 +108,6 @@ private:
 
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
     friend std::ostream& operator<<(std::ostream& os, WhereClause const* wc);
-
-    friend class parser::WhereFactory;
 
     std::shared_ptr<OrTerm> _rootOrTerm;
     AreaRestrictorVecPtr _restrs{std::make_shared<AreaRestrictorVec>()};

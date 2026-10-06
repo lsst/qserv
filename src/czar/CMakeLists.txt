@@ -48,7 +48,6 @@ function(CZAR_UTILS)
             czar
             global
             mysql
-            parser
             qana
             qdisp
             qproc
@@ -74,7 +73,6 @@ function(czar_tests)
             czar
             global
             mysql
-            parser
             qana
             qdisp
             qproc

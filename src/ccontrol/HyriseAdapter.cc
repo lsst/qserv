@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2026 LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,25 +18,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "ccontrol/HyriseAdapter.h"
 
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 
 #include "SQLParser.h"
 #include "SQLParserResult.h"
@@ -43,12 +43,14 @@
 #include "sql/Table.h"
 
 #include "ccontrol/HyriseDiagnostics.h"
+#include "ccontrol/ParseException.h"
 #include "global/constants.h"
-#include "parser/ParseException.h"
 #include "query/AndTerm.h"
 #include "query/AreaRestrictor.h"
 #include "query/BetweenPredicate.h"
 #include "query/BoolFactor.h"
+#include "query/BoolFactorTerm.h"
+#include "query/BoolTerm.h"
 #include "query/BoolTermFactor.h"
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
@@ -60,9 +62,10 @@
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 #include "query/LikePredicate.h"
+#include "query/LogicalTerm.h"
 #include "query/NullPredicate.h"
-#include "query/OrderByClause.h"
 #include "query/OrTerm.h"
+#include "query/OrderByClause.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/TableRef.h"
@@ -81,7 +84,7 @@ std::shared_ptr<query::ValueExpr> buildValueExpr(hsql::Expr const* expr);
 std::shared_ptr<query::LogicalTerm> buildBoolTerm(hsql::Expr const* expr);
 
 [[noreturn]] void unsupported(std::string const& what) {
-    throw parser::ParseException("HyriseAdapter unsupported SQL construct: " + what);
+    throw ccontrol::ParseException("Hyrise unsupported SQL construct: " + what);
 }
 
 std::string nullToEmpty(char const* value) { return value == nullptr ? std::string() : std::string(value); }
@@ -90,8 +93,8 @@ std::string nullToEmpty(char const* value) { return value == nullptr ? std::stri
 /// Currently rejects any identifiers that start with an underscore (reserved by Qserv).
 void validateIdentifier(char const* identifier) {
     if (identifier != nullptr && identifier[0] == '_') {
-        throw parser::ParseException("Error parsing query, near \"" + nullToEmpty(identifier) +
-                                     "\", Identifiers in Qserv may not start with an underscore.");
+        throw ccontrol::ParseException("Error parsing query, near \"" + nullToEmpty(identifier) +
+                                       "\", Identifiers in Qserv may not start with an underscore.");
     }
 }
 
@@ -106,7 +109,7 @@ void validateAlias(hsql::Alias const* alias) {
 /// Currently rejects CASE expressions, which the Qserv IR cannot represent.
 void validateExpression(hsql::Expr const* expr) {
     if (expr != nullptr && expr->type == hsql::kExprOperator && expr->opType == hsql::kOpCase) {
-        throw parser::ParseException("qserv can not parse query: CASE expressions are not supported.");
+        throw ccontrol::ParseException("qserv cannot parse query: CASE expressions are not supported.");
     }
 }
 
@@ -376,9 +379,8 @@ std::shared_ptr<query::ValueFactor> buildValueFactor(hsql::Expr const* expr) {
             // Check for supported/unsupported aggregations. Unknown functions/UDFs pass through unchanged.
             if (AGGREGATE_SUPPORT_MAP.contains(nameLower)) {
                 if (AGGREGATE_SUPPORT_MAP.at(nameLower) == true) {
-                    // Only allow a bare column reference or COUNT(*) for aggregations. This ensures we
-                    // maintain previous ANTLR behavior, but should be removed in the future once we expand
-                    // aggregation support.
+                    // Only allow a bare column reference or COUNT(*) until we support aggregate arguments
+                    // containing expressions.
                     if (!(args.size() == 1 &&
                           (args[0]->isColumnRef() || (nameLower == "count" && args[0]->isStar()))))
                         unsupported("aggregate argument must be a column reference");
@@ -443,9 +445,9 @@ std::shared_ptr<query::AndTerm> buildPredicateTerm(hsql::Expr const* expr, bool 
 std::shared_ptr<query::AreaRestrictor> buildAreaRestrictor(hsql::Expr const* expr) {
     if (expr == nullptr) return nullptr;
 
-    // The following is intended to match the legacy ANTLR-based parser. It used a dedicated
-    // QservFunctionSpec rule for qserv_areaspec_* functions, but only when it was bare or
-    // compared against an integer literal ("qserv_areaspec_box(...) = 1", "1 = ...").
+    // The following is intended to match the previous ANTLR-based parser's behavior. It used a dedicated
+    // QservFunctionSpec rule for qserv_areaspec_* functions, but only when it was bare or compared against an
+    // integer literal ("qserv_areaspec_box(...) = 1", "1 = ...").
     if (expr->type == hsql::kExprOperator && expr->opType == hsql::kOpEquals) {
         if (isIntegerLiteral(expr->expr2)) {
             if (auto r = buildAreaRestrictor(expr->expr)) return r;
@@ -477,7 +479,7 @@ std::shared_ptr<query::AreaRestrictor> buildAreaRestrictor(hsql::Expr const* exp
         // Create the appropriate AreaRestrictor*
         return AREA_RESTRICTOR_FACTORY_MAP.at(name)(args);
     } catch (std::logic_error const& err) {
-        throw parser::ParseException(err.what());
+        throw ccontrol::ParseException(err.what());
     }
 }
 
@@ -721,7 +723,7 @@ std::shared_ptr<query::OrderByClause> buildOrderBy(hsql::SelectStatement const& 
 
         auto valueExpr = buildValueExpr(term->expr);
         if (valueExpr->isFunction()) {
-            throw parser::ParseException(
+            throw ccontrol::ParseException(
                     "qserv does not support functions in ORDER BY. Select the expression under an alias "
                     "and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".");
         }
@@ -779,11 +781,11 @@ std::shared_ptr<query::SelectStmt> HyriseAdapter::makeSelectStmt(std::string con
 
     if (!result.isValid() || result.size() == 0) {
         if (result.errorMsg() != nullptr) {
-            throw parser::ParseException(std::string(result.errorMsg()) + " (line " +
-                                         std::to_string(result.errorLine()) + ", column " +
-                                         std::to_string(result.errorColumn()) + ") in query: \"" + sql + '"');
+            throw ccontrol::ParseException(
+                    std::string(result.errorMsg()) + " (line " + std::to_string(result.errorLine()) +
+                    ", column " + std::to_string(result.errorColumn()) + ") in query: \"" + sql + '"');
         }
-        throw parser::ParseException("no statements found in query: \"" + sql + '"');
+        throw ccontrol::ParseException("no statements found in query: \"" + sql + '"');
     }
 
     if (result.size() > 1) {

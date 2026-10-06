@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2014-2017 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Class header
@@ -26,9 +27,10 @@
 
 // System headers
 #include <cassert>
-#include <cstdlib>
+#include <exception>
 #include <memory>
 #include <string>
+#include <thread>
 
 // Third-party headers
 
@@ -37,9 +39,8 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
-#include "ccontrol/ConfigError.h"
-#include "ccontrol/ConfigMap.h"
-#include "ccontrol/ParseRunner.h"
+#include "ccontrol/HyriseAdapter.h"
+#include "ccontrol/ParseException.h"
 #include "ccontrol/UserQueryAsyncResult.h"
 #include "ccontrol/UserQueryExplain.h"
 #include "ccontrol/UserQueryInvalid.h"
@@ -52,10 +53,6 @@
 #include "ccontrol/UserQuerySet.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
-#include "css/KvInterfaceImplMem.h"
-#include "czar/Czar.h"
-#include "mysql/MySqlConfig.h"
-#include "parser/ParseException.h"
 #include "qdisp/Executive.h"
 #include "qmeta/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
@@ -210,8 +207,8 @@ std::shared_ptr<UserQuery> _makeUserQueryExplain(std::string const& innerQuery, 
     }
     query::SelectStmt::Ptr stmt;
     try {
-        stmt = ParseRunner::makeSelectStmt(innerQuery);
-    } catch (parser::ParseException& e) {
+        stmt = HyriseAdapter::makeSelectStmt(innerQuery);
+    } catch (ccontrol::ParseException& e) {
         return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
     }
 
@@ -371,8 +368,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
 
         query::SelectStmt::Ptr stmt;
         try {
-            stmt = ParseRunner::makeSelectStmt(query);
-        } catch (parser::ParseException& e) {
+            stmt = HyriseAdapter::makeSelectStmt(query);
+        } catch (ccontrol::ParseException& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
 
@@ -472,7 +469,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
         std::string resultDeleteQueryId;
         if (!UserQueryType::isResultDelete(query, resultDeleteQueryId)) {
             return std::make_shared<UserQueryInvalid>("Only CALL QSERV_RESULT_DELETE is supported: " + query);
@@ -480,29 +476,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         return std::make_shared<UserQueryResultDelete>(
                 _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb),
                 resultDeleteQueryId);
-#else
-        auto parser = std::make_shared<ParseRunner>(
-                query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
-        return parser->getUserQuery();
-#endif
     } else if (UserQueryType::isSet(query)) {
         std::string varName, varValue;
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
         if (!UserQueryType::isSetGlobal(query, varName, varValue)) {
             return std::make_shared<UserQueryInvalid>("Unsupported SET statement: " + query);
         }
-#else
-        ParseRunner::Ptr parser;
-        try {
-            parser = std::make_shared<ParseRunner>(query);
-        } catch (parser::ParseException& e) {
-            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
-        }
-        auto uq = parser->getUserQuery();
-        auto setQuery = std::static_pointer_cast<UserQuerySet>(uq);
-        varName = setQuery->varName();
-        varValue = setQuery->varValue();
-#endif
         if (varName == "QSERV_ROW_COUNTER_OPTIMIZATION") {
             return setBooleanGlobalVariable(varName, varValue, _useQservRowCounterOptimization);
         } else if (varName == "QSERV_DEBUG_CZAR_NO_MERGE") {

@@ -121,7 +121,7 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
         ParseErrorQueryInfo("SELECT  COUNT(*) AS totalCount, "
                             "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
                             "FROM Object WHERE rFlux_PS > 10;",
-                            "ParseException:qserv can not parse query: CASE expressions are not "
+                            "ParseException:qserv cannot parse query: CASE expressions are not "
                             "supported."),
 };
 

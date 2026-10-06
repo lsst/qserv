@@ -53,7 +53,6 @@ FUNCTION(query_tests)
             cconfig
             ccontrol
             czar
-            parser
             qana
             qdisp
             qproc

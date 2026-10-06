@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2012-2015 LSST Corporation.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 /**
  * @file
@@ -30,16 +31,14 @@
 #define LSST_QSERV_QUERY_FROMLIST_H
 
 // System headers
+#include <iosfwd>
 #include <memory>
+#include <string>
 
 // Local headers
 #include "query/TableRef.h"
 
 // Forward declarations
-namespace lsst::qserv::parser {
-class FromFactory;
-}  // namespace lsst::qserv::parser
-
 namespace lsst::qserv::query {
 
 // FromList is a representation of SQL FROM.
@@ -67,7 +66,6 @@ public:
 private:
     friend std::ostream& operator<<(std::ostream& os, FromList const& fromList);
     friend std::ostream& operator<<(std::ostream& os, FromList const* fromList);
-    friend class parser::FromFactory;
 
     TableRefListPtr _tableRefs;
 };
