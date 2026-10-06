@@ -21,27 +21,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#ifndef LSST_QSERV_CCONTROL_PARSEEXCEPTION_H
+#define LSST_QSERV_CCONTROL_PARSEEXCEPTION_H
+/**
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
-#ifndef LSST_QSERV_CCONTROL_HYRISEADAPTER_H
-#define LSST_QSERV_CCONTROL_HYRISEADAPTER_H
-
-#include <memory>
-#include <string>
-
-namespace lsst::qserv::query {
-class SelectStmt;
-}  // namespace lsst::qserv::query
+// System headers
+#include <stdexcept>
 
 namespace lsst::qserv::ccontrol {
 
-/// Build Qserv query IR from Hyrise parser output.
-class HyriseAdapter {
+/// ParseException is a trivial exception for Qserv parse problems.
+class ParseException : public std::runtime_error {
 public:
-    /// Parse @p sql and return the Qserv query IR for the single SELECT statement it contains.
-    /// @throws ccontrol::ParseException on parse errors or unsupported constructs.
-    static std::shared_ptr<query::SelectStmt> makeSelectStmt(std::string const& sql);
+    using std::runtime_error::runtime_error;
 };
 
 }  // namespace lsst::qserv::ccontrol
 
-#endif  // LSST_QSERV_CCONTROL_HYRISEADAPTER_H
+#endif  // LSST_QSERV_CCONTROL_PARSEEXCEPTION_H

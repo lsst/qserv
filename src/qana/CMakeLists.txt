@@ -29,7 +29,8 @@ FUNCTION(qana_tests)
         target_link_libraries(${TEST} PUBLIC
             cconfig
             ccontrol
-            parser
+            czar
+            global
             qana
             qdisp
             qproc

@@ -50,8 +50,8 @@
 
 // Qserv headers
 #include "ccontrol/HyriseAdapter.h"
+#include "ccontrol/ParseException.h"
 #include "css/CssAccess.h"
-#include "parser/ParseException.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
 #include "qproc/QuerySession.h"
@@ -1315,13 +1315,13 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 BOOST_AUTO_TEST_CASE(Subquery) {  // ticket #2053
     std::string stmt =
             "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
-    BOOST_CHECK_THROW(HyriseAdapter::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
+    BOOST_CHECK_THROW(HyriseAdapter::makeSelectStmt(stmt), lsst::qserv::ccontrol::ParseException);
     // Expected failure: Subqueries are unsupported.
 }
 
 BOOST_AUTO_TEST_CASE(FromParen) {  // Extra paren. Not supported by our grammar.
     std::string stmt = "SELECT * FROM (Object) WHERE rFlux_PS > 0.3;";
-    BOOST_CHECK_THROW(HyriseAdapter::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
+    BOOST_CHECK_THROW(HyriseAdapter::makeSelectStmt(stmt), lsst::qserv::ccontrol::ParseException);
 }
 
 BOOST_AUTO_TEST_CASE(NewParser) {
@@ -2147,7 +2147,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
             "FROM Object WHERE rFlux_PS > 10;";
 
     // CASE in column spec is illegal.
-    char const* expectedErr = "ParseException:qserv can not parse query: CASE expressions are not supported.";
+    char const* expectedErr = "ParseException:qserv cannot parse query: CASE expressions are not supported.";
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
