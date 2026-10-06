@@ -63,6 +63,8 @@ size_t countDirectors(const json& database) {
 
 string const defaultDirectorTableName = "qserv_director";
 int32_t const defaultChunkId = 0;
+size_t const maxResponseBodySize = 1024 * 1024 * 512;  // 0.5 GB
+
 }  // namespace
 
 namespace lsst::qserv::czar {
@@ -348,6 +350,7 @@ json HttpCzarIngestModuleBase::_request(http::Method method, string const& url, 
     json const errorExt = json::object(
             {{"method", http::method2string(method)}, {"url", url}, {"timeout_sec", _timeoutSec}});
     auto const request = _asyncRequest(method, url, data);
+    request->setMaxResponseBodySize(::maxResponseBodySize);
     request->start();
     request->wait();
     if (request->state() == http::AsyncReq::State::FINISHED) {
