@@ -69,7 +69,7 @@ it.
    `ccontrol::UserQueryFactory`, which classifies it (SELECT, COUNT(*) shortcut,
    async SUBMIT, admin statements…) and for real SELECTs builds a
    `ccontrol::UserQuerySelect`.
-2. The statement is parsed (Hyrise parser by default) into the `query::` IR, then
+2. The statement is parsed by Hyrise into the `query::` IR, then
    `qproc::QuerySession` runs the `qana::` plugin sequence: table metadata lookup
    (CSS), join admissibility via `qana::RelationGraph` (**read the long comment in
    `src/qana/RelationGraph.h`**), spatial/secondary-index restrictor extraction,
@@ -92,7 +92,7 @@ it.
 
 ## Module ownership cheat-sheet
 
-Czar side: `ccontrol` (orchestration) → `parser`/`query` (SQL→IR) → `qana` (analysis
+Czar side: `ccontrol` (orchestration + SQL parsing) → `query` (IR) → `qana` (analysis
 plugins) → `qproc` (chunking, templates) → `qdisp` (Executive/UberJobs) → `rproc`
 (merge). `czar` = service wiring + HTTP frontend + chunk-map/registry clients.
 Worker side: `wmain` (startup), `wcomms` (REST), `wbase` (tasks/result channels),
@@ -107,9 +107,8 @@ within it). Shared: `css`, `qmeta`, `cconfig`, `global`, `util`, `http` (client)
 - **XRootD/SSI is gone** (removed 2025–2026, tags `2026.8.1-xrd-*` mark the last
   XRootD-era line). Any doc/comment mentioning xrootd, SSI, or `xrdsvc` is historical.
   Czar↔worker transport is HTTP/JSON (`protojson`) with file-based result delivery.
-- **The ANTLR parser is being replaced by Hyrise** (`extern/hyrise-sql-parser`,
-  `ccontrol/HyriseAdapter`); ANTLR remains as a build-time option and for comparison
-  tests.
+- **SQL parsing uses Hyrise** (`extern/hyrise-sql-parser`, `ccontrol/HyriseAdapter`).
+  The legacy ANTLR parser and adapter have been removed (2026-10-06).
 - The **wmgr**, **qserv-ingest**, and other older admin layers referenced in `doc/`
   predate the current replication-system ingest API; trust `doc/ingest/` (current) and
   the code.
