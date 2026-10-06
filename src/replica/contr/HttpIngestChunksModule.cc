@@ -156,13 +156,15 @@ json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestChunksModule::_addChunk() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, body().has("include_connection_info") ? 61 : 12);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
     unsigned int const chunk = body().required<unsigned int>("chunk");
+    bool const includeConnectionInfo = body().optionalInt("include_connection_info", 1) != 0;
     debug(__func__, "chunk=" + to_string(chunk));
+    debug(__func__, "includeConnectionInfo=" + to_string(includeConnectionInfo ? 1 : 0));
 
     auto const databaseInfo = getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -256,23 +258,26 @@ json HttpIngestChunksModule::_addChunk() {
     auto const worker = config->worker(workerName);
 
     json result = json::object();
-    result["location"] = json::object({{"chunk", chunk},
-                                       {"worker", worker.name},
-                                       {"http_host", worker.httpLoaderHost.addr},
-                                       {"http_host_name", worker.httpLoaderHost.name},
-                                       {"http_port", worker.httpLoaderPort}});
+    result["location"] = json::object({{"chunk", chunk}, {"worker", worker.name}});
+    if (includeConnectionInfo) {
+        result["location"].emplace("http_host", worker.httpLoaderHost.addr);
+        result["location"].emplace("http_host_name", worker.httpLoaderHost.name);
+        result["location"].emplace("http_port", worker.httpLoaderPort);
+    }
     return result;
 }
 
 json HttpIngestChunksModule::_addChunkMulti() {
     debug(__func__);
-    checkApiVersion(__func__, 54);
+    checkApiVersion(__func__, body().has("include_connection_info") ? 61 : 54);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
     unsigned int const chunk = body().required<unsigned int>("chunk");
+    bool const includeConnectionInfo = body().optionalInt("include_connection_info", 1) != 0;
     debug(__func__, "chunk=" + to_string(chunk));
+    debug(__func__, "includeConnectionInfo=" + to_string(includeConnectionInfo ? 1 : 0));
 
     auto const databaseInfo = getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -300,8 +305,8 @@ json HttpIngestChunksModule::_addChunkMulti() {
     map<string, size_t> worker2replicasCache;
 
     json result = json::object({{"locations", json::array()}});
-    auto const numReplicasRegistered =
-            _addChunk(worker2replicasCache, result["locations"], chunk, databaseInfo, existingReplicas);
+    auto const numReplicasRegistered = _addChunk(worker2replicasCache, result["locations"], chunk,
+                                                 databaseInfo, existingReplicas, includeConnectionInfo);
     ControllerEvent event;
     event.status = "ADD CHUNKS";
     event.kvInfo.emplace_back("database", databaseInfo.name);
@@ -312,13 +317,15 @@ json HttpIngestChunksModule::_addChunkMulti() {
 
 json HttpIngestChunksModule::_addChunks() {
     debug(__func__);
-    checkApiVersion(__func__, 54);
+    checkApiVersion(__func__, body().has("include_connection_info") ? 61 : 54);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
     auto const chunks = body().requiredColl<unsigned int>("chunks");
+    bool const includeConnectionInfo = body().optionalInt("include_connection_info", 1) != 0;
     debug(__func__, "chunks.size()=" + chunks.size());
+    debug(__func__, "includeConnectionInfo=" + to_string(includeConnectionInfo ? 1 : 0));
 
     auto const databaseInfo = getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -430,26 +437,28 @@ json HttpIngestChunksModule::_addChunks() {
     json result = json::object({{"locations", json::array()}});
     for (auto const chunk : chunks) {
         auto const worker = config->worker(chunk2worker[chunk]);
-        result["locations"].push_back(json::object({
-                {"chunk", chunk},
-                {"worker", worker.name},
-                {"http_host", worker.httpLoaderHost.addr},
-                {"http_host_name", worker.httpLoaderHost.name},
-                {"http_port", worker.httpLoaderPort},
-        }));
+        json location = json::object({{"chunk", chunk}, {"worker", worker.name}});
+        if (includeConnectionInfo) {
+            location["http_host"] = worker.httpLoaderHost.addr;
+            location["http_host_name"] = worker.httpLoaderHost.name;
+            location["http_port"] = worker.httpLoaderPort;
+        }
+        result["locations"].push_back(location);
     }
     return result;
 }
 
 json HttpIngestChunksModule::_addChunksMulti() {
     debug(__func__);
-    checkApiVersion(__func__, 54);
+    checkApiVersion(__func__, body().has("include_connection_info") ? 61 : 54);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
     auto const chunks = body().requiredColl<unsigned int>("chunks");
+    bool const includeConnectionInfo = body().optionalInt("include_connection_info", 1) != 0;
     debug(__func__, "chunks.size()=" + chunks.size());
+    debug(__func__, "includeConnectionInfo=" + to_string(includeConnectionInfo ? 1 : 0));
 
     auto const databaseInfo = getDatabaseInfo(__func__);
     auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
@@ -482,8 +491,8 @@ json HttpIngestChunksModule::_addChunksMulti() {
     size_t numReplicasRegistered = 0;
     for (auto const chunk : chunks) {
         vector<ReplicaInfo> const& existingReplicas = chunks2replicas.at(chunk);
-        numReplicasRegistered +=
-                _addChunk(worker2replicasCache, result["locations"], chunk, databaseInfo, existingReplicas);
+        numReplicasRegistered += _addChunk(worker2replicasCache, result["locations"], chunk, databaseInfo,
+                                           existingReplicas, includeConnectionInfo);
     }
     ControllerEvent event;
     event.status = "ADD CHUNKS";
@@ -517,7 +526,8 @@ map<unsigned int, vector<ReplicaInfo>> HttpIngestChunksModule::_chunks2Replicas(
 
 size_t HttpIngestChunksModule::_addChunk(map<string, size_t>& worker2replicasCache, json& locations,
                                          unsigned int const chunk, DatabaseInfo const& databaseInfo,
-                                         vector<ReplicaInfo> const& existingReplicas) const {
+                                         vector<ReplicaInfo> const& existingReplicas,
+                                         bool includeConnectionInfo) const {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
@@ -563,11 +573,13 @@ size_t HttpIngestChunksModule::_addChunk(map<string, size_t>& worker2replicasCac
     }
     for (auto&& workerName : workerNames) {
         auto const worker = config->worker(workerName);
-        locations.push_back(json::object({{"chunk", chunk},
-                                          {"worker", worker.name},
-                                          {"http_host", worker.httpLoaderHost.addr},
-                                          {"http_host_name", worker.httpLoaderHost.name},
-                                          {"http_port", worker.httpLoaderPort}}));
+        json location = json::object({{"chunk", chunk}, {"worker", worker.name}});
+        if (includeConnectionInfo) {
+            location["http_host"] = worker.httpLoaderHost.addr;
+            location["http_host_name"] = worker.httpLoaderHost.name;
+            location["http_port"] = worker.httpLoaderPort;
+        }
+        locations.push_back(location);
     }
     return numReplicasRegistered;
 }
