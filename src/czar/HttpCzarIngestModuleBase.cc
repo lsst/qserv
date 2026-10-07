@@ -25,8 +25,8 @@
 // System headers
 #include <algorithm>
 #include <stdexcept>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 // Third party headers
 #include "boost/algorithm/string.hpp"
@@ -63,6 +63,7 @@ size_t countDirectors(const json& database) {
 
 string const defaultDirectorTableName = "qserv_director";
 int32_t const defaultChunkId = 0;
+size_t const maxResponseBodySize = 1024 * 1024 * 512;  // 0.5 GB
 
 }  // namespace
 
@@ -172,7 +173,8 @@ vector<string> HttpCzarIngestModuleBase::getWorkerIds() {
 
 map<int32_t, vector<string>> HttpCzarIngestModuleBase::_allocateChunks(set<int32_t> const& chunkIds,
                                                                        string const& databaseName) {
-    json data = json::object({{"database", databaseName}, {"chunks", json::array()}});
+    json data = json::object(
+            {{"database", databaseName}, {"chunks", json::array()}, {"include_connection_info", 0}});
     for (auto const& chunkId : chunkIds) {
         data.at("chunks").push_back(chunkId);
     }
@@ -348,6 +350,7 @@ json HttpCzarIngestModuleBase::_request(http::Method method, string const& url, 
     json const errorExt = json::object(
             {{"method", http::method2string(method)}, {"url", url}, {"timeout_sec", _timeoutSec}});
     auto const request = _asyncRequest(method, url, data);
+    request->setMaxResponseBodySize(::maxResponseBodySize);
     request->start();
     request->wait();
     if (request->state() == http::AsyncReq::State::FINISHED) {
