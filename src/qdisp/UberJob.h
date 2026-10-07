@@ -1,8 +1,10 @@
 /*
- * LSST Data Management System
- *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * This file is part of qserv.
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,10 +16,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 #ifndef LSST_QSERV_QDISP_UBERJOB_H
 #define LSST_QSERV_QDISP_UBERJOB_H
 
@@ -28,6 +30,7 @@
 #include "czar/CzarChunkMap.h"
 #include "czar/CzarRegistry.h"
 #include "global/UberJobBase.h"
+#include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
 #include "util/MultiError.h"
@@ -44,6 +47,123 @@ namespace lsst::qserv::qdisp {
 
 class JobQuery;
 
+class UJState {
+public:
+    using Ptr = std::shared_ptr<UJState>;
+    // objects of this class are created by derived classes.
+    virtual ~UJState() = default;
+    std::string const name;
+    CzarStats::RaiiC::RaiiPtr const raiiPtr;
+
+protected:
+    UJState(std::string const& name_, CzarStats::RaiiC::Ptr const& raiiCounter_)
+            : name(name_), raiiPtr(raiiCounter_->createRaii()) {}
+    UJState(UJState const&) = delete;
+    UJState() = delete;
+    UJState& operator=(UJState const&) = delete;
+};
+
+class UJStateCreated : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateCreated>;
+    static Ptr create() { return Ptr(new UJStateCreated()); }
+    ~UJStateCreated() override = default;
+
+private:
+    UJStateCreated() : UJState("Created", CzarStats::get()->getNumCreatedUberJobs()) {}
+};
+
+class UJStateRequest : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateRequest>;
+    static Ptr create() { return Ptr(new UJStateRequest()); }
+    ~UJStateRequest() override = default;
+
+private:
+    UJStateRequest() : UJState("Request", CzarStats::get()->getNumRequestUberJobs()) {}
+};
+
+class UJStateResponseReady : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateResponseReady>;
+    static Ptr create() { return Ptr(new UJStateResponseReady()); }
+    ~UJStateResponseReady() override = default;
+
+private:
+    UJStateResponseReady() : UJState("ResponseReady", CzarStats::get()->getNumResponseReadyUberJobs()) {}
+};
+
+class UJStateResponseError : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateResponseError>;
+    static Ptr create() { return Ptr(new UJStateResponseError()); }
+    ~UJStateResponseError() override = default;
+
+private:
+    UJStateResponseError() : UJState("ResponseError", CzarStats::get()->getNumResponseErrorUberJobs()) {}
+};
+
+class UJStateDone : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateDone>;
+    static Ptr create() { return Ptr(new UJStateDone()); }
+    ~UJStateDone() override = default;
+
+private:
+    UJStateDone() : UJState("Done", CzarStats::get()->getNumDoneUberJobs()) {}
+};
+
+class UJStateCancelled : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateCancelled>;
+    static Ptr create() { return Ptr(new UJStateCancelled()); }
+    ~UJStateCancelled() override = default;
+
+private:
+    UJStateCancelled() : UJState("Cancelled", CzarStats::get()->getNumCancelledUberJobs()) {}
+};
+
+class UJStateComplete : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateComplete>;
+    static Ptr create() { return Ptr(new UJStateComplete()); }
+    ~UJStateComplete() override = default;
+
+private:
+    UJStateComplete() : UJState("Complete", CzarStats::get()->getNumCompleteUberJobs()) {}
+};
+
+class UJStateUnexpected : public UJState {
+public:
+    using Ptr = std::shared_ptr<UJStateUnexpected>;
+    static Ptr create() { return Ptr(new UJStateUnexpected()); }
+    ~UJStateUnexpected() override = default;
+
+private:
+    UJStateUnexpected() : UJState("Unexpected", CzarStats::get()->getNumUnexpectedUberJobs()) {}
+};
+
+/** This class contains state information for an UberJob.
+ * The JobStatus values are expected to always advance in the order
+ * of REQUEST, RESPONSE_READY, {RESPONSE_DONE or CANCEL}, COMPLETE.
+ * Trying to change to an earlier state are ignored as are attempts
+ * to change to the existing state. An UberJob that has state
+ * RESPONSE_DONE cannot be changed to CANCEL, and the reverse is true.
+ */
+class UberJobStatus : public qmeta::JobStatus {
+public:
+    using Ptr = std::shared_ptr<UberJobStatus>;
+    UberJobStatus() : qmeta::JobStatus() {}
+
+    virtual ~UberJobStatus() = default;
+
+    void updateInfo(std::string const& idMsg, State s, std::string const& source, int code,
+                    std::string const& desc, MessageSeverity severity) override;
+
+private:
+    UJState::Ptr _ujState{UJStateCreated::create()};  ///< Current state of this UberJob.
+};
+
 /// This class is a contains x number of jobs that need to go to the same worker
 /// from a single user query, and contact information for the worker. It also holds
 /// some information common to all jobs.
@@ -51,7 +171,7 @@ class JobQuery;
 /// and merging the results.
 /// When this UberJobCompletes, all the Jobs it contains are registered as completed.
 /// If this UberJob fails, it will be destroyed, un-assigning all of its Jobs.
-/// Those Jobs will need to be reassigned to new UberJobs, or the query cancelled.
+/// Those Jobs will need to be reassigned to new UberJobs.
 class UberJob : public UberJobBase {
 public:
     using Ptr = std::shared_ptr<UberJob>;
@@ -146,7 +266,7 @@ protected:
 private:
     /// @see setStatusIfOk
     /// note: _jobsMtx must be locked before calling.
-    bool _setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg);
+    bool _setStatusIfOk(UberJobStatus::State newState, std::string const& msg);
 
     /// unassign all Jobs in this UberJob and set the Executive flag to indicate that Jobs need
     /// reassignment. The list of _jobs is cleared, so multiple calls of this should be harmless.
@@ -160,7 +280,7 @@ private:
     std::vector<std::shared_ptr<JobQuery>> _jobs;  ///< List of Jobs in this UberJob.
     mutable VMUTEX _jobsMtx;                       ///< Protects _jobs, _jobStatus
     std::atomic<bool> _started{false};
-    qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};
+    UberJobStatus::Ptr _jobStatus{new UberJobStatus()};
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
@@ -175,6 +295,9 @@ private:
 
     /// Timestamp of the family map used to create this UberJob.
     TIMEPOINT _familyMapTimestamp;
+
+    /// RAII object to increment (and eventually decrement) the total number of UberJobs in CzarStats.
+    CzarStats::RaiiC::RaiiPtr const _numTotal{CzarStats::get()->getNumTotalUberJobs()->createRaii()};
 };
 
 }  // namespace lsst::qserv::qdisp

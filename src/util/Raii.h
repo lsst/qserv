@@ -1,5 +1,26 @@
 // -*- LSST-C++ -*-
-
+/*
+ * This file is part of qserv.
+ *
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 #ifndef LSST_QSERV_UTIL_RAII_H
 #define LSST_QSERV_UTIL_RAII_H
 
@@ -18,11 +39,10 @@ namespace lsst::qserv::util {
  * destroyed.
  */
 template <typename T>
-requires std::is_trivially_copyable_v<T>
+    requires(std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_const_v<T>)
 class RaiiCounter : public std::enable_shared_from_this<RaiiCounter<T>> {
 public:
     using Ptr = std::shared_ptr<RaiiCounter<T>>;
-
 
     RaiiCounter(RaiiCounter const&) = delete;
     virtual ~RaiiCounter() = default;
@@ -47,6 +67,7 @@ public:
         Raii& operator=(Raii const&) = delete;
 
         friend class RaiiCounter<T>;
+
     private:
         Raii(RaiiCounter::Ptr target) : _target(target) { ++(_target->_count); }
         RaiiCounter::Ptr _target;
@@ -54,20 +75,20 @@ public:
 
     using RaiiPtr = std::shared_ptr<RaiiCounter<T>::Raii>;
 
-    /** Return a shared pointer to a new Raii object increase _counter when created
-     * and decrease _counter when destroyed.
+    /** Return a shared pointer to a new Raii object to increase _count when created
+     * and decrease _count when destroyed.
      */
     RaiiPtr createRaii() { return RaiiPtr(new Raii(getRaiiCounter())); }
 
     Ptr getRaiiCounter() { return this->shared_from_this(); }
 
+protected:
     RaiiCounter() = default;
     explicit RaiiCounter(std::string const& name) : _name(name) {}
     explicit RaiiCounter(T initialCount) : _count(initialCount) {}
     explicit RaiiCounter(std::string const& name, T initialCount) : _name(name), _count(initialCount) {}
 
-protected:
-    std::string const _name { "none" };
+    std::string const _name{"none"};
     std::atomic<T> _count{0};
 };
 

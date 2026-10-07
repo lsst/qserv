@@ -57,6 +57,48 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.UberJob");
 
 namespace lsst::qserv::qdisp {
 
+void UberJobStatus::updateInfo(std::string const& idMsg, State state, std::string const& source, int code,
+                               std::string const& desc, MessageSeverity severity) {
+    switch (state) {
+        case qmeta::JobStatus::REQUEST:
+            _ujState = UJStateRequest::create();
+            break;
+        case qmeta::JobStatus::RESPONSE_READY:
+            _ujState = UJStateResponseReady::create();
+            break;
+        case qmeta::JobStatus::RESPONSE_DONE:
+            _ujState = UJStateDone::create();
+            break;
+        case qmeta::JobStatus::RESPONSE_ERROR:
+            _ujState = UJStateResponseError::create();
+            break;
+        case qmeta::JobStatus::CANCEL:
+            _ujState = UJStateCancelled::create();
+            break;
+        case qmeta::JobStatus::COMPLETE:
+            _ujState = UJStateComplete::create();
+            break;
+        case qmeta::JobStatus::UNKNOWN:
+            [[fallthrough]];
+        case qmeta::JobStatus::RESPONSE_DATA:
+            [[fallthrough]];
+        case qmeta::JobStatus::RESPONSE_DATA_NACK:
+            [[fallthrough]];
+
+        case qmeta::JobStatus::RESULT_ERROR:
+            [[fallthrough]];
+        case qmeta::JobStatus::MERGE_ERROR:
+            [[fallthrough]];
+        case qmeta::JobStatus::RETRY_ERROR:
+            [[fallthrough]];
+
+        default:
+            _ujState = UJStateUnexpected::create();
+            break;
+    }
+    JobStatus::updateInfo(idMsg, state, source, code, desc, severity);
+}
+
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              std::shared_ptr<ResponseHandler> const& respHandler, int uberJobId,
                              CzarId czarId, protojson::WorkerContactInfo::Ptr const& workerContactInfo,
@@ -275,6 +317,7 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInf
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileUrlInfo_.fileSize);
     bool const statusSet =
             setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrlInfo_.fileUrl);
+
     // During flaky communications, it's possible to get messages out of order, which can make for a real
     // mess. Going to err on the side of caution and give up if things are not as expected.
     if (!statusSet) {
