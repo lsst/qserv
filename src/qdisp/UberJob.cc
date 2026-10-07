@@ -57,45 +57,41 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.UberJob");
 
 namespace lsst::qserv::qdisp {
 
-void UberJobStatus::updateInfo(std::string const& idMsg, State state, std::string const& source, int code,
-                               std::string const& desc, MessageSeverity severity) {
+UJState::Ptr UJState::create(qmeta::JobStatus::State state) {
     switch (state) {
         case qmeta::JobStatus::REQUEST:
-            _ujState = UJStateRequest::create();
-            break;
+            return UJState::create("Request", CzarStats::get()->getNumRequestUberJobs());
         case qmeta::JobStatus::RESPONSE_READY:
-            _ujState = UJStateResponseReady::create();
-            break;
+            return UJState::create("ResponseReady", CzarStats::get()->getNumResponseReadyUberJobs());
         case qmeta::JobStatus::RESPONSE_DONE:
-            _ujState = UJStateDone::create();
-            break;
+            return UJState::create("Done", CzarStats::get()->getNumDoneUberJobs());
         case qmeta::JobStatus::RESPONSE_ERROR:
-            _ujState = UJStateResponseError::create();
-            break;
+            return UJState::create("ResponseError", CzarStats::get()->getNumResponseErrorUberJobs());
         case qmeta::JobStatus::CANCEL:
-            _ujState = UJStateCancelled::create();
-            break;
+            return UJState::create("Cancelled", CzarStats::get()->getNumCancelledUberJobs());
         case qmeta::JobStatus::COMPLETE:
-            _ujState = UJStateComplete::create();
-            break;
+            return UJState::create("Complete", CzarStats::get()->getNumCompleteUberJobs());
+
         case qmeta::JobStatus::UNKNOWN:
             [[fallthrough]];
         case qmeta::JobStatus::RESPONSE_DATA:
             [[fallthrough]];
         case qmeta::JobStatus::RESPONSE_DATA_NACK:
             [[fallthrough]];
-
         case qmeta::JobStatus::RESULT_ERROR:
             [[fallthrough]];
         case qmeta::JobStatus::MERGE_ERROR:
             [[fallthrough]];
         case qmeta::JobStatus::RETRY_ERROR:
             [[fallthrough]];
-
         default:
-            _ujState = UJStateUnexpected::create();
-            break;
+            return UJState::create("Unexpected", CzarStats::get()->getNumUnexpectedUberJobs());
     }
+}
+
+void UberJobStatus::updateInfo(std::string const& idMsg, State state, std::string const& source, int code,
+                               std::string const& desc, MessageSeverity severity) {
+    _ujState = UJState::create(state);
     JobStatus::updateInfo(idMsg, state, source, code, desc, severity);
 }
 
@@ -365,6 +361,7 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInf
 void UberJob::workerError(util::MultiError const& multiErr_, protojson::ExecutiveRespMsg& execRespMsg) {
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " multiErr=" << multiErr_);
 
+    setStatusIfOk(qmeta::JobStatus::RESPONSE_ERROR, cName(__func__) + " " + multiErr_.toOneLineString());
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << multiErr_);

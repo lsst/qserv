@@ -50,7 +50,10 @@ class JobQuery;
 class UJState {
 public:
     using Ptr = std::shared_ptr<UJState>;
-    // objects of this class are created by derived classes.
+    static Ptr create(qmeta::JobStatus::State state);
+    static Ptr create(std::string const& name_, CzarStats::RaiiC::Ptr const& raiiCounter_) {
+        return Ptr(new UJState(name_, raiiCounter_));
+    }
     virtual ~UJState() = default;
     std::string const name;
     CzarStats::RaiiC::RaiiPtr const raiiPtr;
@@ -63,105 +66,25 @@ protected:
     UJState& operator=(UJState const&) = delete;
 };
 
-class UJStateCreated : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateCreated>;
-    static Ptr create() { return Ptr(new UJStateCreated()); }
-    ~UJStateCreated() override = default;
-
-private:
-    UJStateCreated() : UJState("Created", CzarStats::get()->getNumCreatedUberJobs()) {}
-};
-
-class UJStateRequest : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateRequest>;
-    static Ptr create() { return Ptr(new UJStateRequest()); }
-    ~UJStateRequest() override = default;
-
-private:
-    UJStateRequest() : UJState("Request", CzarStats::get()->getNumRequestUberJobs()) {}
-};
-
-class UJStateResponseReady : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateResponseReady>;
-    static Ptr create() { return Ptr(new UJStateResponseReady()); }
-    ~UJStateResponseReady() override = default;
-
-private:
-    UJStateResponseReady() : UJState("ResponseReady", CzarStats::get()->getNumResponseReadyUberJobs()) {}
-};
-
-class UJStateResponseError : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateResponseError>;
-    static Ptr create() { return Ptr(new UJStateResponseError()); }
-    ~UJStateResponseError() override = default;
-
-private:
-    UJStateResponseError() : UJState("ResponseError", CzarStats::get()->getNumResponseErrorUberJobs()) {}
-};
-
-class UJStateDone : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateDone>;
-    static Ptr create() { return Ptr(new UJStateDone()); }
-    ~UJStateDone() override = default;
-
-private:
-    UJStateDone() : UJState("Done", CzarStats::get()->getNumDoneUberJobs()) {}
-};
-
-class UJStateCancelled : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateCancelled>;
-    static Ptr create() { return Ptr(new UJStateCancelled()); }
-    ~UJStateCancelled() override = default;
-
-private:
-    UJStateCancelled() : UJState("Cancelled", CzarStats::get()->getNumCancelledUberJobs()) {}
-};
-
-class UJStateComplete : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateComplete>;
-    static Ptr create() { return Ptr(new UJStateComplete()); }
-    ~UJStateComplete() override = default;
-
-private:
-    UJStateComplete() : UJState("Complete", CzarStats::get()->getNumCompleteUberJobs()) {}
-};
-
-class UJStateUnexpected : public UJState {
-public:
-    using Ptr = std::shared_ptr<UJStateUnexpected>;
-    static Ptr create() { return Ptr(new UJStateUnexpected()); }
-    ~UJStateUnexpected() override = default;
-
-private:
-    UJStateUnexpected() : UJState("Unexpected", CzarStats::get()->getNumUnexpectedUberJobs()) {}
-};
-
 /** This class contains state information for an UberJob.
  * The JobStatus values are expected to always advance in the order
- * of REQUEST, RESPONSE_READY, {RESPONSE_DONE or CANCEL}, COMPLETE.
+ * of REQUEST, RESPONSE_READY, RESPONSE_DONE, CANCEL, COMPLETE.
  * Trying to change to an earlier state are ignored as are attempts
- * to change to the existing state. An UberJob that has state
- * RESPONSE_DONE cannot be changed to CANCEL, and the reverse is true.
+ * to change to the existing state.
  */
 class UberJobStatus : public qmeta::JobStatus {
 public:
     using Ptr = std::shared_ptr<UberJobStatus>;
     UberJobStatus() : qmeta::JobStatus() {}
 
-    virtual ~UberJobStatus() = default;
+    ~UberJobStatus() override = default;
 
     void updateInfo(std::string const& idMsg, State s, std::string const& source, int code,
                     std::string const& desc, MessageSeverity severity) override;
 
 private:
-    UJState::Ptr _ujState{UJStateCreated::create()};  ///< Current state of this UberJob.
+    /// Current state of this UberJob.
+    UJState::Ptr _ujState{UJState::create("Created", CzarStats::get()->getNumCreatedUberJobs())};
 };
 
 /// This class is a contains x number of jobs that need to go to the same worker

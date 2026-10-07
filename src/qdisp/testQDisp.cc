@@ -41,6 +41,7 @@
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/UberJob.h"
 #include "qmeta/QProgress.h"
 #include "qmeta/QProgressHistory.h"
 #include "qmeta/MessageStore.h"
@@ -360,6 +361,35 @@ BOOST_AUTO_TEST_CASE(Executive) {
     done = true;
     timeoutT.join();
     LOGS_INFO("Executive test end");
+}
+
+BOOST_AUTO_TEST_CASE(StatusCounting) {
+    auto createdUJ = globalCzarStats->getNumCreatedUberJobs();
+    LOGS(_log, LOG_LVL_INFO, "createdcount=" << createdUJ->getCount());
+    BOOST_CHECK(createdUJ->getCount() == 0);
+
+    lsst::qserv::qdisp::UberJobStatus ujStatus;
+    BOOST_CHECK(createdUJ->getCount() == 1);
+
+    ujStatus.updateInfo("a", qmeta::JobStatus::REQUEST, "source", 0, "desc", lsst::qserv::MSG_INFO);
+    BOOST_CHECK(createdUJ->getCount() == 0);
+    auto requestUJ = globalCzarStats->getNumRequestUberJobs();
+    BOOST_CHECK(requestUJ->getCount() == 1);
+
+    ujStatus.updateInfo("b", qmeta::JobStatus::RESPONSE_READY, "source", 0, "desc", lsst::qserv::MSG_INFO);
+    BOOST_CHECK(requestUJ->getCount() == 0);
+    auto responseReadyUJ = globalCzarStats->getNumResponseReadyUberJobs();
+    BOOST_CHECK(responseReadyUJ->getCount() == 1);
+
+    ujStatus.updateInfo("c", qmeta::JobStatus::RESPONSE_DONE, "source", 0, "desc", lsst::qserv::MSG_INFO);
+    BOOST_CHECK(responseReadyUJ->getCount() == 0);
+    auto doneUJ = globalCzarStats->getNumDoneUberJobs();
+    BOOST_CHECK(doneUJ->getCount() == 1);
+
+    ujStatus.updateInfo("d", qmeta::JobStatus::COMPLETE, "source", 0, "desc", lsst::qserv::MSG_INFO);
+    BOOST_CHECK(doneUJ->getCount() == 0);
+    auto completeUJ = globalCzarStats->getNumCompleteUberJobs();
+    BOOST_CHECK(completeUJ->getCount() == 1);
 }
 
 BOOST_AUTO_TEST_CASE(MessageStore) {
