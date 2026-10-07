@@ -52,9 +52,6 @@ In case of successful completion the service returns the following object:
 
     {   "locations" : [
             {   "worker" :         <string>,
-                "host" :           <string>,
-                "host_name" :      <string>,
-                "port" :           <number>,
                 "http_host" :      <string>,
                 "http_host_name" : <string>,
                 "http_port" :      <number>
@@ -105,31 +102,44 @@ Where the request object has the following schema, in which a client would have 
 
 .. code-block::
 
-    {   "database" : <string>,
-        "chunk" :    <number>
+    {   "database" :                <string>,
+        "chunk" :                   <number>,
+        "include_connection_info" : <number>
     }
 
 The service also supports an alternative method accepting a transaction identifier (transactions are always associated with the corresponding databases):
 
 .. code-block::
 
-    {   "transaction_id" : <number>,
-        "chunk" :          <number>
+    {   "transaction_id" :          <number>,
+        "chunk" :                   <number>,
+        "include_connection_info" : <number>
     }
 
-If a request succeeded, the System would respond with the following JSON object:
+**Note** The ``include_connection_info`` flag is optional. The default value is ``1``.
+
+A schema of the response object depends on whether the request included the connection information flag. If the flag is set,
+the response will include connection details for the worker node as illustrated below.
 
 .. code-block::
 
     {   "location" : {
             "chunk" :          <number>,
             "worker" :         <string>,
-            "host" :           <string>,
-            "host_name" :      <string>,
-            "port" :           <number>,
             "http_host" :      <string>,
             "http_host_name" : <string>,
             "http_port" :      <number>
+        },
+        ...
+    }
+
+Otherwise, if the connection information flag is set to ``0``, the response will only include the basic location details:
+
+.. code-block::
+
+    {   "location" : {
+            "chunk" :  <number>,
+            "worker" : <string>
         },
         ...
     }
@@ -158,33 +168,45 @@ Where the request object has the following schema, in which a client would have 
 
 .. code-block::
 
-    {   "database" : <string>,
-        "chunk" :    <number>
+    {   "database" :                <string>,
+        "chunk" :                   <number>,
+        "include_connection_info" : <number>
     }
 
 The service also supports an alternative method accepting a transaction identifier (transactions are always associated with the corresponding databases):
 
 .. code-block::
 
-    {   "transaction_id" : <number>,
-        "chunk" :          <number>
+    {   "transaction_id" :          <number>,
+        "chunk" :                   <number>,
+        "include_connection_info" : <number>
     }
 
-**Note** the difference in the object schema - unlike the single-chunk allocator, this one expects an array of chunk numbers.
+**Note** The ``include_connection_info`` flag is optional. The default value is ``1``.
 
-If a request succeeded, the System would respond with the following JSON object:
+A schema of the response object depends on whether the request included the connection information flag. If the flag is set,
+the response will include connection details for the worker node as illustrated below.
 
 .. code-block::
 
     {   "locations" : [
             {   "chunk" :          <number>,
                 "worker" :         <string>,
-                "host" :           <string>,
-                "host_name" :      <string>,
-                "port" :           <number>,
                 "http_host" :      <string>,
                 "http_host_name" : <string>,
                 "http_port" :      <number>
+            },
+            ...
+        ]
+    }
+
+Otherwise, if the connection information flag is set to ``0``, the response will only include the basic location details:
+
+.. code-block::
+
+    {   "locations" : [
+            {   "chunk" :  <number>,
+                "worker" : <string>
             },
             ...
         ]
@@ -214,8 +236,9 @@ Where the request object has the following schema, in which a client would have 
 
 .. code-block::
 
-    {   "database" : <string>,
-        "chunks" :   [<number>, <number>, ... <number>]
+    {   "database" :               <string>,
+        "chunks" :                 [<number>, <number>, ... <number>],
+        "include_connection_info" : <number>
     }
 
 Like the above-explained case of other chunk allocation service, this one also supports an alternative method accepting
@@ -223,25 +246,38 @@ a transaction identifier (transactions are always associated with the correspond
 
 .. code-block::
 
-    {   "transaction_id" : <number>,
-        "chunks" :        [<number>, <number>, ... <number>]
+    {   "transaction_id" :         <number>,
+        "chunks" :                 [<number>, <number>, ... <number>],
+        "include_connection_info" : <number>
     }
 
-**Note** the difference in the object schema - unlike the single-chunk allocator, this one expects an array of chunk numbers.
+**Note** The ``include_connection_info`` flag is optional. The default value is ``1``.
 
-The resulting object  has the following schema:
+**Note** Unlike the single-chunk allocator, the request object expects an array of chunk numbers.
+
+A schema of the response object depends on whether the request included the connection information flag. If the flag is set,
+the response will include connection details for the worker node as illustrated below.
 
 .. code-block::
 
     {   "locations" : [
             {   "chunk" :          <number>,
                 "worker" :         <string>,
-                "host" :           <string>,
-                "host_name" :      <string>,
-                "port" :           <number>,
                 "http_host" :      <string>,
                 "http_host_name" : <string>,
                 "http_port" :      <number>
+            },
+            ...
+        ]
+    }
+
+Otherwise, if the connection information flag is set to ``0``, the response will only include the basic location details:
+
+.. code-block::
+
+    {   "locations" : [
+            {   "chunk" :  <number>,
+                "worker" : <string>
             },
             ...
         ]
@@ -271,8 +307,10 @@ Where the request object has the following schema, in which a client would have 
 
 .. code-block::
 
-    {   "database" : <string>,
-        "chunks" :   [<number>, <number>, ... <number>]
+    {   "database" :                <string>,
+        "chunks" :                  [<number>, <number>, ... <number>],
+        "include_connection_info" : <number>
+
     }
 
 Like the above-explained case of other chunk allocation services, this one also supports an alternative method accepting
@@ -280,26 +318,39 @@ a transaction identifier (transactions are always associated with the correspond
 
 .. code-block::
 
-    {   "transaction_id" : <number>,
-        "chunks" :        [<number>, <number>, ... <number>]
+    {   "transaction_id" :          <number>,
+        "chunks" :                  [<number>, <number>, ... <number>],
+        "include_connection_info" : <number>
     }
 
-**Note** the difference in the object schema - unlike the single-chunk allocator, this one expects an array of chunk numbers, where
+**Note** The ``include_connection_info`` flag is optional. The default value is ``1``.
+
+**Note** the difference in the response object schema - unlike the single-chunk allocator, this one expects an array of chunk numbers, where
 each chunk may have multiple replicas. In the later case the service will return multiple entries for the same chunk number.
 
-The resulting object  has the following schema:
+A schema of the response object depends on whether the request included the connection information flag. If the flag is set,
+the response will include connection details for the worker node as illustrated below.
 
 .. code-block::
 
     {   "locations" : [
             {   "chunk" :          <number>,
                 "worker" :         <string>,
-                "host" :           <string>,
-                "host_name" :      <string>,
-                "port" :           <number>,
                 "http_host" :      <string>,
                 "http_host_name" : <string>,
                 "http_port" :      <number>
+            },
+            ...
+        ]
+    }
+
+Otherwise, if the connection information flag is set to ``0``, the response will only include the basic location details:
+
+.. code-block::
+
+    {   "locations" : [
+            {   "chunk" :  <number>,
+                "worker" : <string>
             },
             ...
         ]
