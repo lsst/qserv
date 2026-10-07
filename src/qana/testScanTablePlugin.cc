@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2026 LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +18,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// System headers
+#include <memory>
+#include <string>
+
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
+#include "ccontrol/HyriseAdapter.h"
 #include "css/CssAccess.h"
 #include "css/ScanTableParams.h"
 #include "qana/ScanTablePlugin.h"
@@ -62,7 +67,7 @@ struct TestFixture {
     query::ScanInfo::Ptr runScanTablePlugin(std::string const& query, int interactiveChunkLimit = 0,
                                             int chunkCount = 0) {
         query::SelectStmt::Ptr selectStmt;
-        BOOST_REQUIRE_NO_THROW(selectStmt = ccontrol::ParseRunner::makeSelectStmt(query));
+        BOOST_REQUIRE_NO_THROW(selectStmt = ccontrol::HyriseAdapter::makeSelectStmt(query));
         BOOST_REQUIRE(selectStmt != nullptr);
 
         query::TestFactory factory;

@@ -53,10 +53,8 @@ JOIN) with row-counter data available in `qservMeta.<db>__<table>__rows` becomes
 
 ## Parsing → IR
 
-Build-time choice (`QSERV_USE_HYRISE_SQL_PARSER`, default ON): the Hyrise parser
-(`extern/hyrise-sql-parser` + `ccontrol/HyriseAdapter`, ~800 lines of conversion) or
-the legacy ANTLR4 grammar (`parser/*.g4` + `ccontrol/ParseListener`). Both produce the
-same IR: `query::SelectStmt` owning SelectList, FromList (TableRef/JoinRef), WhereClause
+The Hyrise parser (`extern/hyrise-sql-parser`) and `ccontrol/HyriseAdapter` produce
+the IR: `query::SelectStmt` owning SelectList, FromList (TableRef/JoinRef), WhereClause
 (BoolTerm tree + a *restrictor side-channel* where `qserv_areaspec_box|circle|ellipse|
 poly` hints are lifted), OrderBy/GroupBy/Having, DISTINCT, LIMIT. `query::ValueExpr` /
 `ValueFactor` model expressions; `query::QueryTemplate` renders IR to SQL text with
@@ -179,8 +177,8 @@ live in `resultdb` (`qservResult`), not qmeta.
 
 ## Gotchas
 
-- The ANTLR path still compiles and behaves differently for non-SELECT statements;
-  don't assume Hyrise-only semantics when touching `UserQueryFactory`.
+- `UserQueryFactory` classifies administrative statements with `UserQueryType`;
+  SELECT statements are parsed through `HyriseAdapter`.
 - ORDER BY without LIMIT never reaches workers or the merge — only the final result
   query orders. `copyMerge()` deliberately drops ORDER BY.
 - The COUNT(\*) shortcut silently depends on row counters having been deployed at

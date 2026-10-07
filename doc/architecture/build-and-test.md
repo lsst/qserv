@@ -7,9 +7,7 @@ they diverge; update this doc when you change the code.*
 
 CMake at the root builds `src/` (one static-ish library + test binaries per module
 directory, wired together into the final executables) plus the vendored submodules in
-`extern/` (`sphgeom` spatial library, `log`, `hyrise-sql-parser`). The
-`QSERV_USE_HYRISE_SQL_PARSER` option (default `ON`) selects the Hyrise-based SQL parser
-for SELECT statements over the legacy ANTLR4 one.
+`extern/` (`sphgeom` spatial library, `log`, `hyrise-sql-parser`).
 
 You never run cmake on the host. The `./bin/qserv` CLI
 (`python/lsst/qserv/admin/qservCli/`) wraps every step in Docker:
@@ -36,7 +34,7 @@ Python tooling under `/usr/local/python`, entered via `entrypoint`.
 1. **C++ unit tests** — Boost.Test `test*.cc` files in each `src/<module>/`,
    registered with CTest; run by `make test` inside the build container or
    `ctest -R <name>` in `build/`. Notable suites: `qproc/testQueryAna*` (query
-   analysis golden tests), `ccontrol/testAntlr4GeneratedIR` / `testHyriseGeneratedIR` /
+   analysis golden tests), `ccontrol/testHyriseGeneratedIR` /
    `testParserCorpus` (parser → IR corpus tests, with a `.sql` stress corpus in
    `ccontrol/testdata/`), `wsched/testSchedulers`. A few suites need a live MySQL and
    are excluded from CTest (e.g. `qmeta/testQMeta` — its `add_test` is commented out).

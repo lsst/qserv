@@ -4,10 +4,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(ANTLR_EXECUTABLE /usr/share/java/antlr-4.13.2-complete.jar)
-find_package(ANTLR REQUIRED)
-find_package(antlr4-runtime REQUIRED)
-
 find_package(Boost REQUIRED NO_MODULE COMPONENTS
     filesystem REQUIRED
     program_options REQUIRED
@@ -63,7 +59,6 @@ add_subdirectory(czar)
 add_subdirectory(global)
 add_subdirectory(http)
 add_subdirectory(mysql)
-add_subdirectory(parser)
 add_subdirectory(partition)
 add_subdirectory(protojson)
 add_subdirectory(proxy)

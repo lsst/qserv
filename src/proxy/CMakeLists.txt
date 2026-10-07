@@ -19,7 +19,6 @@ target_link_libraries(czarProxy PRIVATE
     cconfig
     ccontrol
     czar
-    parser
     qana
     query
     qdisp

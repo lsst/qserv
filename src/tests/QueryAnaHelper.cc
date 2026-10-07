@@ -1,9 +1,11 @@
 /*
- * LSST Data Management System
- * Copyright 2009-2017 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,9 +17,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,7 +33,10 @@
 #include "QueryAnaHelper.h"
 
 // System headers
-// #include <memory>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 // Third-party headers
 
@@ -40,7 +44,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "parser/ParseException.h"
 #include "qproc/ChunkSpec.h"
 #include "query/AreaRestrictor.h"
 #include "query/QueryTemplate.h"
