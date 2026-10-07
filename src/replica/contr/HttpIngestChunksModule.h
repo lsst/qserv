@@ -132,11 +132,14 @@ private:
      * @param databaseInfo The database the chunk belongs to.
      * @param existingReplicas The list of existing replicas for the chunk in the given database.
      *  This is used to optimize the selection of workers for chunk placements.
+     * @param includeConnectionInfo The optional flag indicating whether connection information (host,
+     *  port, etc.) should be included in the output.
      * @return The number of new replicas registered for the chunk.
      */
     size_t _addChunk(std::map<std::string, size_t>& worker2replicasCache, nlohmann::json& locations,
                      unsigned int const chunk, DatabaseInfo const& databaseInfo,
-                     std::vector<ReplicaInfo> const& existingReplicas) const;
+                     std::vector<ReplicaInfo> const& existingReplicas,
+                     bool includeConnectionInfo = true) const;
 
     /**
      * Register new replica of a chunk.
