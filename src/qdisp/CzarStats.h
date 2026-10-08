@@ -1,11 +1,12 @@
 // -*- LSST-C++ -*-
-
 /*
- * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef LSST_QSERV_QDISP_CZARSTATS_H
 #define LSST_QSERV_QDISP_CZARSTATS_H
@@ -39,6 +39,7 @@
 #include "global/intTypes.h"
 #include "util/Histogram.h"
 #include "util/Mutex.h"
+#include "util/Raii.h"
 
 // Third party headers
 #include <nlohmann/json.hpp>
@@ -148,6 +149,20 @@ public:
     /// Get a json object describing the current transmit/merge stats for this czar.
     nlohmann::json getTransmitStatsJson() const;
 
+    /// Get a json object describing UberJob stats.
+    nlohmann::json getUberJobStatsJson() const;
+
+    typedef util::RaiiCounter<std::int64_t> RaiiC;
+    RaiiC::Ptr getNumTotalUberJobs() { return _numTotalUberJobs; }
+    RaiiC::Ptr getNumCreatedUberJobs() { return _numCreatedUberJobs; }
+    RaiiC::Ptr getNumRequestUberJobs() { return _numRequestUberJobs; }
+    RaiiC::Ptr getNumResponseReadyUberJobs() { return _numResponseReadyUberJobs; }
+    RaiiC::Ptr getNumResponseErrorUberJobs() { return _numResponseErrorUberJobs; }
+    RaiiC::Ptr getNumDoneUberJobs() { return _numDoneUberJobs; }
+    RaiiC::Ptr getNumCancelledUberJobs() { return _numCancelledUberJobs; }
+    RaiiC::Ptr getNumCompleteUberJobs() { return _numCompleteUberJobs; }
+    RaiiC::Ptr getNumUnexpectedUberJobs() { return _numUnexpectedUberJobs; }
+
 private:
     CzarStats(std::shared_ptr<util::QdispPool> const& qdispPool);
 
@@ -189,6 +204,34 @@ private:
     std::atomic<uint64_t> _numJobs{0};          ///< The current number of incomplete jobs across all queries
     std::atomic<uint64_t> _numResultFiles{0};   ///< The current number of the result files being read
     std::atomic<uint64_t> _numResultMerges{0};  ///< The current number of the results being merged
+
+    /// UberJob counts
+    std::map<std::string, RaiiC::Ptr> _uberJobCounters;  ///< Map of UberJob counters by name
+    RaiiC::Ptr addToMap(std::string const& name) {
+        auto iter = _uberJobCounters.find(name);
+        assert(iter == _uberJobCounters.end());
+        auto raiiC = RaiiC::create(name);
+        _uberJobCounters[name] = raiiC;
+        return raiiC;
+    }
+    /// The total number of existing UberJobs for all queries
+    RaiiC::Ptr _numTotalUberJobs = addToMap("numTotalUberJobs");
+    /// The current number of UberJobs created but not sent
+    RaiiC::Ptr _numCreatedUberJobs = addToMap("numCreatedUberJobs");
+    /// The current number of UberJobs sent to workers
+    RaiiC::Ptr _numRequestUberJobs = addToMap("numRequestUberJobs");
+    /// The current number of UberJobs that need to collect results
+    RaiiC::Ptr _numResponseReadyUberJobs = addToMap("numResponseReadyUberJobs");
+    /// The current number of UberJobs have response errors
+    RaiiC::Ptr _numResponseErrorUberJobs = addToMap("numResponseErrorUberJobs");
+    /// The current number of UberJobs that are done and have results on the czar
+    RaiiC::Ptr _numDoneUberJobs = addToMap("numDoneUberJobs");
+    /// The current number of UberJobs that have been cancelled
+    RaiiC::Ptr _numCancelledUberJobs = addToMap("numCancelledUberJobs");
+    /// The current number of UberJobs that are complete
+    RaiiC::Ptr _numCompleteUberJobs = addToMap("numCompleteUberJobs");
+    /// This should always be zero as nothing is expected to be in this state.
+    RaiiC::Ptr _numUnexpectedUberJobs = addToMap("numUnexpectedUberJobs");
 };
 
 }  // namespace lsst::qserv::qdisp

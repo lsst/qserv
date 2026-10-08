@@ -75,8 +75,9 @@ json HttpMonitorModule::_status() {
     debug(__func__);
     checkApiVersion(__func__, 29);
     auto const stats = qdisp::CzarStats::get();
-    return json::object(
-            {{"qdisp_stats", stats->getQdispStatsJson()}, {"transmit_stats", stats->getTransmitStatsJson()}});
+    return json::object({{"qdisp_stats", stats->getQdispStatsJson()},
+                         {"transmit_stats", stats->getTransmitStatsJson()},
+                         {"uberjob_stats", stats->getUberJobStatsJson()}});
 }
 
 json HttpMonitorModule::_queryProgress() {

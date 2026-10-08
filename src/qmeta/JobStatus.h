@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2015 LSST Corporation.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef LSST_QSERV_QMETA_JOBSTATUS_H
 #define LSST_QSERV_QMETA_JOBSTATUS_H
@@ -53,6 +54,8 @@ public:
     using Clock = std::chrono::system_clock;
     using TimeType = std::chrono::time_point<Clock>;
     JobStatus() {}
+
+    virtual ~JobStatus() = default;
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
@@ -94,8 +97,8 @@ public:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(std::string const& idMsg, State s, std::string const& source, int code,
-                    std::string const& desc, MessageSeverity severity);
+    virtual void updateInfo(std::string const& idMsg, State s, std::string const& source, int code,
+                            std::string const& desc, MessageSeverity severity);
 
     /// Same as updateInfo() except existing error states are not overwritten.
     /// @see updateInfo()
