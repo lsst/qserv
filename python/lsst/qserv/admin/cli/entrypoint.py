@@ -176,8 +176,7 @@ commands = OrderedDict(
             "worker-repl",
             CommandInfo(
                 "qserv-replica-worker "
-                "--qserv-worker-db={{db_admin_uri}} "
-                "--config={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}"
+                "{% for arg in extended_args %}{{arg}}  {% endfor %}"
             ),
         ),
         (
@@ -191,9 +190,6 @@ commands = OrderedDict(
             "replication-controller",
             CommandInfo(
                 "qserv-replica-master-http "
-                "--config={{db_uri}} "
-                "--http-root={{http_root}} "
-                "--qserv-czar-db={{qserv_czar_db}} "
                 "{% for arg in extended_args %}{{arg}} {% endfor %}"
             ),
         ),
@@ -201,7 +197,6 @@ commands = OrderedDict(
             "replication-registry",
             CommandInfo(
                 "qserv-replica-registry "
-                "--config={{db_uri}} "
                 "{% for arg in extended_args %}{{arg}} {% endfor %}"
             ),
         ),
@@ -868,18 +863,8 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
     cls=EntrypointCommandExArgs,
 )
 @pass_context
-@option_db_admin_uri(
-    help="The admin URI to the worker's database, used for replication and ingest. " + socket_option_help
-)
-@option_repl_connection(help=f"{option_repl_connection.keywords['help']} {socket_option_help}")
 @option_debug()
 @options_cms()
-@click.option(
-    "--config",
-    help="The path to the configuration database for qserv-replica-worker.",
-    default="{{repl_connection}}",
-    show_default=True,
-)
 @option_log_cfg_file()
 @options_targs()
 @option_run()
@@ -888,8 +873,6 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     targs = utils.targs(ctx)
     targs = render_targs(targs)
     script.enter_worker_repl(
-        db_admin_uri=targs["db_admin_uri"],
-        repl_connection=targs["repl_connection"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
         run=targs["run"],
@@ -917,13 +900,6 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
 )
 @option_log_cfg_file()
 @options_cms()
-@click.option(
-    "--http-root",
-    help="The root folder for the static content to be served by the built-in HTTP service.",
-    default="/usr/local/qserv/www",
-    show_default=True,
-)
-@click.option("--qserv-czar-db", help="The connection URL to the MySQL server of the Qserv master database.")
 @options_targs()
 @option_run()
 @option_options_file()
@@ -946,14 +922,6 @@ def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
     cls=EntrypointCommandExArgs,
 )
 @pass_context
-@option_db_uri(
-    help="The non-admin URI to the replication systems's database, used for non-smig purposes.",
-    required=True,
-)
-@option_db_admin_uri(
-    help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
-    required=True,
-)
 @option_log_cfg_file()
 @options_cms()
 @options_targs()
@@ -964,8 +932,6 @@ def replication_registry(ctx: click.Context, **kwargs: Any) -> None:
     targs = utils.targs(ctx)
     targs = render_targs(targs)
     script.enter_replication_registry(
-        db_uri=targs["db_uri"],
-        db_admin_uri=targs["db_admin_uri"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
         run=targs["run"],

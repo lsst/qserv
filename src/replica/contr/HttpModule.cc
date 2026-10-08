@@ -26,7 +26,7 @@
 #include "css/CssAccess.h"
 #include "http/Auth.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/ServiceManagementJob.h"
@@ -50,21 +50,21 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModule");
 namespace lsst::qserv::replica {
 
 HttpModule::HttpModule(Controller::Ptr const& controller, string const& taskName,
-                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp)
+                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
         : EventLogger(controller, taskName),
-          http::QhttpModule(controller->serviceProvider()->httpAuthContext(), req, resp),
-          _processorConfig(processorConfig) {}
+          http::QhttpModule(controller->serviceProvider()->config()->httpAuthContext(), req, resp) {}
 
 string HttpModule::context() const { return name() + " "; }
 
 database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string const& database) const {
-    return database::mysql::Connection::open(Configuration::qservCzarDbParams(database));
+    auto const config = controller()->serviceProvider()->config();
+    return database::mysql::Connection::open(config->qservCzarDbParams(database));
 }
 
 shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
+    auto const config = controller()->serviceProvider()->config();
     // Use all parmeters of the connection from the czar's MySQL connection parameters object.
-    auto const connectionParams = Configuration::qservCzarDbParams("qservCssData");
+    auto const connectionParams = config->qservCzarDbParams("qservCssData");
     map<string, string> cssConfig;
     cssConfig["technology"] = "mysql";
     // Address translation is required because CSS MySQL connector doesn't set
@@ -77,12 +77,12 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     return css::CssAccess::createFromConfig(cssConfig);
 }
 
-string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
-                                      unsigned int workerResponseTimeoutSec) const {
+string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+    auto const config = controller()->serviceProvider()->config();
     string const noParentJobId;
     auto const job = ServiceReconfigJob::create(
-            allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
+            allWorkers, config->get<unsigned int>("controller", "worker-config-timeout"), controller(),
+            noParentJobId, nullptr, config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
     job->wait();
@@ -152,7 +152,7 @@ DatabaseInfo HttpModule::getDatabaseFromParamOrThrow404(string const& func) {
         return controller()->serviceProvider()->config()->databaseInfo(databaseName);
     } catch (ConfigUnknownDatabase const&) {
         const string message =
-                "the database was not found in the Replication System's Configuration: " + databaseName;
+                "the database was not found in the Replication System's Config: " + databaseName;
         error(func, message);
         throw http::ErrorNotFound404(func, message);
     }
@@ -164,9 +164,8 @@ TableInfo HttpModule::getTableFromParamOrThrow404(string const& func, DatabaseIn
     try {
         return database.findTable(tableName);
     } catch (ConfigUnknownTable const&) {
-        const string message =
-                "the table was not found in the Replication System's Configuration: " + tableName +
-                " of the database: " + database.name;
+        const string message = "the table was not found in the Replication System's Config: " + tableName +
+                               " of the database: " + database.name;
         error(func, message);
         throw http::ErrorNotFound404(func, message);
     }

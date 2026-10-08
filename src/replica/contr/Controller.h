@@ -28,14 +28,18 @@
 
 // System headers
 #include <cstdint>
+#include <iosfwd>
 #include <memory>
+#include <string>
+#include <sys/types.h>  // pid_t
 
 // Qserv headers
 #include "replica/util/Common.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Request;
+class Messenger;
+class QservMgtServices;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
@@ -74,7 +78,6 @@ std::ostream& operator<<(std::ostream& os, ControllerIdentity const& identity);
  */
 class Controller : public std::enable_shared_from_this<Controller> {
 public:
-    friend class ControllerImpl;
     typedef std::shared_ptr<Controller> Ptr;
 
     static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider);
@@ -97,6 +100,15 @@ public:
      */
     void verifyFolders(bool createMissingFolders = false) const;
 
+    /// @return a reference to worker messenger service (configured for controllers)
+    std::shared_ptr<Messenger> messenger() const { return _messenger; }
+
+    /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
+    std::shared_ptr<QservMgtServices> qservMgtServices() const { return _qservMgtServices; }
+
+    /// Stop outstanding requests (if any).
+    void stop();
+
 private:
     explicit Controller(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
@@ -110,7 +122,13 @@ private:
 
     /// The number of milliseconds since UNIX Epoch when an instance of
     /// the Controller was created.
-    uint64_t const _startTime;
+    std::uint64_t const _startTime;
+
+    /// Worker messenger service
+    std::shared_ptr<Messenger> const _messenger;
+
+    /// Qserv management services
+    std::shared_ptr<QservMgtServices> const _qservMgtServices;
 };
 
 }  // namespace lsst::qserv::replica

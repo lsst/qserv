@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
@@ -137,7 +137,7 @@ void SqlJob::startImpl(replica::Lock const& lock) {
     // the number of the service processing threads at each worker multiplied
     // by the number of workers involved into the operation.
     size_t const maxRequestsPerWorker =
-            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
+            controller()->serviceProvider()->config()->get<size_t>("controller", "num-requests-per-worker");
 
     for (auto&& workerName : workerNames) {
         _resultData.resultSets[workerName] = list<SqlResultSet>();
@@ -154,7 +154,7 @@ void SqlJob::startImpl(replica::Lock const& lock) {
         _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     }
 
-    // In case if no workers or database are present in the Configuration
+    // In case if no workers or database are present in the Config
     // at this time.
     if (_requests.size() == 0) processResultAndFinish(lock, ExtendedState::SUCCESS);
 }

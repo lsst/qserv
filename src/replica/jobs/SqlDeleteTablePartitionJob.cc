@@ -23,7 +23,7 @@
 #include "replica/jobs/SqlDeleteTablePartitionJob.h"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/SqlDeleteTablePartitionRequest.h"
 #include "replica/services/DatabaseServices.h"
