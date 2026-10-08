@@ -61,7 +61,17 @@ function(CSSLoader,
         ];
         static _totals_data_rate = new Set(['totalBytesRecv']);
         static _qdisppool_columns = ['priority', 'running', 'size'];
-
+        static _uberjob_counters = [
+            'numTotalUberJobs',
+            'numCreatedUberJobs',
+            'numRequestUberJobs',
+            'numResponseReadyUberJobs',
+            'numResponseErrorUberJobs',
+            'numDoneUberJobs',
+            'numCancelledUberJobs',
+            'numCompleteUberJobs',
+            'numUnexpectedUberJobs'
+        ];
         _init() {
             if (this._initialized === undefined) this._initialized = false;
             if (this._initialized) return;
@@ -93,7 +103,7 @@ function(CSSLoader,
   </div>
 </div>
 <div class="row">
-  <div class="col col-md-5">
+  <div class="col col-md-3">
     <h4>Integrated Totals</h4>
     <table class="table table-sm table-hover fwk-qserv-czar-stats" id="fwk-qserv-czar-stats-totals">
       <thead class="thead-light">
@@ -129,7 +139,7 @@ function(CSSLoader,
       </tbody>
     </table>
   </div>
-  <div class="col col-md-4">
+  <div class="col col-md-3">
     <h4>Running Counters</h4>
     <table class="table table-sm table-hover fwk-qserv-czar-stats" id="fwk-qserv-czar-stats-counters">
       <thead class="thead-light">
@@ -150,8 +160,29 @@ function(CSSLoader,
       </tbody>
     </table>
   </div>
+  <div class="col col-md-3">
+    <h4>UberJob Counters</h4>
+    <table class="table table-sm table-hover fwk-qserv-czar-stats" id="fwk-qserv-czar-stats-uberjobs">
+      <thead class="thead-light">
+        <tr>
+          <th>&nbsp;</th>
+          <th style="text-align:right; width:3em;">current</th>
+          <th style="text-align:right; width:6em;">&Delta;</th>
+          <th style="text-align:right; width:6em;">s<sup>-1</sup></th>
+        </tr>
+      </thead>
+      <tbody>` + _.reduce(QservCzarStatistics._uberjob_counters, function(html, counter) { return html + `
+        <tr>
+          <td style="text-align:left" scope="row"><pre>${counter}</pre></td>
+          <th style="text-align:right"><pre id="${counter}">Loading...</pre></th>
+          <td style="text-align:right"><pre id="${counter}_delta" class="delta"></pre></td>
+          <td style="text-align:right"><pre id="${counter}_perf"  class="perf"></pre></td>
+        </tr>`; }, '') + `
+      </tbody>
+    </table>
+  </div>
   <div class="col">
-    <h4>QdispPool</h3>
+    <h4>QdispPool</h4>
     <table class="table table-sm table-hover fwk-qserv-czar-stats" id="fwk-qserv-czar-stats-qdisppool">
       <thead class="thead-light">
         <tr>` + _.reduce(QservCzarStatistics._qdisppool_columns, function(html, column) { return html + `
@@ -304,6 +335,10 @@ function(CSSLoader,
                 tbody.html('');
                 return;
             }
+            tbody = this._table('uberjobs').children('tbody');
+            if (_.isEmpty(data.uberjob_stats)) {
+                return;
+            }
             let that = this;
             const runTimeSec = Math.round((data.qdisp_stats.snapshotTimeMs - data.qdisp_stats.startTimeMs) / 1000);
             this._set('totals', 'runTime', QservCzarStatistics._elapsed(runTimeSec));
@@ -339,6 +374,17 @@ function(CSSLoader,
                     const deltaT = (data.qdisp_stats.snapshotTimeMs - that._prev.qdisp_stats.snapshotTimeMs) / 1000;
                     if (deltaT > 0) {
                         that._set_counter_perf('counters', counter, (deltaVal / deltaT).toFixed(0));
+                    }
+                }
+            });
+            _.each(QservCzarStatistics._uberjob_counters, function(counter) {
+                that._set_counter('uberjobs', counter, data.uberjob_stats[counter]);
+                if (!_.isUndefined(that._prev)) {
+                    const deltaVal = data.uberjob_stats[counter] - that._prev.uberjob_stats[counter];
+                    that._set_counter_delta('uberjobs', counter, deltaVal);
+                    const deltaT = (data.uberjob_stats.snapshotTimeMs - that._prev.uberjob_stats.snapshotTimeMs) / 1000;
+                    if (deltaT > 0) {
+                        that._set_counter_perf('uberjobs', counter, (deltaVal / deltaT).toFixed(0));
                     }
                 }
             });
