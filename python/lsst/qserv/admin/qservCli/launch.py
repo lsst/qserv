@@ -215,8 +215,8 @@ def cmake(
         The name of the user to run the build container as.
     run_cmake : `Optional`[`bool`]
         True if cmake should be run, False if not, or None if cmake should be
-        run if it has not been run before, determened by the absence/presence
-        of the build direcetory.
+        run if it has not been run before, determined by the absence/presence
+        of the build directory.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
@@ -419,8 +419,8 @@ def build(
         Same as the arguments to `make`
     run_cmake : `bool` or None
         True if cmake should be run, False if not, or None if cmake should be
-        run if it has not been run before, determened by the absence/presence
-        of the build direcetory.
+        run if it has not been run before, determined by the absence/presence
+        of the build directory.
     run_make : `bool`
         True if `make` should be called.
     run_mypy : `bool`
@@ -521,8 +521,8 @@ def build_docs(
         Indicates if linkcheck should be run.
     run_cmake : `Optional`[`bool`]
         True if cmake should be run, False if not, or None if cmake should be
-        run if it has not been run before, determened by the absence/presence
-        of the build direcetory.
+        run if it has not been run before, determined by the absence/presence
+        of the build directory.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
