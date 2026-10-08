@@ -20,10 +20,13 @@ ARG UID
 ARG GROUP
 ARG GID
 
-RUN OGROUP=$(getent group $GID | cut -d: -f1) && if [ "$OGROUP" != "" ]; then groupdel $OGROUP; fi
-RUN groupadd --gid $GID $GROUP
-RUN OUSER=$(getent passwd $UID | cut -d: -f1) && if [ "$OUSER" != "" ]; then userdel $OUSER; fi
-RUN useradd --uid $UID --gid $GROUP $USER
+RUN set -eu; \
+    OUSER=$(getent passwd "$UID" | cut -d: -f1); \
+    if [ -n "$OUSER" ]; then userdel "$OUSER"; fi; \
+    if getent passwd "$USER" > /dev/null; then userdel "$USER"; fi; \
+    groupadd --force --non-unique --gid "$GID" "$GROUP"; \
+    groupmod --non-unique --gid "$GID" "$GROUP"; \
+    useradd --uid "$UID" --gid "$GROUP" "$USER"
 
 USER $USER
 WORKDIR /home/$USER

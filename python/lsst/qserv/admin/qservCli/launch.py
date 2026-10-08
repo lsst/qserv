@@ -175,25 +175,27 @@ def doc_dir(qserv_root: str) -> str:
     return os.path.join(build_dir(qserv_root), "doc/html")
 
 
-def submodules_initalized(qserv_root: str) -> bool:
-    """Perform a very simple check to see if "git submodule update --init" has been
-    run yet.
+def check_submodules_initialized(qserv_root: str) -> None:
+    """Warn about uninitialized or mismatched submodules."""
+    try:
+        result = subprocess.run(
+            ["git", "submodule", "status", "--recursive"],
+            cwd=qserv_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        _log.warning("Unable to check submodule status: %s", exc)
+        return
 
-    Parameters
-    ----------
-    qserv_root : `str`
-        The path to the qserv sources (may be on the host machine or in a build
-        container).
-
-    Returns
-    -------
-    initialized : `bool`
-        True if the submodules appear to have been initialized already.
-    """
-    # This is a file that does not exist in a fresh pull of qserv, and will be
-    # populated when "git submodule update --init" is run.
-    f = "extern/sphgeom/CMakeLists.txt"
-    return os.path.exists(os.path.join(qserv_root, f))
+    for line in result.stdout.splitlines():
+        if line.startswith("+"):
+            _log.warning(
+                "Submodule HEAD differs from commit recorded in the repository: %s", line[1:]
+            )
+        elif line.startswith("-"):
+            _log.warning("Submodule not initialized: %s", line[1:])
 
 
 def cmake(
@@ -213,8 +215,8 @@ def cmake(
         The name of the user to run the build container as.
     run_cmake : `Optional`[`bool`]
         True if cmake should be run, False if not, or None if cmake should be
-        run if it has not been run before, determened by the absence/presence
-        of the build direcetory.
+        run if it has not been run before, determined by the absence/presence
+        of the build directory.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
@@ -417,8 +419,8 @@ def build(
         Same as the arguments to `make`
     run_cmake : `bool` or None
         True if cmake should be run, False if not, or None if cmake should be
-        run if it has not been run before, determened by the absence/presence
-        of the build direcetory.
+        run if it has not been run before, determined by the absence/presence
+        of the build directory.
     run_make : `bool`
         True if `make` should be called.
     run_mypy : `bool`
@@ -445,6 +447,8 @@ def build(
     """
     if pull_image and do_pull_image(qserv_image, dry):
         return
+
+    check_submodules_initialized(qserv_root)
 
     if clang_format_mode != "off":
         clang_format(clang_format_mode, qserv_root, qserv_build_root, user_build_image, user, dry)
@@ -517,8 +521,8 @@ def build_docs(
         Indicates if linkcheck should be run.
     run_cmake : `Optional`[`bool`]
         True if cmake should be run, False if not, or None if cmake should be
-        run if it has not been run before, determened by the absence/presence
-        of the build direcetory.
+        run if it has not been run before, determined by the absence/presence
+        of the build directory.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
@@ -768,6 +772,7 @@ def run_build(
     dry: bool,
 ) -> None:
     """Same as qserv_cli.run_build"""
+    check_submodules_initialized(qserv_root)
     rm = mode == "temp"  # rm only for the "temp" mode
     enter = mode == "temp"  # enter only for "temp" mode
     cmd = (
