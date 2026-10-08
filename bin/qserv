@@ -53,7 +53,7 @@ if __name__ == "__main__":
 def import_and_run() -> None:
     # import the qserv CLI function inside a handler for QservSubprocessError
     # because while qserv is being imported CLI objects are being created that
-    # run subprocesses in thieir init (e.g. git lookups), and these can cause
+    # run subprocesses in their init (e.g. git lookups), and these can cause
     # errors that require exiting
     try:
         from lsst.qserv.admin.qservCli.qserv_cli import qserv

@@ -401,7 +401,7 @@ def build_ssl_proxy_image(
 
 @qserv.command()
 @option_build_image(help=env_build_image.help("The name of the build base image to create."))
-@option_user_build_image(help=env_run_base_image.help("The name of the user build image to create."))
+@option_user_build_image(help=env_user_build_image.help("The name of the user build image to create."))
 @option_qserv_group()
 @option_run_base_image(help=env_run_base_image.help("The name of the run base image to create."))
 @option_mariadb_image(help=env_mariadb_image.help("The name of the mariadb image to create."))
