@@ -24,8 +24,10 @@ target_include_directories(czar PRIVATE
 target_link_libraries(czar PUBLIC
     cconfig
     http
+    partition
     qdisp
     qhttp
+    replica
     util
     log
     XrdSsiLib
@@ -48,8 +50,6 @@ function(CZAR_UTILS)
             czar
             global
             mysql
-            parser
-            partition
             qana
             qdisp
             qproc

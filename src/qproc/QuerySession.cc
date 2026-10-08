@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2012-2017 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,9 +18,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -35,24 +36,22 @@
 #include "qproc/QuerySession.h"
 
 // System headers
-#include <algorithm>
 #include <cassert>
-#include <cstddef>
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
+#include <exception>
+#include <ostream>
+#include <utility>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
+#include "ccontrol/HyriseAdapter.h"
+#include "ccontrol/ParseException.h"
 #include "css/CssAccess.h"
 #include "css/CssError.h"
 #include "css/EmptyChunks.h"
 #include "global/constants.h"
 #include "global/stringTypes.h"
-#include "parser/ParseException.h"
 #include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
@@ -67,14 +66,12 @@
 #include "qproc/DatabaseModels.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QueryProcessingBug.h"
-#include "qproc/SecondaryIndex.h"
-#include "query/AreaRestrictor.h"
 #include "query/QueryContext.h"
-#include "query/SecIdxRestrictor.h"
-#include "query/SelectList.h"
+#include "query/QueryTemplate.h"
 #include "query/SelectStmt.h"
 #include "query/typedefs.h"
 #include "sql/SqlException.h"
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
 using namespace std;
@@ -114,8 +111,8 @@ namespace lsst::qserv::qproc {
 
 std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const& statement) {
     try {
-        return ccontrol::ParseRunner::makeSelectStmt(statement);
-    } catch (parser::ParseException const& e) {
+        return ccontrol::HyriseAdapter::makeSelectStmt(statement);
+    } catch (ccontrol::ParseException const& e) {
         LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
         _original = statement;
         _error = std::string("ParseException:") + e.what();

@@ -1,10 +1,12 @@
 // -*- LSST-C++ -*-
 /*
- * LSST Data Management System
- * Copyright 2015-2016 AURA/LSST.
+ * This file is part of qserv.
  *
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
+ * Developed for the LSST Data Management System.
+ * This product includes software developed by the LSST Project
+ * (https://www.lsst.org).
+ * See the COPYRIGHT file at the top-level directory of this distribution
+ * for details of code ownership.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,39 +18,24 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the LSST License Statement and
- * the GNU General Public License along with this program.  If not,
- * see <http://www.lsstcorp.org/LegalNotices/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // System headers
-#include <array>
-#include <memory>
+#include <ostream>
 #include <string>
-#include <unistd.h>
+#include <vector>
 
 // Boost unit test header
 #define BOOST_TEST_MODULE CControl_1
-#include "boost/test/unit_test.hpp"
 #include <boost/test/data/test_case.hpp>
+#include "boost/test/unit_test.hpp"
 
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
-#include "tests/ParserExpected.h"
-#include "parser/ParseException.h"
+#include "global/intTypes.h"
 #include "qproc/QuerySession.h"
-#include "query/AndTerm.h"
-#include "query/BetweenPredicate.h"
-#include "query/BoolFactor.h"
-#include "query/BoolTerm.h"
-#include "query/CompPredicate.h"
-#include "query/InPredicate.h"
-#include "query/LikePredicate.h"
-#include "query/OrTerm.h"
-#include "query/SelectList.h"
-#include "query/SelectStmt.h"
-#include "query/ValueFactor.h"
-#include "query/WhereClause.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
@@ -71,50 +58,34 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
         // "UNION JOIN" is not expected to parse.
         ParseErrorQueryInfo(
                 "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
-                PARSER_EXPECTED(
-                        "ParseException:syntax error, unexpected JOIN, expecting SELECT or '(' (line 0, "
-                        "column 53) in query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN "
-                        "Source s2 WHERE s1.bar = s2.bar;\"",
-                        "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM "
-                        "Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;\"")),
+                "ParseException:syntax error, unexpected JOIN, expecting SELECT or '(' (line 0, "
+                "column 53) in query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN "
+                "Source s2 WHERE s1.bar = s2.bar;\""),
 
         // The qserv manual says:
         // "Expressions/functions in ORDER BY clauses are not allowed
         // In SQL92 ORDER BY is limited to actual table columns, thus expressions or functions in ORDER BY are
         // rejected. This is true for Qserv too.
-        ParseErrorQueryInfo(
-                "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and "
-                "0.1 ORDER BY ABS(iE1_SG)",
-                PARSER_EXPECTED(
-                        "ParseException:qserv does not support functions in ORDER BY. Select the "
-                        "expression under an alias and order by the alias instead, e.g. \"SELECT ..., "
-                        "f(x) AS fx ... ORDER BY fx\".",
-                        "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not "
-                        "support functions in ORDER BY.")),
+        ParseErrorQueryInfo("SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and "
+                            "0.1 ORDER BY ABS(iE1_SG)",
+                            "ParseException:qserv does not support functions in ORDER BY. Select the "
+                            "expression under an alias and order by the alias instead, e.g. \"SELECT ..., "
+                            "f(x) AS fx ... ORDER BY fx\"."),
 
-        ParseErrorQueryInfo(
-                "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-                PARSER_EXPECTED("ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
-                                "file (line 0, column 33) in query: \"SELECT foo from Filter f limit 5 "
-                                "garbage query !#$%!#$\"",
-                                "ParseException:Failed to instantiate query: \"SELECT foo from Filter f "
-                                "limit 5 garbage query !#$%!#$\"")),
+        ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+                            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
+                            "file (line 0, column 33) in query: \"SELECT foo from Filter f limit 5 "
+                            "garbage query !#$%!#$\""),
 
-        ParseErrorQueryInfo(
-                "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-                PARSER_EXPECTED("ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
-                                "file (line 0, column 33) in query: \"SELECT foo from Filter f limit 5 "
-                                "garbage query !#$%!#$\"",
-                                "ParseException:Failed to instantiate query: \"SELECT foo from Filter f "
-                                "limit 5 garbage query !#$%!#$\"")),
+        ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+                            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
+                            "file (line 0, column 33) in query: \"SELECT foo from Filter f limit 5 "
+                            "garbage query !#$%!#$\""),
 
-        ParseErrorQueryInfo(
-                "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
-                PARSER_EXPECTED("ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
-                                "file (line 0, column 34) in query: \"SELECT foo from Filter f limit 5; "
-                                "garbage query !#$%!#$\"",
-                                "ParseException:Failed to instantiate query: \"SELECT foo from Filter f "
-                                "limit 5; garbage query !#$%!#$\"")),
+        ParseErrorQueryInfo("SELECT foo from Filter f limit 5; garbage query !#$%!#$",
+                            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
+                            "file (line 0, column 34) in query: \"SELECT foo from Filter f limit 5; "
+                            "garbage query !#$%!#$\""),
 
         ParseErrorQueryInfo(
                 "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
@@ -130,41 +101,28 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                             "ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv may not "
                             "start with an underscore."),
 
-        ParseErrorQueryInfo(
-                "SELECT `_ra` FROM Object;",
-                PARSER_EXPECTED("ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv "
-                                "may not start with an underscore.",
-                                "ParseException:Error parsing query, near \"`_ra`\", Identifiers in Qserv "
-                                "may not start with an underscore.")),
+        ParseErrorQueryInfo("SELECT `_ra` FROM Object;",
+                            "ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv "
+                            "may not start with an underscore."),
 
-        ParseErrorQueryInfo(
-                "SELECT objectId AS `_objectId` FROM Object;",
-                PARSER_EXPECTED(
-                        "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv "
-                        "may not start with an underscore.",
-                        "ParseException:Error parsing query, near \"`_objectId`\", Identifiers in Qserv "
-                        "may not start with an underscore.")),
+        ParseErrorQueryInfo("SELECT objectId AS `_objectId` FROM Object;",
+                            "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv "
+                            "may not start with an underscore."),
 
         ParseErrorQueryInfo(
                 "LECT sce.filterName,sce.field "
                 "FROM LSST.Science_Ccd_Exposure AS sce "
                 "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
-                PARSER_EXPECTED(
-                        "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line "
-                        "0, column 0) in query: \"LECT sce.filterName,sce.field FROM "
-                        "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"",
-                        "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field FROM "
-                        "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"")),
+                "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line "
+                "0, column 0) in query: \"LECT sce.filterName,sce.field FROM "
+                "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""),
 
         // per testQueryAnaGeneral: CASE in column spec is illegal.
-        ParseErrorQueryInfo(
-                "SELECT  COUNT(*) AS totalCount, "
-                "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
-                "FROM Object WHERE rFlux_PS > 10;",
-                PARSER_EXPECTED("ParseException:qserv can not parse query: CASE expressions are not "
-                                "supported.",
-                                "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) "
-                                "THEN 1 ELSE 0 END\"")),
+        ParseErrorQueryInfo("SELECT  COUNT(*) AS totalCount, "
+                            "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
+                            "FROM Object WHERE rFlux_PS > 10;",
+                            "ParseException:qserv cannot parse query: CASE expressions are not "
+                            "supported."),
 };
 
 BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
