@@ -6,6 +6,25 @@ metadata:
     {{- include "qserv.labels" . | nindent 4 }}
 data:
 
+  controller.json: |
+    {
+      "controller": {
+        "health-probe-interval": 120,
+        "replication-interval": 600,
+        "qserv-sync-timeout": 600,
+        "qserv-sync-disable": 1,
+        "worker-evict-timeout": 1800,
+        "ingest-job-monitor-ival-sec": 1,
+        "auto-register-workers": 1,
+        "chunk-map-update": 1,
+        "purge-excess-replicas": 1,
+        "http-root": "/usr/local/qserv/www/"
+      },
+      "xrootd": {
+        "auto-notify": 0
+      }
+    }
+
   99-qserv-repl.cnf: |
     [mysqld]
     datadir=/qserv/data/mysql
