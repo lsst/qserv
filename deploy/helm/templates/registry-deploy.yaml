@@ -53,11 +53,11 @@ spec:
           args:
             - >
               exec qserv-replica-registry
-              --config=mysql://qsreplica:$(cat /secrets/mariadb-qsreplica-password)@qserv-repl-0.qserv-repl/qservReplica
+              --config=/config/registry.json
               --registry-port=25082
-              --instance-id={{ .Release.Name }}
-              --auth-key="$(cat /secrets/auth-key)"
-              --admin-auth-key="$(cat /secrets/admin-auth-key)"
+              --security-instance-id={{ .Release.Name }}
+              --security-auth-key="$(cat /secrets/auth-key)"
+              --security-admin-auth-key="$(cat /secrets/admin-auth-key)"
               --debug
           resources:
             requests:

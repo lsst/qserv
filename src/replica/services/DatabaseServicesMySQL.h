@@ -30,13 +30,19 @@
 
 // System headers
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Config;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -59,9 +65,9 @@ public:
     DatabaseServicesMySQL& operator=(DatabaseServicesMySQL const&) = delete;
 
     /**
-     * @param configuration the configuration service
+     * @param config the configuration service
      */
-    explicit DatabaseServicesMySQL(Configuration::Ptr const& configuration);
+    explicit DatabaseServicesMySQL(std::shared_ptr<Config> const& config);
 
     ~DatabaseServicesMySQL() override = default;
 
@@ -366,7 +372,7 @@ private:
 
     // Input parameters
 
-    Configuration::Ptr const _configuration;
+    std::shared_ptr<Config> const _config;
 
     /// Database connection
     database::mysql::Connection::Ptr const _conn;

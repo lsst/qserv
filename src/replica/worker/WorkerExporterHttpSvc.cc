@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "http/ChttpMetaModule.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLTypes.h"
 #include "replica/services/ServiceProvider.h"
@@ -74,9 +74,10 @@ void WorkerExporterHttpSvc::registerServices(unique_ptr<httplib::Server> const& 
     throwIf<logic_error>(server == nullptr, context_ + "the server is not initialized");
     auto const self = shared_from_base<WorkerExporterHttpSvc>();
     server->Get("/meta/version", [self](httplib::Request const& req, httplib::Response& resp) {
-        json const info = json::object({{"kind", "replication-worker-exporter"},
-                                        {"id", self->_workerName},
-                                        {"instance_id", self->serviceProvider()->instanceId()}});
+        json const info = json::object(
+                {{"kind", "replication-worker-exporter"},
+                 {"id", self->_workerName},
+                 {"instance_id", self->serviceProvider()->config()->get<string>("security", "instance-id")}});
         http::ChttpMetaModule::process(context_, info, req, resp, "VERSION");
     });
     server->Get("/worker/export/:database/:table",

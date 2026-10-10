@@ -346,8 +346,6 @@ def enter_worker_svc(
 
 
 def enter_worker_repl(
-    db_admin_uri: str,
-    repl_connection: str,
     log_cfg_file: str,
     cmd: str,
     run: bool,
@@ -359,12 +357,6 @@ def enter_worker_repl(
     replic_worker_args : `list` [ `str` ]
         A list of options and arguments that will be passed directly to the
         replica worker app.
-    db_admin_uri : str
-        The admin URI to the worker's database.
-    repl_connection : `str`
-        The connection string for the replication manager database for the
-        non-admin user (created using the `connection`), the user is typically
-        "qsreplica".
     log_cfg_file : `str`
         Location of the log4cxx config file.
     cmd : `str`
@@ -380,24 +372,6 @@ def enter_worker_repl(
         many) Replication System's setups in case of an accidental
         mis-configuration.
     """
-    _ = _process_uri(
-        uri=db_admin_uri,
-        query_keys=(),
-        option=options.option_db_admin_uri.args[0],
-        block=True,
-    )
-    _ = _process_uri(
-        uri=repl_connection,
-        query_keys=(),
-        option=options.option_db_admin_uri.args[0],
-        block=True,
-    )
-
-    # N.B. When the controller smigs the replication database, if it is migrating from Uninitialized
-    # it will also set initial configuration values in the replication database. It sets the schema
-    # version of the replica database *after* setting the config values, which allows us to wait here
-    # on the schema version to be sure that there are values in the database.
-    _do_smig_block(repl_smig_dir, "repl", repl_connection)
 
     ingest_folder = "/qserv/data/ingest"
     if not os.path.exists(ingest_folder):
@@ -670,8 +644,6 @@ def enter_replication_controller(
 
 
 def enter_replication_registry(
-    db_uri: str,
-    db_admin_uri: str,
     log_cfg_file: str,
     cmd: str,
     run: bool,
@@ -680,13 +652,6 @@ def enter_replication_registry(
 
     Parameters
     ----------
-    db_uri : `str`
-        The connection string for the replication manager database for the
-        non-admin user (created using the `connection`), the user is typically
-        "qsreplica".
-    db_admin_uri : `str`
-        The connection string for the replication manager database for the
-        administrative (typically root) user.
     log_cfg_file : `str`
         The path to the log4cxx config file.
     cmd : `str`
@@ -695,25 +660,6 @@ def enter_replication_registry(
         Run the subcommand that is executed by entrypoint if `True`. Otherwise,
         print the command and arguments that would have been run.
     """
-
-    _ = _process_uri(
-        uri=db_uri,
-        query_keys=(),
-        option=options.option_db_uri.args[0],
-        block=True,
-    )
-    _ = _process_uri(
-        uri=db_admin_uri,
-        query_keys=("socket",),
-        option=options.option_db_admin_uri.args[0],
-        block=True,
-    )
-
-    # N.B. When the replication controller smigs the replication database, if it is migrating from
-    # Uninitialized it will also set initial configuration values in the replication database. It sets the
-    # schema version of the replica database *after* setting the config values, which allows us to wait here
-    # on the schema version to be sure that there are values in the database.
-    _do_smig_block(repl_smig_dir, "repl", db_uri)
 
     env = dict(
         os.environ,

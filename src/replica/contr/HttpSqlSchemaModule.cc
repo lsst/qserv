@@ -32,7 +32,7 @@
 #include "css/CssAccess.h"
 #include "css/DbInterfaceMySql.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/jobs/SqlAlterTablesJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
@@ -47,17 +47,15 @@ namespace lsst::qserv::replica {
 using namespace database::mysql;
 
 void HttpSqlSchemaModule::process(Controller::Ptr const& controller, string const& taskName,
-                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                                  qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                  http::AuthType const authType) {
-    HttpSqlSchemaModule module(controller, taskName, processorConfig, req, resp);
+                                  qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                  string const& subModuleName, http::AuthType const authType) {
+    HttpSqlSchemaModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpSqlSchemaModule::HttpSqlSchemaModule(Controller::Ptr const& controller, string const& taskName,
-                                         HttpProcessorConfig const& processorConfig,
                                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "GET-TABLE-SCHEMA")
