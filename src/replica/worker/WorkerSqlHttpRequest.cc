@@ -27,7 +27,7 @@
 #include <utility>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
@@ -155,7 +155,7 @@ bool WorkerSqlHttpRequest::execute() {
         // the connection handlerto ensure no lingering transactions
         // are left after the completion of the request's execution (whether it's
         // successful or not).
-        ConnectionHandler const h(Connection::open(Configuration::qservWorkerDbParams()));
+        ConnectionHandler const h(Connection::open(serviceProvider()->config()->qservWorkerDbParams()));
 
         // Check if this is the "batch" request which involves executing
         // a series of queries. This kind of requests needs to be processed

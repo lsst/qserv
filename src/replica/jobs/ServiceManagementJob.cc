@@ -70,7 +70,7 @@ void ServiceManagementBaseJob::startImpl(replica::Lock const& lock) {
         _requests.push_back(submitRequest(worker));
     }
 
-    // In case if no workers are present in the Configuration
+    // In case if no workers are present in the Config
     // at this time.
 
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);

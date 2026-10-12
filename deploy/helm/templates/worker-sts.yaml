@@ -121,16 +121,14 @@ spec:
           args:
             - >
               exec qserv-replica-worker
+              --config=/config/repl-worker.json
               --registry-host=qserv-registry
-              --config=mysql://qsreplica:$(cat /secrets/repl/mariadb-qsreplica-password)@qserv-repl-0.qserv-repl/qservReplica
-              --instance-id={{ .Release.Name }}
-              --qserv-worker-db=mysql://root:$(cat /secrets/worker/mariadb-root-password)@localhost:3306/qservw_worker
-              --auth-key="$(cat /secrets/repl/auth-key)"
-              --admin-auth-key="$(cat /secrets/repl/admin-auth-key)"
-              --worker-ingest-num-retries=4
-              --worker-num-async-loader-processing-threads=32
-              --schema-upgrade-wait=1
-              --schema-upgrade-wait-timeout=600
+              --registry-port=25082
+              --database-repl-db-conn=mysql://qsreplica:$(cat /secrets/repl/mariadb-qsreplica-password)@qserv-repl-0.qserv-repl/qservReplica
+              --database-worker-db-conn=mysql://root:$(cat /secrets/worker/mariadb-root-password)@localhost:3306/qservw_worker
+              --security-instance-id={{ .Release.Name }}
+              --security-auth-key="$(cat /secrets/repl/auth-key)"
+              --security-admin-auth-key="$(cat /secrets/repl/admin-auth-key)"
               --debug
           volumeMounts:
             - name: worker-config

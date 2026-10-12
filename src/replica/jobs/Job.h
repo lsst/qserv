@@ -79,7 +79,7 @@ public:
         QSERV_CHUNK_IN_USE,  ///< Qserv reported that the source chunk is in use and
                              ///  couldn't be removed.
         BAD_RESULT,          ///< Incorrect or unexpected result set received by a job.
-        TIMEOUT_EXPIRED,     ///< Expired due to a timeout (as per the Configuration).
+        TIMEOUT_EXPIRED,     ///< Expired due to a timeout (as per the Config).
         CANCELLED            ///< Explicitly cancelled on the client-side
                              ///  (similar to TIMEOUT_EXPIRED).
     };
@@ -318,7 +318,7 @@ private:
     void _assertState(replica::Lock const& lock, State desiredState, std::string const& context) const;
 
     /**
-     * Start the timer (if the corresponding Configuration parameter is set`).
+     * Start the timer (if the corresponding Config parameter is set`).
      * When the time will expire then the callback method heartbeat() which is
      * defined below will be called.
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
@@ -335,7 +335,7 @@ private:
     void _heartbeat(boost::system::error_code const& ec);
 
     /**
-     * Start the timer (if the corresponding Configuration parameter is set`).
+     * Start the timer (if the corresponding Config parameter is set`).
      * When the time will expire then the callback method expired() which is
      * defined below will be called.
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.

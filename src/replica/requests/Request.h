@@ -130,7 +130,7 @@ public:
         /// The request is found as cancelled on the server
         SERVER_CANCELLED,
 
-        /// Expired due to a timeout (as per the Configuration)
+        /// Expired due to a timeout (as per the Config)
         TIMEOUT_EXPIRED,
 
         /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED)
@@ -190,7 +190,7 @@ public:
      *   in which a request will be executed.
      * @param requestExpirationIvalSecAn (optional) parameter (if differs from 0)
      *   allowing to override the default value of the corresponding parameter from
-     *   the Configuration.
+     *   the Config.
      */
     void start(std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
@@ -511,7 +511,7 @@ protected:
 
     /// @return A value of the interval (Note, the final value of the parameter is
     ///   set after the request has started. Before that a default value obtained by
-    ///   the class's constructor from the Configuration will be returned).
+    ///   the class's constructor from the Config will be returned).
     unsigned int requestExpirationIvalSec() const { return _requestExpirationIvalSec; }
 
     /// Mutex guarding internal state. This object is made protected

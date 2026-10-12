@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
@@ -279,7 +279,7 @@ void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned i
                    << "  chunk=" << chunk << ", databases=" << util::String::toString(databases)
                    << ", worker=" << workerName << ", force=" << (force ? "true" : "false"));
 
-    controller()->serviceProvider()->qservMgtServices()->removeReplica(
+    controller()->qservMgtServices()->removeReplica(
             chunk, databases, workerName, force,
             [self = shared_from_this(), onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
                 LOGS(_log, LOG_LVL_DEBUG,

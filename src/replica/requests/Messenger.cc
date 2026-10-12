@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -39,12 +39,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
 
 namespace lsst::qserv::replica {
 
-Messenger::Ptr Messenger::create(shared_ptr<Configuration> const& config,
-                                 boost::asio::io_service& io_service) {
+Messenger::Ptr Messenger::create(shared_ptr<Config> const& config, boost::asio::io_service& io_service) {
     return Messenger::Ptr(new Messenger(config, io_service));
 }
 
-Messenger::Messenger(shared_ptr<Configuration> const& config, boost::asio::io_service& io_service)
+Messenger::Messenger(shared_ptr<Config> const& config, boost::asio::io_service& io_service)
         : _config(config), _io_service(io_service) {
     for (auto&& workerName : config->allWorkers()) {
         _workerConnector[workerName] = MessengerConnector::create(config, io_service, workerName);
@@ -71,7 +70,7 @@ MessengerConnector::Ptr const& Messenger::_connector(string const& workerName) {
         return itr->second;
     }
 
-    // The worker could be just added to the Configuration. In this case
+    // The worker could be just added to the Config. In this case
     // worker connector needs to be created and registered in the local collection.
     // Note that std::invalid_argument will be thrown by the worker locator method
     // if the name won't match any worker.

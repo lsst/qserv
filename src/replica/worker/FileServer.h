@@ -72,7 +72,7 @@ public:
     std::string const& worker() const { return _workerName; }
 
     /**
-     * Run the server in a thread pool (as per the Configuration)
+     * Run the server in a thread pool (as per the Config)
      *
      * @note This is the blocking operation. Please, run it within its own thread
      *   if needed.

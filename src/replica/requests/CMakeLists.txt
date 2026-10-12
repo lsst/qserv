@@ -13,7 +13,6 @@ target_sources(replica_requests PRIVATE
     MessengerConnector.cc
     ReplicationRequest.cc
     Request.cc
-    RequestTracker.cc
     ServiceManagementRequest.cc
     ServiceManagementRequestBase.cc
     SqlAlterTablesRequest.cc

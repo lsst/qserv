@@ -51,7 +51,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider
-     *   provider is needed to access the Configuration of a setup
+     *   provider is needed to access the Config of a setup
      *   and for validating the input parameters
      *
      * @param workerName

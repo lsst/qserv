@@ -6,6 +6,18 @@ metadata:
     {{- include "qserv.labels" . | nindent 4 }}
 data:
 
+  repl-worker.json: |
+    {
+      "database": {
+        "schema-upgrade-wait": 1,
+        "schema-upgrade-wait-timeout": 600
+      },
+      "worker": {
+        "ingest-num-retries": 4,
+        "num-async-loader-processing-threads": 32
+      }
+    }
+
   99-qserv-worker.cnf: |
     [mysqld]
     datadir=/qserv/data/mysql

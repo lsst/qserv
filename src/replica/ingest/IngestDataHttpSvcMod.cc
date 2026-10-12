@@ -27,7 +27,7 @@
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/Method.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"
@@ -76,7 +76,7 @@ void IngestDataHttpSvcMod::process(shared_ptr<ServiceProvider> const& servicePro
 IngestDataHttpSvcMod::IngestDataHttpSvcMod(shared_ptr<ServiceProvider> const& serviceProvider,
                                            string const& workerName, httplib::Request const& req,
                                            httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp),
+        : http::ChttpModule(serviceProvider->config()->httpAuthContext(), req, resp),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestDataHttpSvcMod::context() const { return "INGEST-DATA-HTTP-SVC "; }

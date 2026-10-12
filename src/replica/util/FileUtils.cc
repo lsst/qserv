@@ -38,7 +38,7 @@
 #include <unistd.h>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "util/String.h"
 

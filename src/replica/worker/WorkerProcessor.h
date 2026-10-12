@@ -104,7 +104,7 @@ public:
     /**
      * The factory method for objects of the class
      *
-     * @param serviceProvider provider is needed to access the Configuration of
+     * @param serviceProvider provider is needed to access the Config of
      *   a setup in order to get a number of the processing threads to be launched
      *   by the processor.
      * @param worker the name of a worker
@@ -132,7 +132,7 @@ public:
     /// Drain (cancel) all queued and in-progress requests
     void drain();
 
-    /// Reload Configuration
+    /// Reload Config
     void reconfig();
 
     /**

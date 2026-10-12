@@ -35,7 +35,7 @@
 #include "global/constants.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigTable.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/util/Performance.h"

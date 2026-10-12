@@ -27,16 +27,17 @@
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
-#include <sys/types.h>
 #include <thread>
 #include <vector>
-#include <unistd.h>
+#include <unistd.h>  // getpid()
 
 // Qserv headers
 #include "replica/config/ConfigCzar.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/config/ConfigWorker.h"
+#include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
+#include "replica/requests/Messenger.h"
 #include "replica/requests/Request.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -166,8 +167,15 @@ Controller::Ptr Controller::create(shared_ptr<ServiceProvider> const& servicePro
 Controller::Controller(shared_ptr<ServiceProvider> const& serviceProvider)
         : _serviceProvider(serviceProvider),
           _identity({Generators::uniqueId(), boost::asio::ip::host_name(), getpid()}),
-          _startTime(util::TimeUtils::now()) {
+          _startTime(util::TimeUtils::now()),
+          _messenger(Messenger::create(serviceProvider->config(), serviceProvider->io_service())),
+          _qservMgtServices(QservMgtServices::create(_serviceProvider)) {
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
+}
+
+void Controller::stop() {
+    // Cancel all outstanding requests to workers (if any)
+    _messenger->stop();
 }
 
 string Controller::_context(string const& func) const {

@@ -138,7 +138,7 @@ public:
      * @brief Begin processing the request.
      * @param jobId (Optional) identifier of a job specifying a context of the request.
      * @param requestExpirationIvalSec (Optional) parameter (if differs from 0) allowing
-     *   to override the default value of the corresponding parameter from the Configuration.
+     *   to override the default value of the corresponding parameter from the Config.
      */
     void start(std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 

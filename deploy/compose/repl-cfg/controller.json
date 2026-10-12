@@ -1,0 +1,12 @@
+{
+    "common" : {
+        "asio-num-threads": 2
+    },
+    "controller": {
+        "auto-register-czars": 1,
+        "auto-register-workers": 1,
+        "qserv-sync-force": 1,
+        "chunk-map-update": 1,
+        "http-root": "/usr/local/qserv/www"
+    }
+}

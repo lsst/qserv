@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/ConfigurationExceptions.h"
+#include "replica/config/ConfigExceptions.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerProcessor.h"
 #include "replica/worker/WorkerRequest.h"

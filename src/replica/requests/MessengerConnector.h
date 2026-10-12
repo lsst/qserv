@@ -42,7 +42,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Configuration;
+class Config;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -222,7 +222,7 @@ public:
      * @param workerName  The name of a worker.
      * @return  A pointer to the created object.
      */
-    static Ptr create(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
+    static Ptr create(std::shared_ptr<Config> const& config, boost::asio::io_service& io_service,
                       std::string const& workerName);
 
     /**
@@ -273,7 +273,7 @@ public:
 
 private:
     /// @see MessengerConnector::create()
-    MessengerConnector(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
+    MessengerConnector(std::shared_ptr<Config> const& config, boost::asio::io_service& io_service,
                        std::string const& workerName);
 
     /**
@@ -441,17 +441,17 @@ private:
 
     // Input parameters.
 
-    std::shared_ptr<Configuration> const _config;
+    std::shared_ptr<Config> const _config;
 
     /// The unique identifier of the worker.
     std::string const _workerName;
 
     /// The cached parameter for the buffer sizes (pulled from
-    /// the Configuration upon the construction of the object).
+    /// the Config upon the construction of the object).
     size_t const _bufferCapacityBytes;
 
     /// The cached parameter for the interval between reconnection
-    /// attempts (pulled from the Configuration upon the construction of
+    /// attempts (pulled from the Config upon the construction of
     /// the object).
     unsigned int const _timerIvalSec;
 

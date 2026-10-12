@@ -33,7 +33,7 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigDatabaseFamily.h"
 #include "replica/config/ConfigWorker.h"
-#include "replica/config/ConfigurationSchema.h"
+#include "replica/config/ConfigSchema.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -50,13 +50,15 @@ public:
     /**
      * Construct the parser with references to the collections of the confituration
      * data to be filled in.
+     * @param configSchema The configuration schema used for validation.
      * @param data The collection of the general parameters.
      * @param workers The collection of worker descriptors.
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
      * @param czars The collection of Czar descriptors.
      */
-    ConfigParserJSON(nlohmann::json& data, std::map<std::string, ConfigWorker>& workers,
+    ConfigParserJSON(ConfigSchema const& configSchema, nlohmann::json& data,
+                     std::map<std::string, ConfigWorker>& workers,
                      std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                      std::map<std::string, DatabaseInfo>& databases,
                      std::map<std::string, ConfigCzar>& czars);
@@ -82,7 +84,7 @@ private:
                                 std::string const& category, std::string const& param) {
         // Sanitize the input to ensure it matches schema requirements before
         // pushing the value into the configuration.
-        ConfigurationSchema::validate<T>(category, param, source.get<T>());
+        _configSchema.validate<T>(category, param, source.get<T>());
         dest = source;
     }
 
@@ -90,6 +92,7 @@ private:
 
     // Input parameters
 
+    ConfigSchema const& _configSchema;
     nlohmann::json& _data;
     std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;

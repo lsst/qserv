@@ -28,7 +28,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
 #include "replica/requests/ServiceManagementRequest.h"
@@ -94,7 +94,7 @@ protected:
      *  the 'READ-ONLY' state will be involved into the operation.
      * @param requestExpirationIvalSec the number of seconds before the requests will
      *  be declared as expired unless receiving responses from them.
-     * @param controller is needed launching requests and accessing the Configuration
+     * @param controller is needed launching requests and accessing the Config
      * @param parentJobId an identifier of a parent job
      * @param priority defines the job priority
      */

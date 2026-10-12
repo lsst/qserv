@@ -27,7 +27,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 
@@ -46,10 +46,11 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-void WorkerUtils::createMissingDatabase(string const& context, string const& databaseName) {
+void WorkerUtils::createMissingDatabase(string const& context, shared_ptr<Config> const& config,
+                                        string const& databaseName) {
     LOGS(_log, LOG_LVL_DEBUG, context << "  create database: " << databaseName);
     try {
-        ConnectionHandler const h(Connection::open(Configuration::qservWorkerDbParams()));
+        ConnectionHandler const h(Connection::open(config->qservWorkerDbParams()));
         QueryGenerator const g(h.conn);
         vector<string> queries;
         bool const ifNotExists = true;

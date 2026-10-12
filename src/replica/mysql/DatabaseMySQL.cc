@@ -31,7 +31,6 @@
 #include <mysql/errmsg.h>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/proto/protocol.pb.h"
@@ -45,6 +44,12 @@
 using namespace std;
 using json = nlohmann::json;
 
+#define _THROW_IF_ZERO(param)                                              \
+    if ((param) == 0) {                                                    \
+        throw invalid_argument("Connection::" + string(__func__) +         \
+                               "  0 value in " #param " is not allowed."); \
+    }
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
@@ -52,6 +57,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
 }  // namespace
 
 namespace lsst::qserv::replica::database::mysql {
+
+atomic<bool> Connection::_databaseAllowReconnect{true};
+atomic<unsigned int> Connection::_databaseConnectTimeoutSec{3600};
+atomic<unsigned int> Connection::_databaseMaxReconnects{1};
 
 atomic<size_t> Connection::_nextId{0};
 
@@ -62,15 +71,27 @@ unsigned long Connection::max_allowed_packet() {
     return 4 * 1024 * 1024;
 }
 
+void Connection::setDatabaseAllowReconnect(bool value) { _databaseAllowReconnect = value; }
+
+void Connection::setDatabaseConnectTimeoutSec(unsigned int value) {
+    _THROW_IF_ZERO(value);
+    _databaseConnectTimeoutSec = value;
+}
+
+void Connection::setDatabaseMaxReconnects(unsigned int value) {
+    _THROW_IF_ZERO(value);
+    _databaseMaxReconnects = value;
+}
+
 Connection::Ptr Connection::open(ConnectionParams const& connectionParams) {
-    return open2(connectionParams, Configuration::databaseAllowReconnect(),
-                 Configuration::databaseConnectTimeoutSec());
+    return open2(connectionParams, Connection::_databaseAllowReconnect.load(),
+                 Connection::_databaseConnectTimeoutSec.load());
 }
 
 Connection::Ptr Connection::open2(ConnectionParams const& connectionParams, bool allowReconnects,
                                   unsigned int connectTimeoutSec) {
     unsigned int const effectiveConnectTimeoutSec =
-            0 == connectTimeoutSec ? Configuration::databaseConnectTimeoutSec() : connectTimeoutSec;
+            0 == connectTimeoutSec ? Connection::_databaseConnectTimeoutSec.load() : connectTimeoutSec;
     Connection::Ptr ptr(new Connection(connectionParams, allowReconnects ? effectiveConnectTimeoutSec : 0));
     ptr->_connect();
     return ptr;
@@ -333,10 +354,10 @@ Connection::Ptr Connection::execute(string const& query) {
 Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& script, unsigned int maxReconnects,
                                     unsigned int timeoutSec) {
     unsigned int const effectiveMaxReconnects =
-            0 != maxReconnects ? maxReconnects : Configuration::databaseMaxReconnects();
+            0 != maxReconnects ? maxReconnects : Connection::_databaseMaxReconnects.load();
 
     unsigned int const effectiveTimeoutSec =
-            0 != timeoutSec ? timeoutSec : Configuration::databaseConnectTimeoutSec();
+            0 != timeoutSec ? timeoutSec : Connection::_databaseConnectTimeoutSec.load();
 
     string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) +

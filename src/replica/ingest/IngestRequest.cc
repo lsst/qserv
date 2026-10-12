@@ -37,7 +37,7 @@
 // Qserv headers
 #include "http/Client.h"
 #include "http/Exceptions.h"
-#include "replica/config/Configuration.h"
+#include "replica/config/Config.h"
 #include "replica/services/ServiceProvider.h"
 
 using namespace std;

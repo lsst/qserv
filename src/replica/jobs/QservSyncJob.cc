@@ -27,8 +27,8 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/config/Configuration.h"
-#include "replica/config/ConfigurationExceptions.h"
+#include "replica/config/Config.h"
+#include "replica/config/ConfigExceptions.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -116,7 +116,7 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
 
     auto const databases = controller()->serviceProvider()->config()->databases(databaseFamily());
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const qservMgtServices = controller()->serviceProvider()->qservMgtServices();
+    auto const qservMgtServices = controller()->qservMgtServices();
     auto const self = shared_from_base<QservSyncJob>();
 
     // As a first step, before submitting requests to Qserv workers, pull replicas
@@ -161,7 +161,7 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
         _numLaunched++;
     }
 
-    // In case if no workers or database are present in the Configuration at this time.
+    // In case if no workers or database are present in the Config at this time.
     if (!_numLaunched) {
         finish(lock, ExtendedState::SUCCESS);
     }

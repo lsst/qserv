@@ -81,7 +81,7 @@ public:
      * @param ignoreDuplicateKey The flag which if 'true' then don't report as
      *   errors tables for which ProtocolStatusExt::DUPLICATE_KEY was reported.
      *   The flag can be useful for tables in which the index may already exist.
-     * @param controller This is needed launching requests and accessing the Configuration.
+     * @param controller This is needed launching requests and accessing the Config.
      * @param parentJobId An identifier of a parent job.
      * @param onFinish A callback function to be called upon a completion of the job.
      * @param priority The priority level of the job.

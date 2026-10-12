@@ -55,43 +55,18 @@ public:
      * @param controller A reference to the Controller for launching requests, jobs, etc.
      * @param onTerminated A callback function to be called upon abnormal termination
      *   of the task. Set it to 'nullptr' if no call back should be made.
-     * @param qservSyncTimeoutSec The maximum number of seconds to be waited before giving
-     *   up on the Qserv synchronization requests.
-     * @param disableQservSync Disable replica synchronization at Qserv workers if 'true'.
-     * @param forceQservSync Force chunk removal at worker resource collections if 'true'.
-     * @param qservChunkMapUpdate Enable updating the chunk disposition map in Qserv's QMeta database if
-     * 'true'.
-     * @param replicationIntervalSec The number of seconds to wait in the end of each
-     *   iteration loop before to begin the new one.
-     * @param purge Purge excess replicas if 'true'.
      * @return The smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated,
-                      unsigned int qservSyncTimeoutSec, bool disableQservSync, bool forceQservSync,
-                      bool qservChunkMapUpdate, unsigned int replicationIntervalSec, bool purge);
+                      Task::AbnormalTerminationCallbackType const& onTerminated);
 
 protected:
-    /// @see Task::onRun()
     virtual bool onRun() final;
 
 private:
-    /// @see ReplicationTask::create()
-    ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated,
-                    unsigned int qservSyncTimeoutSec, bool disableQservSync, bool forceQservSync,
-                    bool qservChunkMapUpdate, unsigned int replicationIntervalSec, bool purge);
+    ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated);
 
     void _updateChunkMap();
-
-    /// The maximum number of seconds to be waited before giving up
-    /// on the Qserv synchronization requests.
-    unsigned int const _qservSyncTimeoutSec;
-
-    bool const _disableQservSync;     ///< Disable replica synchronization at Qserv workers if 'true'.
-    bool const _forceQservSync;       ///< Force removal at worker resource collections if 'true'.
-    bool const _qservChunkMapUpdate;  ///< Enable updating the chunk disposition map in Qserv's QMeta
-                                      /// database if 'true'.
-    bool const _purge;                ///< Purge excess replicas if 'true'.
 };
 
 }  // namespace lsst::qserv::replica

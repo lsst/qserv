@@ -99,23 +99,14 @@ spec:
           args:
             - >
               exec qserv-replica-master-http
+              --config=/config/controller.json
               --registry-host=qserv-registry
-              --config=mysql://qsreplica:$(cat /secrets/repl/mariadb-qsreplica-password)@localhost/qservReplica
-              --instance-id={{ .Release.Name }}
-              --qserv-czar-db=mysql://root:$(cat /secrets/czar/mariadb-root-password)@qserv-czar-0.qserv-czar:3306/qservMeta
-              --qserv-chunk-map-update
-              --auth-key="$(cat /secrets/repl/auth-key)"
-              --admin-auth-key="$(cat /secrets/repl/admin-auth-key)"
-              --http-root=/usr/local/qserv/www/
-              --health-probe-interval=120
-              --replication-interval=600
-              --qserv-sync-timeout=600
-              --controller-ingest-job-monitor-ival-sec=1
-              --controller-auto-register-workers=1
-              --xrootd-auto-notify=0
-              --qserv-sync-disable
-              --worker-evict-timeout=1800
-              --purge
+              --registry-port=25082
+              --database-repl-db-conn=mysql://qsreplica:$(cat /secrets/repl/mariadb-qsreplica-password)@localhost/qservReplica
+              --database-czar-db-conn=mysql://root:$(cat /secrets/czar/mariadb-root-password)@qserv-czar-0.qserv-czar:3306/qservMeta
+              --security-instance-id={{ .Release.Name }}
+              --security-auth-key="$(cat /secrets/repl/auth-key)"
+              --security-admin-auth-key="$(cat /secrets/repl/admin-auth-key)"
               --debug
           resources:
             requests:

@@ -44,8 +44,8 @@ public:
     typedef std::shared_ptr<HttpCatalogsModule> Ptr;
 
     static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpCatalogsModule() = delete;
@@ -59,8 +59,7 @@ protected:
 
 private:
     HttpCatalogsModule(Controller::Ptr const& controller, std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp);
+                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /**
      * Retrieve the latest state of the database stats from a persistent store.

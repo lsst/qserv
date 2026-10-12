@@ -64,7 +64,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider A reference to a provider of services for accessing
-     *   Configuration, saving the request's persistent state to the database.
+     *   Config, saving the request's persistent state to the database.
      * @param czarName The name of a Czar to send the request to.
      * @param event The management event to be posted to the Czar.
      * @param onFinish (optional) callback function to be called upon request completion.

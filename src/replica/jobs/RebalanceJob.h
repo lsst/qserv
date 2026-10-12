@@ -117,7 +117,7 @@ struct RebalanceJobResult {
  *   may switch to pulling this information from a database. That would work better
  *   at a presence of other activities keeping the database content updated.
  *
- * - [TO BE CONFIRMED] at a each iteration a limited number (from the Configuration?)
+ * - [TO BE CONFIRMED] at a each iteration a limited number (from the Config?)
  *   of replicas will be processed. Then chunk disposition will be recomputed to adjust
  *   for other parallel activities (replication, purge, etc.).
  */

@@ -54,7 +54,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider provider is needed to access the Configuration of
+     * @param serviceProvider provider is needed to access the Config of
      *   a setup and for validating the input parameters
      * @param connectionPool a pool of persistent database connections
      * @param worker the name of a worker. The name must match the worker which
@@ -66,7 +66,7 @@ public:
      * @param (optional) requestExpirationIvalSec request expiration interval.
      *   If 0 is passed into the method then a value of the corresponding
      *   parameter for the Controller-side requests will be pulled from
-     *   the Configuration.
+     *   the Config.
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
@@ -114,7 +114,7 @@ private:
 
     /**
      * Read the content of the file into memory starting from the given offset.
-     * @note The maximum number of bytes to read is set in the Configuration
+     * @note The maximum number of bytes to read is set in the Config
      *   parameter (worker, director-index-record-size). And it should not
      *   exceed a limit set in ProtocolBuffer::HARD_LIMIT.
      * @param offset A position of the first byte in the file to read.
