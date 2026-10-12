@@ -262,8 +262,8 @@ RUN dnf update -y \
        https://apache.jfrog.io/artifactory/arrow/almalinux/10/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
-    && dnf install -y arrow2500-libs \
-    && dnf install -y parquet2500-libs \
+    && dnf install -y arrow2600-libs \
+    && dnf install -y parquet2600-libs \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
