@@ -23,7 +23,10 @@
  */
 
 // System headers
+#include <sstream>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 // Third-party headers
 
@@ -305,7 +308,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         BOOST_CHECK(c2f1);
     });
 
-    // Running the Parser in the 'commands' mode to test '--help'
+    // Running the Parser in the 'commands' mode for command "C3"
     //
     // Syntax tested:
     //
@@ -351,7 +354,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         parser.command("C2")
                 .description("This is the second command")
                 .required("c2r1", "required parameter c2r1 of command C2", c2r1)
-                .optional("c2f1", "flag c2f1 of command C1", c2f1);
+                .flag("c2f1", "flag c2f1 of command C2", c2f1);
         parser.command("C3")
                 .description("This is the third command")
                 .optional("c3o1", "optional parameter c3o1 of command C3", c3o1);
@@ -405,7 +408,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         parser.command("C2")
                 .description("This is the second command")
                 .required("c2r1", "required parameter c2r1 of command C2", c2r1)
-                .optional("c2f1", "flag c2f1 of command C1", c2f1);
+                .flag("c2f1", "flag c2f1 of command C2", c2f1);
         parser.command("C3")
                 .description("This is the third command")
                 .optional("c3o1", "optional parameter c3o1 of command C3", c3o1);
@@ -416,6 +419,120 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
     });
 
     LOGS_INFO("ApplicationParser4 test ends");
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationArgumentParserTypes) {
+    vector<int> const allowedValues = {2, 4, 6};
+    BOOST_CHECK(ArgumentParser::in(4, allowedValues));
+    BOOST_CHECK(!ArgumentParser::in(5, allowedValues));
+
+    int parameterValue = 3;
+    ParameterParser<int> parameter("count", "number of items", parameterValue, allowedValues);
+    BOOST_CHECK_EQUAL(parameter.name(), "count");
+    BOOST_CHECK_EQUAL(parameter.description(), "number of items");
+    BOOST_CHECK_EQUAL(parameter.defaultValue(), "3");
+    parameter.parse("4");
+    BOOST_CHECK_EQUAL(parameterValue, 4);
+    ostringstream parameterDump;
+    parameter.dumpNameValue(parameterDump);
+    BOOST_CHECK_EQUAL(parameterDump.str(), "count=4");
+    BOOST_CHECK_THROW(parameter.parse("not-an-integer"), ParserError);
+    BOOST_CHECK_THROW(parameter.parse("5"), ParserError);
+
+    string optionValue = "original";
+    OptionParser<string> option("mode", "processing mode", optionValue, {"fast", "safe"});
+    BOOST_CHECK_EQUAL(option.defaultValue(), "original");
+    option.parse("");
+    BOOST_CHECK_EQUAL(optionValue, "original");
+    option.parse("fast");
+    BOOST_CHECK_EQUAL(optionValue, "fast");
+    BOOST_CHECK_THROW(option.parse("invalid"), ParserError);
+    ostringstream optionDump;
+    option.dumpNameValue(optionDump);
+    BOOST_CHECK_EQUAL(optionDump.str(), "mode=invalid");
+
+    bool enabled = false;
+    FlagParser flag("enabled", "enable processing", enabled, false);
+    BOOST_CHECK_EQUAL(flag.defaultValue(), "0");
+    flag.parse();
+    BOOST_CHECK(enabled);
+    ostringstream flagDump;
+    flag.dumpNameValue(flagDump);
+    BOOST_CHECK_EQUAL(flagDump.str(), "enabled=1");
+
+    bool disabled = true;
+    FlagParser reversedFlag("disable", "disable processing", disabled, true);
+    BOOST_CHECK_EQUAL(reversedFlag.defaultValue(), "1");
+    reversedFlag.parse();
+    BOOST_CHECK(!disabled);
+    ostringstream reversedFlagDump;
+    reversedFlag.dumpNameValue(reversedFlagDump);
+    BOOST_CHECK_EQUAL(reversedFlagDump.str(), "disable=0");
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationCommandsSet) {
+    string commandName;
+    CommandsSet commands({"start", "stop"}, commandName);
+    commands.command("start").description("start service");
+    BOOST_CHECK_THROW(commands.command("unknown"), range_error);
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserFailureAndStatus) {
+    string value;
+    int const argcMissing = 1;
+    char const* const argvMissing[] = {"testApplicationParser"};
+    Parser missingParser(argcMissing, argvMissing, descr);
+    missingParser.required("value", "required value", value);
+    BOOST_CHECK_THROW(missingParser.serializeArguments(), logic_error);
+    BOOST_CHECK_EQUAL(missingParser.parse(), Parser::PARSING_FAILED);
+    BOOST_CHECK_EQUAL(missingParser.status(), Parser::PARSING_FAILED);
+    BOOST_CHECK_EQUAL(missingParser.parse(), Parser::PARSING_FAILED);
+    BOOST_CHECK_THROW(missingParser.serializeArguments(), logic_error);
+
+    int const argcUnknownOption = 2;
+    char const* const argvUnknownOption[] = {"testApplicationParser", "--unknown=1"};
+    Parser unknownOptionParser(argcUnknownOption, argvUnknownOption, descr);
+    BOOST_CHECK_EQUAL(unknownOptionParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcStandaloneDash = 2;
+    char const* const argvStandaloneDash[] = {"testApplicationParser", "--"};
+    Parser standaloneDashParser(argcStandaloneDash, argvStandaloneDash, descr);
+    BOOST_CHECK_EQUAL(standaloneDashParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcInvalidValue = 2;
+    char const* const argvInvalidValue[] = {"testApplicationParser", "not-an-integer"};
+    int parsedValue = 0;
+    Parser invalidValueParser(argcInvalidValue, argvInvalidValue, descr);
+    invalidValueParser.required("value", "integer value", parsedValue);
+    BOOST_CHECK_EQUAL(invalidValueParser.parse(), Parser::PARSING_FAILED);
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserCommandErrorsAndReconfiguration) {
+    string command;
+    int const argcUnknownCommand = 2;
+    char const* const argvUnknownCommand[] = {"testApplicationParser", "unknown"};
+    Parser unknownCommandParser(argcUnknownCommand, argvUnknownCommand, descr);
+    unknownCommandParser.commands("command", {"start", "stop"}, command);
+    BOOST_CHECK_THROW(unknownCommandParser.command("unknown"), range_error);
+    BOOST_CHECK_EQUAL(unknownCommandParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcCommandMissing = 1;
+    char const* const argvCommandMissing[] = {"testApplicationParser"};
+    Parser missingCommandParser(argcCommandMissing, argvCommandMissing, descr);
+    missingCommandParser.commands("command", {"start", "stop"}, command);
+    BOOST_CHECK_EQUAL(missingCommandParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcReconfigure = 2;
+    char const* const argvReconfigure[] = {"testApplicationParser", "start"};
+    Parser parser(argcReconfigure, argvReconfigure, descr);
+    parser.commands("command", {"start"}, command);
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    parser.reset();
+    BOOST_CHECK_EQUAL(parser.status(), Parser::UNDEFINED);
+    string positionalValue;
+    parser.required("value", "positional value", positionalValue);
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK_EQUAL(positionalValue, "start");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
