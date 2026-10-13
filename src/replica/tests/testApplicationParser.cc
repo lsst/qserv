@@ -139,6 +139,11 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
         BOOST_CHECK(f1);
         BOOST_CHECK(not f2);
         BOOST_CHECK(not f3);
+        BOOST_CHECK(parser.parsed("o3"));
+        BOOST_CHECK(parser.parsed("f1"));
+        BOOST_CHECK(parser.parsed("no-f3"));
+        BOOST_CHECK(!parser.parsed("f2"));
+        BOOST_CHECK(!parser.parsed("missing"));
     });
 
     LOGS_INFO("ApplicationParser2 test ends");
@@ -533,6 +538,72 @@ BOOST_AUTO_TEST_CASE(ApplicationParserCommandErrorsAndReconfiguration) {
     parser.required("value", "positional value", positionalValue);
     BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
     BOOST_CHECK_EQUAL(positionalValue, "start");
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserParsedCommandArguments) {
+    string commandName;
+    string globalOption = "default-global";
+    string localOption = "default-local";
+    bool globalFlag = false;
+    bool localFlag = false;
+    bool unusedLocalFlag = false;
+    int const argc = 5;
+    char const* const argv[] = {"testApplicationParser", "run", "--global=chosen", "--local=selected",
+                                "--local-flag"};
+
+    Parser parser(argc, argv, descr);
+    parser.commands("command", {"run", "stop"}, commandName)
+            .option("global", "global option", globalOption)
+            .flag("global-flag", "global flag", globalFlag);
+    parser.command("run")
+            .option("local", "run-only option", localOption)
+            .flag("local-flag", "run-only flag", localFlag);
+    parser.command("stop").reversedFlag("unused-local-flag", "stop-only flag", unusedLocalFlag);
+
+    BOOST_CHECK(!parser.parsed("global"));
+    BOOST_CHECK(!parser.parsed("global-flag"));
+    BOOST_CHECK(!parser.command("run").parsed("local"));
+    BOOST_CHECK(!parser.command("run").parsed("local-flag"));
+
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK_EQUAL(commandName, "run");
+    BOOST_CHECK_EQUAL(globalOption, "chosen");
+    BOOST_CHECK_EQUAL(localOption, "selected");
+    BOOST_CHECK(localFlag);
+
+    BOOST_CHECK(parser.parsed("global"));
+    BOOST_CHECK(!parser.parsed("global-flag"));
+    BOOST_CHECK(!parser.parsed("local"));
+    BOOST_CHECK(!parser.parsed("local-flag"));
+    BOOST_CHECK(!parser.parsed("missing"));
+
+    Command& runCommand = parser.command("run");
+    BOOST_CHECK(runCommand.parsed("local-flag"));
+    BOOST_CHECK(runCommand.parsed("local"));
+    BOOST_CHECK(!runCommand.parsed("global"));
+    BOOST_CHECK(!parser.command("stop").parsed("unused-local-flag"));
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserParsedStateReset) {
+    string optionValue;
+    bool flagValue = false;
+    int const argc = 3;
+    char const* const argv[] = {"testApplicationParser", "--option=value", "--flag"};
+    Parser parser(argc, argv, descr);
+    parser.option("option", "named option", optionValue).flag("flag", "named flag", flagValue);
+
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK(parser.parsed("option"));
+    BOOST_CHECK(parser.parsed("flag"));
+
+    parser.reset();
+    BOOST_CHECK(!parser.parsed("option"));
+    BOOST_CHECK(!parser.parsed("flag"));
+
+    parser.option("option", "named option", optionValue).flag("flag", "named flag", flagValue);
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK(parser.parsed("option"));
+    BOOST_CHECK(parser.parsed("flag"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

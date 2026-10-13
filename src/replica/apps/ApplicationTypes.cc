@@ -51,6 +51,11 @@ Command& Command::reversedFlag(string const& name, string const& description, bo
     return *this;
 }
 
+bool Command::parsed(string const& name) const {
+    return (_parsedOptions.find(name) != _parsedOptions.end()) ||
+           (_parsedFlags.find(name) != _parsedFlags.end());
+}
+
 CommandsSet::CommandsSet(vector<string> const& commandNames, string& var) : _var(var) {
     for (auto&& name : commandNames) {
         _commands.insert(make_pair(name, new Command()));
@@ -73,6 +78,8 @@ void Parser::reset() {
     _optional.clear();
     _options.clear();
     _flags.clear();
+    _parsedOptions.clear();
+    _parsedFlags.clear();
     _commands.reset();
 
     _code = Status::UNDEFINED;
@@ -108,6 +115,11 @@ Parser& Parser::reversedFlag(string const& name, string const& description, bool
     bool const reverse = true;
     _flags.emplace(make_pair(name, make_unique<FlagParser>(name, description, var, reverse)));
     return *this;
+}
+
+bool Parser::parsed(string const& name) const {
+    return (_parsedOptions.find(name) != _parsedOptions.end()) ||
+           (_parsedFlags.find(name) != _parsedFlags.end());
 }
 
 Parser::Status Parser::parse() {
@@ -185,18 +197,30 @@ Parser::Status Parser::parse() {
             auto const& name = entry.first;
             auto const& value = entry.second;
 
-            if (_parseOption(_options, name, value)) continue;
+            if (_parseOption(_options, name, value)) {
+                _parsedOptions.insert(name);
+                continue;
+            }
             if (commandMode) {
-                if (_parseOption(_commands->_commands[commandName]->_options, name, value)) continue;
+                if (_parseOption(_commands->_commands[commandName]->_options, name, value)) {
+                    _commands->_commands[commandName]->_parsedOptions.insert(name);
+                    continue;
+                }
             }
             throw ParserError(ERR_LOC, "'" + name + "' is not an option");
         }
 
         // Parse flags
         for (auto&& name : inFlags) {
-            if (_parseFlag(_flags, name)) continue;
+            if (_parseFlag(_flags, name)) {
+                _parsedFlags.insert(name);
+                continue;
+            }
             if (commandMode) {
-                if (_parseFlag(_commands->_commands[commandName]->_flags, name)) continue;
+                if (_parseFlag(_commands->_commands[commandName]->_flags, name)) {
+                    _commands->_commands[commandName]->_parsedFlags.insert(name);
+                    continue;
+                }
             }
             throw ParserError(ERR_LOC, "'" + name + "' is not a flag");
         }
