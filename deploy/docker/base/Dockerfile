@@ -133,10 +133,9 @@ RUN cd /tmp \
 RUN cd /tmp \
     && git clone https://github.com/xrootd/xrootd.git \
     && cd xrootd \
-    && git checkout tags/v5.9.0 \
+    && git checkout tags/v6.2.0 \
     && git config --global user.email "qserv@slac.stanford.edu" \
     && git config --global user.name "Qserv" \
-    && git cherry-pick b02d08c97bb2414e06bd440f120a486422a86d88 5b0983864c053a9d0de759fb65465dba4d2f21bd 9957a250e9635bc993f4b5b7ecd356de626f3e76 \
     && mkdir build \
     && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_PYTHON=off .. \
