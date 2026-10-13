@@ -373,6 +373,13 @@ public:
      */
     Command& reversedFlag(std::string const& name, std::string const& description, bool& var);
 
+    /**
+     * Check if a named argument (option or flag) has been parsed.
+     * @param name the name of the argument
+     * @return 'true' if the argument has been parsed, 'false' otherwise
+     */
+    bool parsed(std::string const& name) const;
+
 private:
     /// The friend class is allowed to access the members when parsing
     /// the command-line input
@@ -383,6 +390,8 @@ private:
     std::vector<std::unique_ptr<ArgumentParser>> _optional;  ///< A sequence of the optional parameters
     std::map<std::string, std::unique_ptr<ArgumentParser>> _options;  ///< A set of named options
     std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;    ///< A set of named flags
+    std::set<std::string> _parsedOptions;  ///< A set to track which options have been parsed
+    std::set<std::string> _parsedFlags;    ///< A set to track which flags have been parsed
 };
 
 /**
@@ -594,6 +603,13 @@ public:
      */
     std::string serializeArguments() const;
 
+    /**
+     * Check if a named argument (option or flag) has been parsed.
+     * @param name the name of the argument
+     * @return 'true' if the argument has been parsed, 'false' otherwise
+     */
+    bool parsed(std::string const& name) const;
+
 private:
     /**
      * Verify the name of an argument (parameter, option or flag) to ensure
@@ -669,6 +685,8 @@ private:
     std::map<std::string, std::unique_ptr<ArgumentParser>> _options;  ///< A set of named options
     std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;    ///< A set of named flags
     std::unique_ptr<CommandsSet> _commands;                           ///< A set of commands
+    std::set<std::string> _parsedOptions;  ///< A set to track which options have been parsed
+    std::set<std::string> _parsedFlags;    ///< A set to track which flags have been parsed
 
     /// Status code set after parsing the arguments. It's also used to avoid
     /// invoking method Parser::parse() more than one time. The default value
