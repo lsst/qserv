@@ -114,15 +114,13 @@ int Application::run() {
         }
 
         // Apply/update user-specified values of the general configuration parameters to the configuration
-        // object. Note that options specified by a user will have non-empty values. Also note that
-        // values equal to the default ones will be ignored to avoid overriding values which were loaded
-        // into the configuration from the configuration file.
+        // object. Note that only the parameters explicitly specified by the user will be applied.
         for (auto&& categoryItr : _generalParams) {
             string const& category = categoryItr.first;
             for (auto&& paramItr : categoryItr.second) {
                 string const& param = paramItr.first;
                 string const& value = paramItr.second;
-                if (!value.empty() && value != _configSchema.defaultValueAsString(category, param)) {
+                if (parser().parsed(category + "-" + param)) {
                     config->setFromString(category, param, value);
                 }
             }
