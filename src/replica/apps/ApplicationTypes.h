@@ -272,7 +272,7 @@ public:
             : ArgumentParser(name, description), _var(var), _reverse(reverse) {}
 
     virtual void parse(std::string const& inStr = "") final { _var = _reverse ? false : true; }
-    virtual std::string defaultValue() const final { return _reverse ? "true" : "false"; }
+    virtual std::string defaultValue() const final { return _reverse ? "1" : "0"; }
     virtual void dumpNameValue(std::ostream& os) const final { os << name() << "=" << bool2str(_var); }
 
 private:
@@ -352,6 +352,7 @@ public:
     template <typename T>
     Command& option(std::string const& name, std::string const& description, T& var,
                     std::vector<T> const& allowedValues = std::vector<T>()) {
+        _verifyUniqueArgument(name);
         _options.emplace(name, std::make_unique<OptionParser<T>>(name, description, var, allowedValues));
         return *this;
     }
@@ -373,7 +374,16 @@ public:
      */
     Command& reversedFlag(std::string const& name, std::string const& description, bool& var);
 
+    /**
+     * Check if a named argument (option or flag) has been parsed.
+     * @param name the name of the argument
+     * @return 'true' if the argument has been parsed, 'false' otherwise
+     */
+    bool parsed(std::string const& name) const;
+
 private:
+    void _verifyUniqueArgument(std::string const& name) const;
+
     /// The friend class is allowed to access the members when parsing
     /// the command-line input
     friend class Parser;
@@ -383,6 +393,8 @@ private:
     std::vector<std::unique_ptr<ArgumentParser>> _optional;  ///< A sequence of the optional parameters
     std::map<std::string, std::unique_ptr<ArgumentParser>> _options;  ///< A set of named options
     std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;    ///< A set of named flags
+    std::set<std::string> _parsedOptions;  ///< A set to track which options have been parsed
+    std::set<std::string> _parsedFlags;    ///< A set to track which flags have been parsed
 };
 
 /**
@@ -546,6 +558,7 @@ public:
     Parser& option(std::string const& name, std::string const& description, T& var,
                    std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
+        _verifyUniqueArgument(name);
         _options.emplace(std::make_pair(
                 name, std::move(std::make_unique<OptionParser<T>>(name, description, var, allowedValues))));
         return *this;
@@ -594,6 +607,13 @@ public:
      */
     std::string serializeArguments() const;
 
+    /**
+     * Check if a named argument (option or flag) has been parsed.
+     * @param name the name of the argument
+     * @return 'true' if the argument has been parsed, 'false' otherwise
+     */
+    bool parsed(std::string const& name) const;
+
 private:
     /**
      * Verify the name of an argument (parameter, option or flag) to ensure
@@ -602,6 +622,13 @@ private:
      * @throws std::invalid_argument if the name is not allowed or it's empty
      */
     void _verifyArgument(std::string const& name);
+
+    /**
+     * Verify that an argument (option or flag) with the given name has not been registered before.
+     * @param name the name of an argument
+     * @throws std::invalid_argument if an argument with the same name already exists
+     */
+    void _verifyUniqueArgument(std::string const& name);
 
     /**
      * Parse and store a value of an option in a collection if it's a valid option
@@ -669,6 +696,8 @@ private:
     std::map<std::string, std::unique_ptr<ArgumentParser>> _options;  ///< A set of named options
     std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;    ///< A set of named flags
     std::unique_ptr<CommandsSet> _commands;                           ///< A set of commands
+    std::set<std::string> _parsedOptions;  ///< A set to track which options have been parsed
+    std::set<std::string> _parsedFlags;    ///< A set to track which flags have been parsed
 
     /// Status code set after parsing the arguments. It's also used to avoid
     /// invoking method Parser::parse() more than one time. The default value

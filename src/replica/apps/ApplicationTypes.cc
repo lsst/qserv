@@ -40,15 +40,29 @@ ostream& operator<<(ostream& os, ArgumentParser const& arg) {
 }
 
 Command& Command::flag(string const& name, string const& description, bool& var) {
+    _verifyUniqueArgument(name);
     bool const reverse = false;
     _flags.emplace(name, make_unique<FlagParser>(name, description, var, reverse));
     return *this;
 }
 
 Command& Command::reversedFlag(string const& name, string const& description, bool& var) {
+    _verifyUniqueArgument(name);
     bool const reverse = true;
     _flags.emplace(name, make_unique<FlagParser>(name, description, var, reverse));
     return *this;
+}
+
+void Command::_verifyUniqueArgument(string const& name) const {
+    if (_options.find(name) != _options.end() || _flags.find(name) != _flags.end()) {
+        throw invalid_argument("Command::" + string(__func__) + "  an option or flag with the name `" + name +
+                               "` already exists");
+    }
+}
+
+bool Command::parsed(string const& name) const {
+    return (_parsedOptions.find(name) != _parsedOptions.end()) ||
+           (_parsedFlags.find(name) != _parsedFlags.end());
 }
 
 CommandsSet::CommandsSet(vector<string> const& commandNames, string& var) : _var(var) {
@@ -73,6 +87,9 @@ void Parser::reset() {
     _optional.clear();
     _options.clear();
     _flags.clear();
+    _parsedOptions.clear();
+    _parsedFlags.clear();
+    _commands.reset();
 
     _code = Status::UNDEFINED;
     _usageStr = "";
@@ -97,6 +114,7 @@ Command& Parser::command(string const& name) {
 
 Parser& Parser::flag(string const& name, string const& description, bool& var) {
     _verifyArgument(name);
+    _verifyUniqueArgument(name);
     bool const reverse = false;
     _flags.emplace(make_pair(name, make_unique<FlagParser>(name, description, var, reverse)));
     return *this;
@@ -104,9 +122,15 @@ Parser& Parser::flag(string const& name, string const& description, bool& var) {
 
 Parser& Parser::reversedFlag(string const& name, string const& description, bool& var) {
     _verifyArgument(name);
+    _verifyUniqueArgument(name);
     bool const reverse = true;
     _flags.emplace(make_pair(name, make_unique<FlagParser>(name, description, var, reverse)));
     return *this;
+}
+
+bool Parser::parsed(string const& name) const {
+    return (_parsedOptions.find(name) != _parsedOptions.end()) ||
+           (_parsedFlags.find(name) != _parsedFlags.end());
 }
 
 Parser::Status Parser::parse() {
@@ -184,18 +208,30 @@ Parser::Status Parser::parse() {
             auto const& name = entry.first;
             auto const& value = entry.second;
 
-            if (_parseOption(_options, name, value)) continue;
+            if (_parseOption(_options, name, value)) {
+                _parsedOptions.insert(name);
+                continue;
+            }
             if (commandMode) {
-                if (_parseOption(_commands->_commands[commandName]->_options, name, value)) continue;
+                if (_parseOption(_commands->_commands[commandName]->_options, name, value)) {
+                    _commands->_commands[commandName]->_parsedOptions.insert(name);
+                    continue;
+                }
             }
             throw ParserError(ERR_LOC, "'" + name + "' is not an option");
         }
 
         // Parse flags
         for (auto&& name : inFlags) {
-            if (_parseFlag(_flags, name)) continue;
+            if (_parseFlag(_flags, name)) {
+                _parsedFlags.insert(name);
+                continue;
+            }
             if (commandMode) {
-                if (_parseFlag(_commands->_commands[commandName]->_flags, name)) continue;
+                if (_parseFlag(_commands->_commands[commandName]->_flags, name)) {
+                    _commands->_commands[commandName]->_parsedFlags.insert(name);
+                    continue;
+                }
             }
             throw ParserError(ERR_LOC, "'" + name + "' is not a flag");
         }
@@ -279,6 +315,17 @@ void Parser::_verifyArgument(string const& name) {
     }
     if (name == "help") {
         throw invalid_argument("Parser::" + string(__func__) + " `help` is a reserved keyword");
+    }
+}
+
+void Parser::_verifyUniqueArgument(string const& name) {
+    if (_options.find(name) != _options.end()) {
+        throw invalid_argument("Parser::" + string(__func__) + "  an option with the name `" + name +
+                               "` already exists");
+    }
+    if (_flags.find(name) != _flags.end()) {
+        throw invalid_argument("Parser::" + string(__func__) + "  a flag with the name `" + name +
+                               "` already exists");
     }
 }
 

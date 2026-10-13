@@ -23,7 +23,10 @@
  */
 
 // System headers
+#include <sstream>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 // Third-party headers
 
@@ -136,6 +139,11 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
         BOOST_CHECK(f1);
         BOOST_CHECK(not f2);
         BOOST_CHECK(not f3);
+        BOOST_CHECK(parser.parsed("o3"));
+        BOOST_CHECK(parser.parsed("f1"));
+        BOOST_CHECK(parser.parsed("no-f3"));
+        BOOST_CHECK(!parser.parsed("f2"));
+        BOOST_CHECK(!parser.parsed("missing"));
     });
 
     LOGS_INFO("ApplicationParser2 test ends");
@@ -305,7 +313,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         BOOST_CHECK(c2f1);
     });
 
-    // Running the Parser in the 'commands' mode to test '--help'
+    // Running the Parser in the 'commands' mode for command "C3"
     //
     // Syntax tested:
     //
@@ -351,7 +359,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         parser.command("C2")
                 .description("This is the second command")
                 .required("c2r1", "required parameter c2r1 of command C2", c2r1)
-                .optional("c2f1", "flag c2f1 of command C1", c2f1);
+                .flag("c2f1", "flag c2f1 of command C2", c2f1);
         parser.command("C3")
                 .description("This is the third command")
                 .optional("c3o1", "optional parameter c3o1 of command C3", c3o1);
@@ -405,7 +413,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
         parser.command("C2")
                 .description("This is the second command")
                 .required("c2r1", "required parameter c2r1 of command C2", c2r1)
-                .optional("c2f1", "flag c2f1 of command C1", c2f1);
+                .flag("c2f1", "flag c2f1 of command C2", c2f1);
         parser.command("C3")
                 .description("This is the third command")
                 .optional("c3o1", "optional parameter c3o1 of command C3", c3o1);
@@ -416,6 +424,253 @@ BOOST_AUTO_TEST_CASE(ApplicationParser4) {
     });
 
     LOGS_INFO("ApplicationParser4 test ends");
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationArgumentParserTypes) {
+    vector<int> const allowedValues = {2, 4, 6};
+    BOOST_CHECK(ArgumentParser::in(4, allowedValues));
+    BOOST_CHECK(!ArgumentParser::in(5, allowedValues));
+
+    int parameterValue = 3;
+    ParameterParser<int> parameter("count", "number of items", parameterValue, allowedValues);
+    BOOST_CHECK_EQUAL(parameter.name(), "count");
+    BOOST_CHECK_EQUAL(parameter.description(), "number of items");
+    BOOST_CHECK_EQUAL(parameter.defaultValue(), "3");
+    parameter.parse("4");
+    BOOST_CHECK_EQUAL(parameterValue, 4);
+    ostringstream parameterDump;
+    parameter.dumpNameValue(parameterDump);
+    BOOST_CHECK_EQUAL(parameterDump.str(), "count=4");
+    BOOST_CHECK_THROW(parameter.parse("not-an-integer"), ParserError);
+    BOOST_CHECK_THROW(parameter.parse("5"), ParserError);
+
+    string optionValue = "original";
+    OptionParser<string> option("mode", "processing mode", optionValue, {"fast", "safe"});
+    BOOST_CHECK_EQUAL(option.defaultValue(), "original");
+    option.parse("");
+    BOOST_CHECK_EQUAL(optionValue, "original");
+    option.parse("fast");
+    BOOST_CHECK_EQUAL(optionValue, "fast");
+    BOOST_CHECK_THROW(option.parse("invalid"), ParserError);
+    ostringstream optionDump;
+    option.dumpNameValue(optionDump);
+    BOOST_CHECK_EQUAL(optionDump.str(), "mode=invalid");
+
+    bool enabled = false;
+    FlagParser flag("enabled", "enable processing", enabled, false);
+    BOOST_CHECK_EQUAL(flag.defaultValue(), "0");
+    flag.parse();
+    BOOST_CHECK(enabled);
+    ostringstream flagDump;
+    flag.dumpNameValue(flagDump);
+    BOOST_CHECK_EQUAL(flagDump.str(), "enabled=1");
+
+    bool disabled = true;
+    FlagParser reversedFlag("disable", "disable processing", disabled, true);
+    BOOST_CHECK_EQUAL(reversedFlag.defaultValue(), "1");
+    reversedFlag.parse();
+    BOOST_CHECK(!disabled);
+    ostringstream reversedFlagDump;
+    reversedFlag.dumpNameValue(reversedFlagDump);
+    BOOST_CHECK_EQUAL(reversedFlagDump.str(), "disable=0");
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationCommandsSet) {
+    string commandName;
+    CommandsSet commands({"start", "stop"}, commandName);
+    commands.command("start").description("start service");
+    BOOST_CHECK_THROW(commands.command("unknown"), range_error);
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserFailureAndStatus) {
+    string value;
+    int const argcMissing = 1;
+    char const* const argvMissing[] = {"testApplicationParser"};
+    Parser missingParser(argcMissing, argvMissing, descr);
+    missingParser.required("value", "required value", value);
+    BOOST_CHECK_THROW(missingParser.serializeArguments(), logic_error);
+    BOOST_CHECK_EQUAL(missingParser.parse(), Parser::PARSING_FAILED);
+    BOOST_CHECK_EQUAL(missingParser.status(), Parser::PARSING_FAILED);
+    BOOST_CHECK_EQUAL(missingParser.parse(), Parser::PARSING_FAILED);
+    BOOST_CHECK_THROW(missingParser.serializeArguments(), logic_error);
+
+    int const argcUnknownOption = 2;
+    char const* const argvUnknownOption[] = {"testApplicationParser", "--unknown=1"};
+    Parser unknownOptionParser(argcUnknownOption, argvUnknownOption, descr);
+    BOOST_CHECK_EQUAL(unknownOptionParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcStandaloneDash = 2;
+    char const* const argvStandaloneDash[] = {"testApplicationParser", "--"};
+    Parser standaloneDashParser(argcStandaloneDash, argvStandaloneDash, descr);
+    BOOST_CHECK_EQUAL(standaloneDashParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcInvalidValue = 2;
+    char const* const argvInvalidValue[] = {"testApplicationParser", "not-an-integer"};
+    int parsedValue = 0;
+    Parser invalidValueParser(argcInvalidValue, argvInvalidValue, descr);
+    invalidValueParser.required("value", "integer value", parsedValue);
+    BOOST_CHECK_EQUAL(invalidValueParser.parse(), Parser::PARSING_FAILED);
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserCommandErrorsAndReconfiguration) {
+    string command;
+    int const argcUnknownCommand = 2;
+    char const* const argvUnknownCommand[] = {"testApplicationParser", "unknown"};
+    Parser unknownCommandParser(argcUnknownCommand, argvUnknownCommand, descr);
+    unknownCommandParser.commands("command", {"start", "stop"}, command);
+    BOOST_CHECK_THROW(unknownCommandParser.command("unknown"), range_error);
+    BOOST_CHECK_EQUAL(unknownCommandParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcCommandMissing = 1;
+    char const* const argvCommandMissing[] = {"testApplicationParser"};
+    Parser missingCommandParser(argcCommandMissing, argvCommandMissing, descr);
+    missingCommandParser.commands("command", {"start", "stop"}, command);
+    BOOST_CHECK_EQUAL(missingCommandParser.parse(), Parser::PARSING_FAILED);
+
+    int const argcReconfigure = 2;
+    char const* const argvReconfigure[] = {"testApplicationParser", "start"};
+    Parser parser(argcReconfigure, argvReconfigure, descr);
+    parser.commands("command", {"start"}, command);
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    parser.reset();
+    BOOST_CHECK_EQUAL(parser.status(), Parser::UNDEFINED);
+    string positionalValue;
+    parser.required("value", "positional value", positionalValue);
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK_EQUAL(positionalValue, "start");
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserParsedCommandArguments) {
+    string commandName;
+    string globalOption = "default-global";
+    string localOption = "default-local";
+    bool globalFlag = false;
+    bool localFlag = false;
+    bool unusedLocalFlag = false;
+    int const argc = 5;
+    char const* const argv[] = {"testApplicationParser", "run", "--global=chosen", "--local=selected",
+                                "--local-flag"};
+
+    Parser parser(argc, argv, descr);
+    parser.commands("command", {"run", "stop"}, commandName)
+            .option("global", "global option", globalOption)
+            .flag("global-flag", "global flag", globalFlag);
+    parser.command("run")
+            .option("local", "run-only option", localOption)
+            .flag("local-flag", "run-only flag", localFlag);
+    parser.command("stop").reversedFlag("unused-local-flag", "stop-only flag", unusedLocalFlag);
+
+    BOOST_CHECK(!parser.parsed("global"));
+    BOOST_CHECK(!parser.parsed("global-flag"));
+    BOOST_CHECK(!parser.command("run").parsed("local"));
+    BOOST_CHECK(!parser.command("run").parsed("local-flag"));
+
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK_EQUAL(commandName, "run");
+    BOOST_CHECK_EQUAL(globalOption, "chosen");
+    BOOST_CHECK_EQUAL(localOption, "selected");
+    BOOST_CHECK(localFlag);
+
+    BOOST_CHECK(parser.parsed("global"));
+    BOOST_CHECK(!parser.parsed("global-flag"));
+    BOOST_CHECK(!parser.parsed("local"));
+    BOOST_CHECK(!parser.parsed("local-flag"));
+    BOOST_CHECK(!parser.parsed("missing"));
+
+    Command& runCommand = parser.command("run");
+    BOOST_CHECK(runCommand.parsed("local-flag"));
+    BOOST_CHECK(runCommand.parsed("local"));
+    BOOST_CHECK(!runCommand.parsed("global"));
+    BOOST_CHECK(!parser.command("stop").parsed("unused-local-flag"));
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserParsedStateReset) {
+    string optionValue;
+    bool flagValue = false;
+    int const argc = 3;
+    char const* const argv[] = {"testApplicationParser", "--option=value", "--flag"};
+    Parser parser(argc, argv, descr);
+    parser.option("option", "named option", optionValue).flag("flag", "named flag", flagValue);
+
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK(parser.parsed("option"));
+    BOOST_CHECK(parser.parsed("flag"));
+
+    parser.reset();
+    BOOST_CHECK(!parser.parsed("option"));
+    BOOST_CHECK(!parser.parsed("flag"));
+
+    parser.option("option", "named option", optionValue).flag("flag", "named flag", flagValue);
+    BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
+    BOOST_CHECK(parser.parsed("option"));
+    BOOST_CHECK(parser.parsed("flag"));
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationParserNamedArgumentUniqueness) {
+    int const argc = 1;
+    char const* const argv[] = {"testApplicationParser"};
+
+    string optionValue1;
+    string optionValue2;
+    Parser duplicateOptionParser(argc, argv, descr);
+    duplicateOptionParser.option("name", "first option", optionValue1);
+    BOOST_CHECK_THROW(duplicateOptionParser.option("name", "duplicate option", optionValue2),
+                      invalid_argument);
+
+    bool flagValue1 = false;
+    bool flagValue2 = false;
+    Parser duplicateFlagParser(argc, argv, descr);
+    duplicateFlagParser.flag("name", "first flag", flagValue1);
+    BOOST_CHECK_THROW(duplicateFlagParser.flag("name", "duplicate flag", flagValue2), invalid_argument);
+
+    bool optionFlagValue = false;
+    Parser optionThenFlagParser(argc, argv, descr);
+    optionThenFlagParser.option("name", "option", optionValue1);
+    BOOST_CHECK_THROW(optionThenFlagParser.flag("name", "colliding flag", optionFlagValue), invalid_argument);
+
+    string flagOptionValue;
+    Parser flagThenOptionParser(argc, argv, descr);
+    flagThenOptionParser.flag("name", "flag", flagValue1);
+    BOOST_CHECK_THROW(flagThenOptionParser.option("name", "colliding option", flagOptionValue),
+                      invalid_argument);
+
+    bool reversedFlagValue = false;
+    Parser reversedFlagParser(argc, argv, descr);
+    reversedFlagParser.reversedFlag("name", "reversed flag", reversedFlagValue);
+    BOOST_CHECK_THROW(reversedFlagParser.flag("name", "duplicate flag", flagValue2), invalid_argument);
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationCommandNamedArgumentUniqueness) {
+    bool flagValue1 = false;
+    bool flagValue2 = false;
+    Command duplicateFlagCommand;
+    duplicateFlagCommand.flag("name", "first flag", flagValue1);
+    BOOST_CHECK_THROW(duplicateFlagCommand.flag("name", "duplicate flag", flagValue2), invalid_argument);
+
+    string optionValue1;
+    string optionValue2;
+    Command duplicateOptionCommand;
+    duplicateOptionCommand.option("name", "first option", optionValue1);
+    BOOST_CHECK_THROW(duplicateOptionCommand.option("name", "duplicate option", optionValue2),
+                      invalid_argument);
+
+    bool optionThenFlagValue = false;
+    Command optionThenFlagCommand;
+    optionThenFlagCommand.option("name", "option", optionValue1);
+    BOOST_CHECK_THROW(optionThenFlagCommand.flag("name", "colliding flag", optionThenFlagValue),
+                      invalid_argument);
+
+    string flagThenOptionValue;
+    Command flagThenOptionCommand;
+    flagThenOptionCommand.flag("name", "flag", flagValue1);
+    BOOST_CHECK_THROW(flagThenOptionCommand.option("name", "colliding option", flagThenOptionValue),
+                      invalid_argument);
+
+    bool reversedFlagValue = false;
+    Command reversedFlagCommand;
+    reversedFlagCommand.reversedFlag("name", "reversed flag", reversedFlagValue);
+    BOOST_CHECK_THROW(reversedFlagCommand.reversedFlag("name", "duplicate reversed flag", flagValue2),
+                      invalid_argument);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
