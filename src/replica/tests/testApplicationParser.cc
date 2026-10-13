@@ -606,4 +606,71 @@ BOOST_AUTO_TEST_CASE(ApplicationParserParsedStateReset) {
     BOOST_CHECK(parser.parsed("flag"));
 }
 
+BOOST_AUTO_TEST_CASE(ApplicationParserNamedArgumentUniqueness) {
+    int const argc = 1;
+    char const* const argv[] = {"testApplicationParser"};
+
+    string optionValue1;
+    string optionValue2;
+    Parser duplicateOptionParser(argc, argv, descr);
+    duplicateOptionParser.option("name", "first option", optionValue1);
+    BOOST_CHECK_THROW(duplicateOptionParser.option("name", "duplicate option", optionValue2),
+                      invalid_argument);
+
+    bool flagValue1 = false;
+    bool flagValue2 = false;
+    Parser duplicateFlagParser(argc, argv, descr);
+    duplicateFlagParser.flag("name", "first flag", flagValue1);
+    BOOST_CHECK_THROW(duplicateFlagParser.flag("name", "duplicate flag", flagValue2), invalid_argument);
+
+    bool optionFlagValue = false;
+    Parser optionThenFlagParser(argc, argv, descr);
+    optionThenFlagParser.option("name", "option", optionValue1);
+    BOOST_CHECK_THROW(optionThenFlagParser.flag("name", "colliding flag", optionFlagValue), invalid_argument);
+
+    string flagOptionValue;
+    Parser flagThenOptionParser(argc, argv, descr);
+    flagThenOptionParser.flag("name", "flag", flagValue1);
+    BOOST_CHECK_THROW(flagThenOptionParser.option("name", "colliding option", flagOptionValue),
+                      invalid_argument);
+
+    bool reversedFlagValue = false;
+    Parser reversedFlagParser(argc, argv, descr);
+    reversedFlagParser.reversedFlag("name", "reversed flag", reversedFlagValue);
+    BOOST_CHECK_THROW(reversedFlagParser.flag("name", "duplicate flag", flagValue2), invalid_argument);
+}
+
+BOOST_AUTO_TEST_CASE(ApplicationCommandNamedArgumentUniqueness) {
+    bool flagValue1 = false;
+    bool flagValue2 = false;
+    Command duplicateFlagCommand;
+    duplicateFlagCommand.flag("name", "first flag", flagValue1);
+    BOOST_CHECK_THROW(duplicateFlagCommand.flag("name", "duplicate flag", flagValue2), invalid_argument);
+
+    string optionValue1;
+    string optionValue2;
+    Command duplicateOptionCommand;
+    duplicateOptionCommand.option("name", "first option", optionValue1);
+    BOOST_CHECK_THROW(duplicateOptionCommand.option("name", "duplicate option", optionValue2),
+                      invalid_argument);
+
+    bool optionThenFlagValue = false;
+    Command optionThenFlagCommand;
+    optionThenFlagCommand.option("name", "option", optionValue1);
+    BOOST_CHECK_THROW(optionThenFlagCommand.flag("name", "colliding flag", optionThenFlagValue),
+                      invalid_argument);
+
+    string flagThenOptionValue;
+    Command flagThenOptionCommand;
+    flagThenOptionCommand.flag("name", "flag", flagValue1);
+    BOOST_CHECK_THROW(flagThenOptionCommand.option("name", "colliding option", flagThenOptionValue),
+                      invalid_argument);
+
+    bool reversedFlagValue = false;
+    Command reversedFlagCommand;
+    reversedFlagCommand.reversedFlag("name", "reversed flag", reversedFlagValue);
+    BOOST_CHECK_THROW(reversedFlagCommand.reversedFlag("name", "duplicate reversed flag", flagValue2),
+                      invalid_argument);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

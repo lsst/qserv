@@ -352,6 +352,7 @@ public:
     template <typename T>
     Command& option(std::string const& name, std::string const& description, T& var,
                     std::vector<T> const& allowedValues = std::vector<T>()) {
+        _verifyUniqueArgument(name);
         _options.emplace(name, std::make_unique<OptionParser<T>>(name, description, var, allowedValues));
         return *this;
     }
@@ -381,6 +382,8 @@ public:
     bool parsed(std::string const& name) const;
 
 private:
+    void _verifyUniqueArgument(std::string const& name) const;
+
     /// The friend class is allowed to access the members when parsing
     /// the command-line input
     friend class Parser;
@@ -555,6 +558,7 @@ public:
     Parser& option(std::string const& name, std::string const& description, T& var,
                    std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
+        _verifyUniqueArgument(name);
         _options.emplace(std::make_pair(
                 name, std::move(std::make_unique<OptionParser<T>>(name, description, var, allowedValues))));
         return *this;
@@ -618,6 +622,13 @@ private:
      * @throws std::invalid_argument if the name is not allowed or it's empty
      */
     void _verifyArgument(std::string const& name);
+
+    /**
+     * Verify that an argument (option or flag) with the given name has not been registered before.
+     * @param name the name of an argument
+     * @throws std::invalid_argument if an argument with the same name already exists
+     */
+    void _verifyUniqueArgument(std::string const& name);
 
     /**
      * Parse and store a value of an option in a collection if it's a valid option
