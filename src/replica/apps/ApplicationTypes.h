@@ -272,7 +272,7 @@ public:
             : ArgumentParser(name, description), _var(var), _reverse(reverse) {}
 
     virtual void parse(std::string const& inStr = "") final { _var = _reverse ? false : true; }
-    virtual std::string defaultValue() const final { return _reverse ? "true" : "false"; }
+    virtual std::string defaultValue() const final { return _reverse ? "1" : "0"; }
     virtual void dumpNameValue(std::ostream& os) const final { os << name() << "=" << bool2str(_var); }
 
 private:

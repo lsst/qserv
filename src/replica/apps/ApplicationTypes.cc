@@ -73,6 +73,7 @@ void Parser::reset() {
     _optional.clear();
     _options.clear();
     _flags.clear();
+    _commands.reset();
 
     _code = Status::UNDEFINED;
     _usageStr = "";
