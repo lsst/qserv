@@ -59,6 +59,7 @@
 #include "wbase/UberJobData.h"
 #include "wbase/UserQueryInfo.h"
 #include "wconfig/WorkerConfig.h"
+#include "wdb/Explain.h"
 #include "wdb/QueryRunner.h"
 #include "wpublish/QueriesAndChunks.h"
 
@@ -287,10 +288,22 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         }
     }
 
+    bool expFirst = true; //&&&
     for (auto taskPtr : vect) {
         // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
         taskPtr->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(taskPtr, chunkResourceMgr, mySqlConfig,
                                                                      sqlConnMgr, queriesAndChunks));
+        /// &&& Get an explain for every task (for testing).
+        if (expFirst) {
+            expFirst = false;
+            auto tExpl = wdb::Explain::create(chunkResourceMgr, mySqlConfig, sqlConnMgr,
+                                                         taskPtr->getDb(), taskPtr->getChunkId(),
+                                                         taskPtr->getDbTblsAndSubchunks(), taskPtr->user,
+                                                         taskPtr->getQueryString());
+            string errMsg = "&&& explain";
+            tExpl->runQuery(errMsg);
+            LOGS(_log, LOG_LVL_WARN, "&&& " << errMsg);
+        }
     }
 
     return vect;
