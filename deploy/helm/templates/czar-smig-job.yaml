@@ -23,11 +23,25 @@ spec:
         app.kubernetes.io/component: schema
     spec:
       restartPolicy: Never
+      {{- if .Values.openshift }}
+      volumes:
+        - name: scratch
+          emptyDir: {}
+      {{- end }}
       containers:
         - name: czar-smig
           image: {{ .Values.qservImageName | quote }}
           imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          {{- if .Values.openshift }}
+          volumeMounts:
+            - name: scratch
+              mountPath: /scratch
+          {{- end }}
           env:
+            {{- if .Values.openshift }}
+            - name: QSERV_CFG
+              value: /scratch/qserv-template.cfg
+            {{- end }}
             - name: JOB_COMPLETION_INDEX
               valueFrom:
                 fieldRef:
