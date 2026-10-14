@@ -313,6 +313,8 @@ public:
     /// @see UberJobData::getRowLimit()
     int getRowLimit() { return _rowLimit; }
 
+    std::shared_ptr<DbTblsAndSubchunks> getDbTblsAndSubchunks() { return _dbTblsAndSubchunks; }
+
     int getLvlWT() const { return _logLvlWT; }
     int getLvlET() const { return _logLvlET; }
 
@@ -336,7 +338,7 @@ private:
     int const _czarId;                 ///< czar Id from the task message.
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
-    std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
+    std::shared_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
     std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
