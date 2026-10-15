@@ -171,10 +171,6 @@ void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
     // reported by the worker service.
     _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
-    // Extract target request type-specific parameters from the response
-    if (message.has_request()) {
-        _targetRequestParams = FindRequestParams(message.request());
-    }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
             controller()->serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);

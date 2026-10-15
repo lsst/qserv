@@ -77,9 +77,6 @@ public:
     bool hasTransactions() const { return _hasTransactions; }
     TransactionId transactionId() const { return _transactionId; }
 
-    /// @return target request specific parameters
-    DirectorIndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @note the method must be called on requests which are in the FINISHED
      *   state only. Otherwise the resulting structure may be in the undefined state.
@@ -180,9 +177,6 @@ private:
     bool const _hasTransactions;
     TransactionId const _transactionId;
     CallbackType _onFinish;
-
-    /// Request-specific parameters of the target request
-    DirectorIndexRequestParams _targetRequestParams;
 
     /// Result of the operation
     DirectorIndexRequestInfo _responseData;
