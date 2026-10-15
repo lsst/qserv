@@ -83,7 +83,7 @@ git submodule update --init                 # once, after clone
   container runs them (`ARGS=-jN` parallelizes). A single suite can be run from the
   build dir, e.g. `ctest -R testCss`.
 - Formatting is enforced: clang-format via `src/.clang-format` (Google-based, 110 cols,
-  4-space indent, includes NOT sorted); CI runs `--clang-format CHECK`, use
+  4-space indent, automatic include sorting disabled); CI runs `--clang-format CHECK`, use
   `--clang-format REFORMAT` locally. Python: ruff (line length 110, py312) and
   strict-ish mypy — configs in `pyproject.toml`.
 - Docs build: `tox -e docs` (sphinx/documenteer, warnings are errors).
@@ -97,13 +97,34 @@ git submodule update --init                 # once, after clone
 - C++20 (`set(CMAKE_CXX_STANDARD 20)`): follow surrounding style. LSST-ish naming: private members
   `_underscorePrefixed`, classes `UpperCamel`, methods `lowerCamel`. Logging via
   `LOGS(_log, LOG_LVL_*, ...)` (lsst/log). Doxygen-style `///` comments on public APIs.
-- Every C++ file gets the GPL header block; keep module-local `#include` grouping
-  (system / third-party / LSST / Qserv) as in existing files.
+- Follow the license and copyright requirements below. Keep module-local `#include`
+  grouping (system / third-party / LSST / Qserv) as in existing files. Sort includes
+  alphabetically by header path within each section; maintain this order manually
+  because clang-format does not sort includes.
 - Config values flow through `cconfig::CzarConfig` / `wconfig::WorkerConfig`
   (`util::ConfigValMap`) — add new tunables there, not ad-hoc.
 - Schema changes to the czar/worker/replication MySQL databases require a smig
   migration: add `migrate-N-to-N+1.sql` under `python/lsst/qserv/schema/migrations/{czar,worker,repl}/`
   and bump the expected version in the matching code.
+
+## License and copyright
+
+- Follow the authoritative [LSST license and copyright guidance](https://developer.lsst.io/stack/license-and-copyright.html).
+  The package/repository name for this repository is **`qserv`**.
+- Every new Qserv source file, including tests and scripts, must have the standard
+  LSST license preamble. Copy the exact appropriate template from that guidance,
+  replacing `{{ cookiecutter.package_name }}` with `qserv`. The opening sentence is
+  `This file is part of qserv.` Use the C++ block-comment template for C++ sources
+  and headers, the Python comment template for Python, and appropriate comment
+  syntax for other source languages. Preserve required shebang/encoding placement.
+- Use the full preamble, including the reference to the top-level `COPYRIGHT` file
+  and GPL version 3-or-later terms; do not substitute an abbreviated or SPDX-only
+  header. Do not copy legacy headers from neighboring files into new files.
+- Preserve existing copyright notices and third-party license headers. Do not
+  invent copyright holders or years, or relicense vendored code.
+- Do not modify `LICENSE`. Maintain `COPYRIGHT` when ownership information requires
+  an update, using confirmed institutional attribution and the linked guidance.
+- Before finishing, check newly added source files for the correct preamble.
 
 ## Deployments (context, not something to do casually)
 
