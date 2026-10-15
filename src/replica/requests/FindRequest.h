@@ -61,9 +61,6 @@ public:
     unsigned int chunk() const { return _chunk; }
     bool computeCheckSum() const { return _computeCheckSum; }
 
-    /// @return target request specific parameters
-    FindRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS
@@ -125,9 +122,6 @@ private:
     unsigned int const _chunk;
     bool const _computeCheckSum;
     CallbackType _onFinish;  ///< @note is reset when the request finishes
-
-    /// Request-specific parameters of the target request
-    FindRequestParams _targetRequestParams;
 
     /// The results reported by a worker service
     ReplicaInfo _replicaInfo;

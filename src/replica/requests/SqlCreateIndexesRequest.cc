@@ -36,7 +36,7 @@ namespace lsst::qserv::replica {
 
 SqlCreateIndexesRequest::Ptr SqlCreateIndexesRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
-        vector<string> const& tables, SqlRequestParams::IndexSpec const& indexSpec, string const& indexName,
+        vector<string> const& tables, SqlIndexSpec const& indexSpec, string const& indexName,
         string const& indexComment, vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish,
         int priority, bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
     auto ptr = Ptr(new SqlCreateIndexesRequest(controller, workerName, database, tables, indexSpec, indexName,
@@ -45,11 +45,13 @@ SqlCreateIndexesRequest::Ptr SqlCreateIndexesRequest::createAndStart(
     return ptr;
 }
 
-SqlCreateIndexesRequest::SqlCreateIndexesRequest(
-        shared_ptr<Controller> const& controller, string const& workerName, string const& database,
-        vector<string> const& tables, SqlRequestParams::IndexSpec const& indexSpec, string const& indexName,
-        string const& indexComment, vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish,
-        int priority, bool keepTracking)
+SqlCreateIndexesRequest::SqlCreateIndexesRequest(shared_ptr<Controller> const& controller,
+                                                 string const& workerName, string const& database,
+                                                 vector<string> const& tables, SqlIndexSpec const& indexSpec,
+                                                 string const& indexName, string const& indexComment,
+                                                 vector<SqlIndexColumn> const& indexColumns,
+                                                 CallbackType const& onFinish, int priority,
+                                                 bool keepTracking)
         : SqlRequest(controller, "SQL_CREATE_TABLE_INDEXES", workerName, ::unlimitedMaxRows, priority,
                      keepTracking),
           _onFinish(onFinish) {

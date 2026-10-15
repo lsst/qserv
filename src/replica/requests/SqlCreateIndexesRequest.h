@@ -82,7 +82,7 @@ public:
      */
     static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
                               std::string const& database, std::vector<std::string> const& tables,
-                              SqlRequestParams::IndexSpec const& indexSpec, std::string const& indexName,
+                              SqlIndexSpec const& indexSpec, std::string const& indexName,
                               std::string const& indexComment,
                               std::vector<SqlIndexColumn> const& indexColumns,
                               CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
@@ -95,7 +95,7 @@ protected:
 private:
     SqlCreateIndexesRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
                             std::string const& database, std::vector<std::string> const& tables,
-                            SqlRequestParams::IndexSpec const& indexSpec, std::string const& indexName,
+                            SqlIndexSpec const& indexSpec, std::string const& indexName,
                             std::string const& indexComment, std::vector<SqlIndexColumn> const& indexColumns,
                             CallbackType const& onFinish, int priority, bool keepTracking);
 

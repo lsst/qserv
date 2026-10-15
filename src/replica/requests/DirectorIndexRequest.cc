@@ -217,10 +217,6 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     // reported by the worker service.
     _responseData.error = message.error();
 
-    // Extract target request type-specific parameters from the response
-    if (message.has_request()) {
-        _targetRequestParams = DirectorIndexRequestParams(message.request());
-    }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS: {
             try {
