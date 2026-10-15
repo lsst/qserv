@@ -88,7 +88,7 @@ public:
      * @return A pointer to the created object.
      */
     static Ptr create(std::string const& database, std::string const& table, bool overlap,
-                      SqlRequestParams::IndexSpec const& indexSpec, std::string const& indexName,
+                      SqlIndexSpec const& indexSpec, std::string const& indexName,
                       std::string const& indexComment, std::vector<SqlIndexColumn> const& indexColumns,
                       bool allWorkers, bool ignoreDuplicateKey, Controller::Ptr const& controller,
                       std::string const& parentJobId, CallbackType const& onFinish, int priority);
@@ -102,7 +102,7 @@ public:
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
     bool overlap() const { return _overlap; }
-    SqlRequestParams::IndexSpec const& indexSpec() const { return _indexSpec; }
+    SqlIndexSpec const& indexSpec() const { return _indexSpec; }
     std::string const& indexName() const { return _indexName; }
     std::string const& indexComment() const { return _indexComment; }
     std::vector<SqlIndexColumn> const& indexColumns() const { return _indexColumns; }
@@ -116,7 +116,7 @@ protected:
 
 private:
     SqlCreateIndexesJob(std::string const& database, std::string const& table, bool overlap,
-                        SqlRequestParams::IndexSpec const& indexSpec, std::string const& indexName,
+                        SqlIndexSpec const& indexSpec, std::string const& indexName,
                         std::string const& indexComment, std::vector<SqlIndexColumn> const& indexColumns,
                         bool allWorkers, bool ignoreDuplicateKey, Controller::Ptr const& controller,
                         std::string const& parentJobId, CallbackType const& onFinish, int priority);
@@ -125,7 +125,7 @@ private:
     std::string const _database;
     std::string const _table;
     bool const _overlap;
-    SqlRequestParams::IndexSpec const _indexSpec;
+    SqlIndexSpec const _indexSpec;
     std::string const _indexName;
     std::string const _indexComment;
     std::vector<SqlIndexColumn> const _indexColumns;
