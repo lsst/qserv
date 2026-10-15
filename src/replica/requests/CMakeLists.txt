@@ -3,7 +3,6 @@ add_dependencies(replica_requests replica_proto)
 target_sources(replica_requests PRIVATE
     DeleteRequest.cc
     DirectorIndexRequest.cc
-    DisposeRequest.cc
     EchoRequest.cc
     FindAllRequest.cc
     FindRequest.cc

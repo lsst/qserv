@@ -166,10 +166,6 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
         _replicaInfoCollection.emplace_back(&(message.replica_info_many(idx)));
     }
 
-    // Extract target request type-specific parameters from the response
-    if (message.has_request()) {
-        _targetRequestParams = FindAllRequestParams(message.request());
-    }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
             try {
