@@ -189,10 +189,6 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     _responseData.set(response);
     _responseData.performanceSec = (util::TimeUtils::now() - performance(lock).c_create_time) / 1000.;
 
-    // Extract target request type-specific parameters from the response
-    if (response.has_request()) {
-        _targetRequestParams = SqlRequestParams(response.request());
-    }
     switch (response.status()) {
         case ProtocolStatus::SUCCESS:
             finish(lock, SUCCESS);
