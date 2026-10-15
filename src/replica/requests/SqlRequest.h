@@ -65,9 +65,6 @@ public:
 
     uint64_t maxRows() const { return requestBody.max_rows(); }
 
-    /// @return target request specific parameters
-    SqlRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS
@@ -126,9 +123,6 @@ private:
      * @param response response from a worker (if success)
      */
     void _analyze(bool success, ProtocolResponseSql const& response);
-
-    /// Request-specific parameters of the target request
-    SqlRequestParams _targetRequestParams;
 
     /// The results reported by a worker service
     SqlResultSet _responseData;
