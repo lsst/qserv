@@ -108,7 +108,7 @@ json HttpSqlIndexModule::_createIndexes() {
     string const tableName = body().required<string>("table");
     string const indexName = body().required<string>("index");
     string const comment = body().optional<string>("comment", string());
-    SqlRequestParams::IndexSpec const spec = SqlRequestParams::IndexSpec(
+    SqlIndexSpec const spec = SqlIndexSpec(
             body().optional<string>("spec", "DEFAULT", {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"}));
     json const columnsJson = body().required<json>("columns");
     bool const overlap = body().optional<int>("overlap", 0) != 0;

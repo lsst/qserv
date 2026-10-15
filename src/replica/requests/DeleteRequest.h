@@ -60,9 +60,6 @@ public:
     std::string const& database() const { return _database; }
     unsigned int chunk() const { return _chunk; }
 
-    /// @return parameters of a target request
-    DeleteRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @return request-specific extended data reported upon a successful completion
      *   of the request
@@ -121,9 +118,6 @@ private:
     std::string const _database;
     unsigned int const _chunk;
     CallbackType _onFinish;  ///< @note is reset when the job finishes
-
-    /// Request-specific parameters of the target request
-    DeleteRequestParams _targetRequestParams;
 
     /// Extended information on a status of the operation
     ReplicaInfo _replicaInfo;

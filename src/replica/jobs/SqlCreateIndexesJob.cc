@@ -44,19 +44,18 @@ namespace lsst::qserv::replica {
 string SqlCreateIndexesJob::typeName() { return "SqlCreateIndexesJob"; }
 
 SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
-        string const& database, string const& table, bool overlap,
-        SqlRequestParams::IndexSpec const& indexSpec, string const& indexName, string const& indexComment,
-        vector<SqlIndexColumn> const& indexColumns, bool allWorkers, bool ignoreDuplicateKey,
-        Controller::Ptr const& controller, string const& parentJobId, CallbackType const& onFinish,
-        int priority) {
+        string const& database, string const& table, bool overlap, SqlIndexSpec const& indexSpec,
+        string const& indexName, string const& indexComment, vector<SqlIndexColumn> const& indexColumns,
+        bool allWorkers, bool ignoreDuplicateKey, Controller::Ptr const& controller,
+        string const& parentJobId, CallbackType const& onFinish, int priority) {
     return Ptr(new SqlCreateIndexesJob(database, table, overlap, indexSpec, indexName, indexComment,
                                        indexColumns, allWorkers, ignoreDuplicateKey, controller, parentJobId,
                                        onFinish, priority));
 }
 
 SqlCreateIndexesJob::SqlCreateIndexesJob(string const& database, string const& table, bool overlap,
-                                         SqlRequestParams::IndexSpec const& indexSpec,
-                                         string const& indexName, string const& indexComment,
+                                         SqlIndexSpec const& indexSpec, string const& indexName,
+                                         string const& indexComment,
                                          vector<SqlIndexColumn> const& indexColumns, bool allWorkers,
                                          bool ignoreDuplicateKey, Controller::Ptr const& controller,
                                          string const& parentJobId, CallbackType const& onFinish,

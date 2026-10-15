@@ -168,10 +168,6 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
     // reported by the worker service.
     _responseData = message.data();
 
-    // Extract target request type-specific parameters from the response
-    if (message.has_request()) {
-        _targetRequestParams = EchoRequestParams(message.request());
-    }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
             finish(lock, SUCCESS);

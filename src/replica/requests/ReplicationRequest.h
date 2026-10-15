@@ -64,9 +64,6 @@ public:
     unsigned int chunk() const { return _chunk; }
     std::string const& sourceWorkerName() const { return _sourceWorkerName; }
 
-    /// @return target request specific parameters
-    ReplicationRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @return request-specific extended data reported upon a successful
      *   completion of the request
@@ -129,9 +126,6 @@ private:
     unsigned int const _chunk;
     std::string const _sourceWorkerName;
     CallbackType _onFinish;  ///< @note reset when the request is finished
-
-    /// Request-specific parameters of the target request
-    ReplicationRequestParams _targetRequestParams;
 
     /// Detailed info on the replica status
     ReplicaInfo _replicaInfo;

@@ -61,9 +61,6 @@ public:
     std::string const& data() const { return _data; }
     uint64_t delay() const { return _delay; }
 
-    /// @return target request specific parameters
-    EchoRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS
@@ -124,9 +121,6 @@ private:
     std::string const _data;
     uint64_t const _delay;
     CallbackType _onFinish;  ///< @note is reset when the request finishes
-
-    /// Request-specific parameters of the target request
-    EchoRequestParams _targetRequestParams;
 
     /// The results reported by a worker service
     std::string _responseData;

@@ -164,80 +164,6 @@ public:
     std::list<std::tuple<std::string, unsigned int, bool>> keys;
 };
 
-/**
- * Class ReplicationRequestParams encapsulates parameters of the replica
- * creation requests.
- */
-class ReplicationRequestParams {
-public:
-    std::string database;
-    unsigned int chunk = 0;
-    std::string sourceWorker;
-    std::string sourceWorkerHost;
-    uint16_t sourceWorkerPort;
-    std::string sourceWorkerDataDir;
-
-    ReplicationRequestParams() = default;
-
-    explicit ReplicationRequestParams(ProtocolRequestReplicate const& request);
-};
-
-/**
- * Class DeleteRequestParams represents parameters of the replica
- * deletion requests.
- */
-class DeleteRequestParams {
-public:
-    std::string database;
-    unsigned int chunk = 0;
-    std::string sourceWorker;
-
-    DeleteRequestParams() = default;
-
-    explicit DeleteRequestParams(ProtocolRequestDelete const& request);
-};
-
-/**
- * Class FindRequestParams represents parameters of a single replica
- * lookup (finding) requests.
- */
-class FindRequestParams {
-public:
-    std::string database;
-    unsigned int chunk = 0;
-
-    FindRequestParams() = default;
-
-    explicit FindRequestParams(ProtocolRequestFind const& request);
-};
-
-/**
- * Class FindAllRequestParams represents parameters of the replica
- * group (depends on a scope of the corresponding request) lookup (finding)
- * requests.
- */
-class FindAllRequestParams {
-public:
-    std::string database;
-
-    FindAllRequestParams() = default;
-
-    explicit FindAllRequestParams(ProtocolRequestFindAll const& request);
-};
-
-/**
- * Class EchoRequestParams represents parameters of the echo requests.
- */
-class EchoRequestParams {
-public:
-    std::string data;
-    uint64_t delay = 0;
-
-    EchoRequestParams() = default;
-
-    explicit EchoRequestParams(ProtocolRequestEcho const& request);
-};
-
 /// The type for the super-transaction identifiers
 typedef uint32_t TransactionId;
 
@@ -245,117 +171,42 @@ typedef uint32_t TransactionId;
 typedef uint32_t TransactionEventId;
 
 /**
- * Class SqlRequestParams represents parameters of the SQL requests.
+ * Class SqlIndexSpec is an abstraction for the index type specification.
+ *
+ * It's been designed to allow constructing specifications from a string
+ * or a Protobuf representations. The class contract also allows a reverse
+ * translation into either of those representations.
  */
-class SqlRequestParams {
+class SqlIndexSpec {
 public:
-    enum Type {
-        QUERY,
-        CREATE_DATABASE,
-        DROP_DATABASE,
-        ENABLE_DATABASE,
-        DISABLE_DATABASE,
-        GRANT_ACCESS,
-        CREATE_TABLE,
-        DROP_TABLE,
-        REMOVE_TABLE_PARTITIONING,
-        DROP_TABLE_PARTITION,
-        GET_TABLE_INDEX,
-        CREATE_TABLE_INDEX,
-        DROP_TABLE_INDEX,
-        ALTER_TABLE,
-        TABLE_ROW_STATS
-    };
-    Type type = QUERY;
-
-    uint64_t maxRows = 0;
-
-    std::string query;
-    std::string user;
-    std::string password;
-    std::string database;
-    std::string table;
-    std::string engine;
-    std::string partitionByColumn;
-
-    TransactionId transactionId = 0;
-
-    std::list<SqlColDef> columns;
-
-    std::vector<std::string> tables;
-
-    bool batchMode = false;
+    /**
+     * Construct from the Protobuf representation.
+     * @throws std::invalid_argument If the input specification is not supported
+     *   by the class.
+     */
+    SqlIndexSpec(ProtocolRequestSql::IndexSpec spec);
 
     /**
-     * Class IndexSpec is an abstraction for the index type specification.
-     *
-     * It's been designed to allow constructing specifications from a string
-     * or a Protobuf representations. The class contract also allows a reverse
-     * translation into either of those representations.
+     * Construct by translate the input string into the internal specification.
+     * @throws std::invalid_argument If the input specification is not supported
+     *   by the class.
      */
-    class IndexSpec {
-    public:
-        /**
-         * Construct from the Protobuf representation.
-         * @throws std::invalid_argument If the input specification is not supported
-         *   by the class.
-         */
-        IndexSpec(ProtocolRequestSql::IndexSpec spec);
+    SqlIndexSpec(std::string const& str);
 
-        /**
-         * Construct by translate the input string into the internal specification.
-         * @throws std::invalid_argument If the input specification is not supported
-         *   by the class.
-         */
-        IndexSpec(std::string const& str);
+    SqlIndexSpec() = default;
+    SqlIndexSpec(SqlIndexSpec const&) = default;
+    SqlIndexSpec& operator=(SqlIndexSpec const&) = default;
 
-        IndexSpec() = default;
-        IndexSpec(IndexSpec const&) = default;
-        IndexSpec& operator=(IndexSpec const&) = default;
+    /// @return The string representation.
+    std::string str() const;
 
-        /// @return The string representation.
-        std::string str() const;
+    /// @return The Protobuf representation.
+    ProtocolRequestSql::IndexSpec protocol() const;
 
-        /// @return The Protobuf representation.
-        ProtocolRequestSql::IndexSpec protocol() const;
-
-    private:
-        /// The internal representation
-        enum Spec { DEFAULT, UNIQUE, FULLTEXT, SPATIAL };
-        Spec _spec = Spec::DEFAULT;
-    };
-    IndexSpec indexSpec;
-
-    std::string indexName;
-    std::string indexComment;
-
-    std::vector<SqlIndexColumn> indexColumns;
-
-    // The constructors
-
-    SqlRequestParams() = default;
-
-    explicit SqlRequestParams(ProtocolRequestSql const& request);
-
-    std::string type2str() const;
-};
-
-std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
-
-/**
- * Class DirectorIndexRequestParams represents parameters of requests extracting data
- * to be loaded into the "director" index.
- */
-class DirectorIndexRequestParams {
-public:
-    std::string database;
-    unsigned int chunk = 0;
-    bool hasTransactions = false;
-    TransactionId transactionId = 0;
-
-    DirectorIndexRequestParams() = default;
-
-    explicit DirectorIndexRequestParams(ProtocolRequestDirectorIndex const& request);
+private:
+    /// The internal representation
+    enum Spec { DEFAULT, UNIQUE, FULLTEXT, SPATIAL };
+    Spec _spec = Spec::DEFAULT;
 };
 
 /**

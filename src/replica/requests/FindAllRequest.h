@@ -60,9 +60,6 @@ public:
     std::string const& database() const { return _database; }
     bool saveReplicaInfo() const { return _saveReplicaInfo; }
 
-    /// @return target request specific parameters
-    FindAllRequestParams const& targetRequestParams() const { return _targetRequestParams; }
-
     /**
      * @note This operation will return a sensible result only if the operation
      *   finishes with status FINISHED::SUCCESS.
@@ -123,9 +120,6 @@ private:
     std::string const _database;
     bool const _saveReplicaInfo;
     CallbackType _onFinish;
-
-    /// Request-specific parameters of the target request
-    FindAllRequestParams _targetRequestParams;
 
     /// Result of the operation
     ReplicaInfoCollection _replicaInfoCollection;
