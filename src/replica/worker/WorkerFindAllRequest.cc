@@ -144,13 +144,12 @@ bool WorkerFindAllRequest::execute() {
                                                              ", ex: " + ex.what());
                     }
                     unsigned const chunk = get<1>(parsed);
-                    chunk2fileInfoCollection[chunk].emplace_back(ReplicaInfo::FileInfo({
-                            entry.path().filename().string(), size, mtime,
-                            "",  /* cs is never computed for this type of requests */
-                            0,   /* beginTransferTime */
-                            0,   /* endTransferTime */
-                            size /* inSize */
-                    }));
+                    string const cs;  // checksum is never computed for this type of requests
+                    uint64_t const beginTransferTime = 0;
+                    uint64_t const endTransferTime = 0;
+                    chunk2fileInfoCollection[chunk].emplace_back(entry.path().filename().string(), size,
+                                                                 mtime, cs, beginTransferTime,
+                                                                 endTransferTime, size);
                 }
             }
         } catch (fs::filesystem_error const& ex) {
