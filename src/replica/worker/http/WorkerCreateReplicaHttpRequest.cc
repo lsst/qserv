@@ -451,10 +451,9 @@ void WorkerCreateReplicaHttpRequest::_updateInfo(replica::Lock const& lock) {
     size_t totalOutSizeBytes = 0;
     ReplicaInfo::FileInfoCollection fileInfoCollection;
     for (auto&& file : _files) {
-        fileInfoCollection.emplace_back(
-                ReplicaInfo::FileInfo({file, _file2descr[file].outSizeBytes, _file2descr[file].mtime,
-                                       to_string(_file2descr[file].cs), _file2descr[file].beginTransferTime,
-                                       _file2descr[file].endTransferTime, _file2descr[file].inSizeBytes}));
+        fileInfoCollection.emplace_back(file, _file2descr[file].outSizeBytes, _file2descr[file].mtime,
+                                        to_string(_file2descr[file].cs), _file2descr[file].beginTransferTime,
+                                        _file2descr[file].endTransferTime, _file2descr[file].inSizeBytes);
         totalInSizeBytes += _file2descr[file].inSizeBytes;
         totalOutSizeBytes += _file2descr[file].outSizeBytes;
     }
