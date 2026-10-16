@@ -138,10 +138,14 @@ bool WorkerFindRequest::execute() {
         //
         // - assume the successful completion otherwise and adjust the replica
         //   information record accordingly, depending on the findings.
+
         ReplicaInfo::FileInfoCollection
                 fileInfoCollection;  // file info if not using the incremental processing
         vector<string> files;        // file paths registered for the incremental processing
 
+        string const cs;
+        uint64_t const beginTransferTime = 0;
+        uint64_t const endTransferTime = 0;
         for (auto&& file : FileUtils::partitionedFiles(databaseInfo, chunk())) {
             fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
@@ -167,12 +171,8 @@ bool WorkerFindRequest::execute() {
                                                               "failed to read file mtime: " + path.string() +
                                                                       ", ex: " + ex.what());
                     }
-                    fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
-                            file, size, mtime, "", /* cs */
-                            0,                     /* beginTransferTime */
-                            0,                     /* endTransferTime */
-                            size                   /* inSize */
-                    }));
+                    fileInfoCollection.emplace_back(file, size, mtime, cs, beginTransferTime, endTransferTime,
+                                                    size);
                 } else {
                     // Register this file for the incremental processing
                     files.push_back(path.string());
@@ -210,6 +210,8 @@ bool WorkerFindRequest::execute() {
         finished = _csComputeEnginePtr->execute();
         if (finished) {
             // Extract statistics
+            uint64_t const beginTransferTime = 0;
+            uint64_t const endTransferTime = 0;
             ReplicaInfo::FileInfoCollection fileInfoCollection;
             auto const fileNames = _csComputeEnginePtr->fileNames();
             for (auto&& file : fileNames) {
@@ -224,12 +226,9 @@ bool WorkerFindRequest::execute() {
                                                           "failed to read file mtime: " + path.string() +
                                                                   ", ex: " + ex.what());
                 }
-                fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
-                        path.filename().string(), size, mtime, to_string(_csComputeEnginePtr->cs(file)),
-                        0,   /* beginTransferTime */
-                        0,   /* endTransferTime */
-                        size /* inSize */
-                }));
+                fileInfoCollection.emplace_back(path.filename().string(), size, mtime,
+                                                to_string(_csComputeEnginePtr->cs(file)), beginTransferTime,
+                                                endTransferTime, size);
             }
             if (errorContext.failed) {
                 setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);

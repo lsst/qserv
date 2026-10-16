@@ -71,6 +71,12 @@ public:
     void update(ProtocolPerformance const& workerPerformanceInfo);
 
     /**
+     * Update object state with counters from the JSON object
+     * @param workerPerformanceInfo counters to be carried over into an internal state
+     */
+    void update(nlohmann::json const& workerPerformanceInfo);
+
+    /**
      * Update the Controller's 'start' time
      * @return the previous state of the counter
      */
