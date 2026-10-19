@@ -66,7 +66,7 @@ StatusRequest::StatusRequest(shared_ptr<Controller> const& controller, string co
 
 string StatusRequest::toString(bool extended) const {
     ostringstream oss;
-    oss << Request::toString(extended) << "  targetRequestId: " + targetRequestId() << "\n";
+    oss << RequestI::toString(extended) << "  targetRequestId: " + targetRequestId() << "\n";
     if ((state() == State::FINISHED) && (extendedState() == ExtendedState::SUCCESS)) {
         oss << "  targetStatus: " << protocol::toString(targetRequestStatus()) << "\n";
         oss << "  targetStatusExt: " << protocol::toString(targetRequestExtendedStatus()) << "\n";
@@ -121,7 +121,7 @@ void StatusRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Send the same message again.
@@ -146,7 +146,7 @@ void StatusRequest::_analyze(bool success, ProtocolResponseStatus message) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);

@@ -75,7 +75,7 @@ json HttpQservSqlModule::_execute() {
     json result;
     result["result_set"] = request->responseData().toJson();
 
-    if (request->extendedState() != Request::SUCCESS) {
+    if (request->extendedState() != RequestI::SUCCESS) {
         throw http::Error(__func__, "Query failed. See details in the result set", result);
     }
     return result;

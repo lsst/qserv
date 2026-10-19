@@ -61,7 +61,7 @@ StopRequest::StopRequest(shared_ptr<Controller> const& controller, string const&
           _onFinish(onFinish) {}
 
 string StopRequest::toString(bool extended) const {
-    return Request::toString(extended) + "  targetRequestId: " + targetRequestId() + "\n";
+    return RequestI::toString(extended) + "  targetRequestId: " + targetRequestId() + "\n";
 }
 
 list<pair<string, string>> StopRequest::extendedPersistentState() const {
@@ -101,7 +101,7 @@ void StopRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Send the same message again.
@@ -126,7 +126,7 @@ void StopRequest::_analyze(bool success, ProtocolResponseStop message) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);

@@ -190,7 +190,7 @@ void ClusterHealthJob::_onRequestFinish(shared_ptr<ServiceStatusRequest> const& 
     if (state() == State::FINISHED) return;
 
     _health.updateReplicationState(request->workerName(),
-                                   request->extendedState() == Request::ExtendedState::SUCCESS);
+                                   request->extendedState() == RequestI::ExtendedState::SUCCESS);
 
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }

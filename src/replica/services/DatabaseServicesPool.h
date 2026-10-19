@@ -79,9 +79,9 @@ public:
     void saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                    std::string const& serverError) final;
 
-    void saveState(Request const& request, Performance const& performance) final;
+    void saveState(RequestI const& request, Performance const& performance) final;
 
-    void updateRequestState(Request const& request, std::string const& targetRequestId,
+    void updateRequestState(RequestI const& request, std::string const& targetRequestId,
                             Performance const& targetRequestPerformance) final;
 
     void saveReplicaInfo(ReplicaInfo const& info) final;

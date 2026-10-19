@@ -55,18 +55,18 @@ bool const disposeRequiredNo = false;
 namespace lsst::qserv::replica {
 
 void ServiceManagementRequestBase::extendedPrinter(shared_ptr<ServiceManagementRequestBase> const& ptr) {
-    Request::defaultPrinter(ptr);
+    RequestI::defaultPrinter(ptr);
     cout << ptr->getServiceState();
 }
 
 ServiceStateInfo const& ServiceManagementRequestBase::getServiceState() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    switch (Request::state()) {
-        case Request::State::FINISHED:
-            switch (Request::extendedState()) {
-                case Request::ExtendedState::SUCCESS:
-                case Request::ExtendedState::SERVER_ERROR:
+    switch (RequestI::state()) {
+        case RequestI::State::FINISHED:
+            switch (RequestI::extendedState()) {
+                case RequestI::ExtendedState::SUCCESS:
+                case RequestI::ExtendedState::SERVER_ERROR:
                     return _serviceState;
                 default:
                     break;
@@ -117,7 +117,7 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);

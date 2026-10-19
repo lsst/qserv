@@ -149,7 +149,7 @@ void DirectorIndexRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context_);
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context_);
+    replica::Lock lock(mtx, context_);
     if (state() == State::FINISHED) return;
     _sendStatusRequest(lock);
 }
@@ -194,7 +194,7 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context_);
+    replica::Lock lock(mtx, context_);
     if (state() == State::FINISHED) return;
     if (!success) {
         finish(lock, CLIENT_ERROR);
@@ -240,9 +240,8 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
                     // This will guarantee (in most cases) that such requests will be fast-track delivered
                     // to (and processed by) the worker.
                     dispose(lock, PRIORITY_VERY_HIGH,
-                            [self = shared_from_base<DirectorIndexRequest>()](auto id, auto success,
-                                                                              auto message) {
-                                self->_disposed(success, message);
+                            [self = shared_from_base<DirectorIndexRequest>()](auto success) {
+                                self->_disposed(success);
                             });
                 }
             } catch (exception const& ex) {
@@ -279,11 +278,11 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     }
 }
 
-void DirectorIndexRequest::_disposed(bool success, ProtocolResponseDispose const& message) {
+void DirectorIndexRequest::_disposed(bool success) {
     string const context_ = context() + string(__func__) + " success=" + bool2str(success) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context_);
+    replica::Lock lock(mtx, context_);
     if (state() == State::FINISHED) return;
     if (!success) {
         finish(lock, CLIENT_ERROR);
