@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlDeleteDbRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteDbRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -49,16 +48,14 @@ SqlDeleteDbRequest::Ptr SqlDeleteDbRequest::createAndStart(shared_ptr<Controller
 SqlDeleteDbRequest::SqlDeleteDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        std::string const& database, CallbackType const& onFinish,
                                        int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_DROP_DATABASE", workerName, ::unlimitedMaxRows, priority, keepTracking),
+        : SqlRequest(controller, "SQL_DROP_DATABASE", protocol::SqlRequestType::DROP_DATABASE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DROP_DATABASE);
     requestBody.set_database(database);
 }
 
 void SqlDeleteDbRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlDeleteDbRequest>(lock, _onFinish);
 }
 

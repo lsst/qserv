@@ -70,7 +70,7 @@ WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& se
                             params, onExpired),
           _resultSets(json::array()) {
     // Parse the mandatory parameters which are common for all SQL request types.
-    _sqlRequestType = protocol::parseSqlRequestType(params.requiredString("sql_request_type"));
+    _sqlRequestType = protocol::toSqlRequestType(params.requiredString("sql_request_type"));
     _databaseName = params.requiredString("database");
     _maxRows = params.optionalUInt32("max_rows", 0);
     _batchMode = params.requiredBool("batch_mode");

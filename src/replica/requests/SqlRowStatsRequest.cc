@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlRowStatsRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRowStatsRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -49,11 +48,10 @@ SqlRowStatsRequest::Ptr SqlRowStatsRequest::createAndStart(shared_ptr<Controller
 SqlRowStatsRequest::SqlRowStatsRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        string const& database, vector<string> const& tables,
                                        CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_TABLE_ROW_STATS", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_TABLE_ROW_STATS", protocol::SqlRequestType::TABLE_ROW_STATS, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::TABLE_ROW_STATS);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -63,8 +61,6 @@ SqlRowStatsRequest::SqlRowStatsRequest(shared_ptr<Controller> const& controller,
 }
 
 void SqlRowStatsRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlRowStatsRequest>(lock, _onFinish);
 }
 

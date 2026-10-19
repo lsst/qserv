@@ -30,6 +30,7 @@
 #include "global/constants.h"
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -86,7 +87,7 @@ list<pair<string, string>> SqlJob::persistentLogData() const {
                 auto&& context = resultSetItr.first;
                 auto&& resultSet = resultSetItr.second;
                 workerResultSetsStr += "(context=" + context +
-                                       ",extended_status=" + status2string(resultSet.extendedStatus) +
+                                       ",extended_status=" + protocol::toString(resultSet.extendedStatus) +
                                        ",char_set_name=" + resultSet.charSetName +
                                        ",has_result=" + bool2str(resultSet.hasResult) +
                                        ",fields=" + to_string(resultSet.fields.size()) +
@@ -113,8 +114,9 @@ json SqlJob::getExtendedErrorReport() const {
     getResultData().iterate([&report](SqlJobResult::Worker const& workerName,
                                       SqlJobResult::Scope const& object,
                                       SqlResultSet::ResultSet const& resultSet) {
-        if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
-            report["workers"][workerName][object]["request_status"] = status2string(resultSet.extendedStatus);
+        if (resultSet.extendedStatus != protocol::StatusExt::NONE) {
+            report["workers"][workerName][object]["request_status"] =
+                    protocol::toString(resultSet.extendedStatus);
             report["workers"][workerName][object]["request_error"] = resultSet.error;
         }
     });
@@ -205,19 +207,19 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
             for (auto&& ptr : _requests) {
                 if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
                     numSuccess++;
-                } else if (ptr->extendedServerStatus() == ProtocolStatusExt::MULTIPLE) {
+                } else if (ptr->extendedServerStatus() == protocol::StatusExt::MULTIPLE) {
                     // These special conditions are counted as a success for tables
                     // that might be successfully processed before by another instance
                     // the same job.
                     auto&& responseData = request->responseData();
                     if (responseData.hasErrors()) {
                         if (ignoreNonPartitioned()) {
-                            if (responseData.allErrorsOf(ProtocolStatusExt::NOT_PARTITIONED_TABLE)) {
+                            if (responseData.allErrorsOf(protocol::StatusExt::NOT_PARTITIONED_TABLE)) {
                                 numSuccess++;
                             }
                         }
                         if (ignoreDuplicateKey()) {
-                            if (responseData.allErrorsOf(ProtocolStatusExt::DUPLICATE_KEY)) {
+                            if (responseData.allErrorsOf(protocol::StatusExt::DUPLICATE_KEY)) {
                                 numSuccess++;
                             }
                         }
