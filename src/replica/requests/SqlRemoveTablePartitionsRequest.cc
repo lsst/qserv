@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlRemoveTablePartitionsRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRemoveTablePartitionsRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -47,11 +46,11 @@ SqlRemoveTablePartitionsRequest::Ptr SqlRemoveTablePartitionsRequest::createAndS
 SqlRemoveTablePartitionsRequest::SqlRemoveTablePartitionsRequest(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_REMOVE_TABLE_PARTITIONING", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_REMOVE_TABLE_PARTITIONING",
+                     protocol::SqlRequestType::REMOVE_TABLE_PARTITIONING, workerName, ::unlimitedMaxRows,
+                     priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::REMOVE_TABLE_PARTITIONING);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -61,8 +60,6 @@ SqlRemoveTablePartitionsRequest::SqlRemoveTablePartitionsRequest(
 }
 
 void SqlRemoveTablePartitionsRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlRemoveTablePartitionsRequest>(lock, _onFinish);
 }
 

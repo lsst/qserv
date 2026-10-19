@@ -54,6 +54,7 @@
 #include "replica/jobs/SqlGrantAccessJob.h"
 #include "replica/jobs/SqlEnableDbJob.h"
 #include "replica/jobs/SqlRemoveTablePartitionsJob.h"
+#include "replica/proto/Protocol.h"
 #include "replica/qserv/PostEventQservCzarMgtRequest.h"
 #include "replica/registry/Registry.h"
 #include "replica/requests/SqlResultSet.h"
@@ -882,9 +883,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
             job->getResultData().iterate([&](SqlJobResult::Worker const& worker,
                                              SqlJobResult::Scope const& internalTable,
                                              SqlResultSet::ResultSet const& resultSet) {
-                if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
+                if (resultSet.extendedStatus != protocol::StatusExt::NONE) {
                     errorExt["workers"][worker][internalTable] =
-                            json::object({{"status", ProtocolStatusExt_Name(resultSet.extendedStatus)},
+                            json::object({{"status", protocol::toString(resultSet.extendedStatus)},
                                           {"error", resultSet.error}});
                 }
             });

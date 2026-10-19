@@ -33,6 +33,7 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/mysql/DatabaseMySQLExceptions.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -148,7 +149,7 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
     }
 
     // Always use the latest status reported by the remote server
-    setExtendedServerStatus(lock, message.status_ext());
+    setExtendedServerStatus(lock, protocol::toStatusExt(message.status_ext()));
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
@@ -166,8 +167,9 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
         _replicaInfoCollection.emplace_back(&(message.replica_info_many(idx)));
     }
 
-    switch (message.status()) {
-        case ProtocolStatus::SUCCESS:
+    auto const status = protocol::toStatus(message.status());
+    switch (status) {
+        case protocol::Status::SUCCESS:
             try {
                 if (saveReplicaInfo()) {
                     controller()->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
@@ -196,22 +198,22 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
                 finish(lock, CLIENT_ERROR);
             }
             break;
-        case ProtocolStatus::CREATED:
+        case protocol::Status::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-        case ProtocolStatus::QUEUED:
+        case protocol::Status::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-        case ProtocolStatus::IN_PROGRESS:
+        case protocol::Status::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-        case ProtocolStatus::IS_CANCELLING:
+        case protocol::Status::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-        case ProtocolStatus::BAD:
+        case protocol::Status::BAD:
             finish(lock, SERVER_BAD);
             break;
-        case ProtocolStatus::FAILED:
+        case protocol::Status::FAILED:
             if (!controller()->serviceProvider()->config()->isKnownDatabase(database())) {
                 LOGS(_log, LOG_LVL_WARN,
                      context() << __func__ << " database '" << database()
@@ -219,18 +221,18 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
                                   "the replica info saving will be skipped");
                 // Make sure to reset the extended server status before finishing the request
                 // with SUCCESS.
-                setExtendedServerStatus(lock, ProtocolStatusExt::NONE);
+                setExtendedServerStatus(lock, protocol::StatusExt::NONE);
                 finish(lock, SUCCESS);
             } else {
                 finish(lock, SERVER_ERROR);
             }
             break;
-        case ProtocolStatus::CANCELLED:
+        case protocol::Status::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
         default:
             throw logic_error("FindAllRequest::" + string(__func__) + " unknown status '" +
-                              ProtocolStatus_Name(message.status()) + "' received from server");
+                              protocol::toString(status) + "' received from server");
     }
 }
 

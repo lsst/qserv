@@ -32,6 +32,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Mutex.h"
@@ -91,16 +92,6 @@ public:
         }
     };
 
-    /// Current state of the request processing engine
-    enum State {
-        STATE_IS_RUNNING,   // all threads are running
-        STATE_IS_STOPPING,  // stopping all threads
-        STATE_IS_STOPPED    // not started
-    };
-
-    /// @return the string representation of the state
-    static std::string state2string(State state);
-
     /**
      * The factory method for objects of the class
      *
@@ -118,10 +109,7 @@ public:
     ~WorkerProcessor() = default;
 
     /// @return the state of the processor
-    State state() const { return _state; }
-
-    /// @return the string representation of the state
-    std::string state2string() const { return state2string(state()); }
+    protocol::ServiceState state() const { return _state; }
 
     /// Begin processing requests
     void run();
@@ -234,15 +222,15 @@ public:
      * @param extendedStatus extended completion status of a request
      */
     template <class PROTOCOL_RESPONSE_TYPE>
-    static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response, ProtocolStatus status,
-                                   ProtocolStatusExt extendedStatus) {
+    static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response, protocol::Status status,
+                                   protocol::StatusExt extendedStatus) {
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
         response.set_allocated_performance(performance.info().release());
 
-        response.set_status(status);
-        response.set_status_ext(extendedStatus);
+        response.set_status(protocol::toUnsignedInt(status));
+        response.set_status_ext(protocol::toUnsignedInt(extendedStatus));
     }
 
     /**
@@ -269,7 +257,7 @@ public:
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_ID);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_ID);
         if (WorkerRequest::Ptr const ptr = _trackRequestImpl(lock, request.id())) {
             try {
                 // Set request-specific fields. Note exception handling for scenarios
@@ -277,8 +265,8 @@ public:
                 _setInfo(ptr, response);
 
                 // The status field is present in all response types
-                response.set_status(ptr->status());
-                response.set_status_ext(ptr->extendedStatus());
+                response.set_status(protocol::toUnsignedInt(ptr->status()));
+                response.set_status_ext(protocol::toUnsignedInt(ptr->extendedStatus()));
             } catch (std::logic_error const&) {
                 ;
             }
@@ -306,7 +294,7 @@ public:
      * @param status desired status to set
      * @param extendedReport to return detailed info on all known replica-related requests
      */
-    void setServiceResponse(ProtocolServiceResponse& response, std::string const& id, ProtocolStatus status,
+    void setServiceResponse(ProtocolServiceResponse& response, std::string const& id, protocol::Status status,
                             bool extendedReport = false);
 
     size_t numNewRequests() const;
@@ -473,8 +461,8 @@ private:
      *
      * This method is used by threads to report a change in their state.
      * It's meant to be used during the gradual and asynchronous state transition
-     * of this processor from the combined State::STATE_IS_STOPPING to
-     * State::STATE_IS_STOPPED. The later is achieved when all threads are stopped.
+     * of this processor from the combined protocol::ServiceState::SUSPEND_IN_PROGRESS to
+     * protocol::ServiceState::SUSPENDED. The later is achieved when all threads are stopped.
      *
      * @param processorThread reference to the processing thread which finished
      */
@@ -486,7 +474,7 @@ private:
     std::string const _worker;
     std::shared_ptr<database::mysql::ConnectionPool> const _connectionPool;
 
-    State _state;
+    protocol::ServiceState _state;
 
     uint64_t _startTime;  /// When the processor started (milliseconds since UNIX Epoch)
 

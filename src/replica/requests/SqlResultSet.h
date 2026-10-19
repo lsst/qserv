@@ -30,6 +30,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/util/Common.h"
 #include "util/TablePrinter.h"
@@ -60,7 +61,7 @@ public:
         /// a different outcome (wether they succeeded or failed due to a specific problem).
         /// The successful completion of a query is indicated by status set
         /// to extendedCompletionStatus::EXT_STATUS_NONE.
-        ProtocolStatusExt extendedStatus = ProtocolStatusExt::MYSQL_ERROR;
+        protocol::StatusExt extendedStatus = protocol::StatusExt::MYSQL_ERROR;
 
         std::string error;        /// is set if a error code received from a server
         std::string charSetName;  /// of the connection
@@ -189,8 +190,8 @@ public:
 
     /// @return 'true' if all errors are of the specified 'status'
     /// @note this method should be used together with method SqlResultSet::hasErrors().
-    /// @note ProtocolStatusExt::NONE is not treated as an error.
-    bool allErrorsOf(ProtocolStatusExt status) const;
+    /// @note protocol::StatusExt::NONE is not treated as an error.
+    bool allErrorsOf(protocol::StatusExt status) const;
 
     /**
      * Look for errors in the result sets based on a value of the extended
