@@ -169,7 +169,7 @@ void SqlJob::cancelImpl(replica::Lock const& lock) {
     // by stopping the request at corresponding worker service.
     for (auto const& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) stopRequest(lock, ptr);
+        if (ptr->state() != RequestI::State::FINISHED) stopRequest(lock, ptr);
     }
     _requests.clear();
 }
@@ -204,7 +204,7 @@ void SqlJob::onRequestFinish(shared_ptr<SqlRequest> const& request) {
         if (_requests.size() == _numFinished) {
             size_t numSuccess = 0;
             for (auto const& ptr : _requests) {
-                if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
+                if (ptr->extendedState() == RequestI::ExtendedState::SUCCESS) {
                     numSuccess++;
                 } else if (ptr->extendedServerStatus() == protocol::StatusExt::MULTIPLE) {
                     // These special conditions are counted as a success for tables

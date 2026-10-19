@@ -93,7 +93,7 @@ void ServiceManagementBaseJob::onRequestFinish(std::shared_ptr<ServiceManagement
 
     // Update counters and object state if needed.
     _numFinished++;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         _resultData.serviceState[request->workerName()] = request->getServiceState();
         _resultData.workers[request->workerName()] = true;
     }
@@ -103,7 +103,7 @@ void ServiceManagementBaseJob::onRequestFinish(std::shared_ptr<ServiceManagement
         size_t const numSucceeded =
                 count_if(_requests.begin(), _requests.end(),
                          [](std::shared_ptr<ServiceManagementRequestBase> const& ptr) {
-                             return ptr->extendedState() == Request::ExtendedState::SUCCESS;
+                             return ptr->extendedState() == RequestI::ExtendedState::SUCCESS;
                          });
         finish(lock, numSucceeded == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
     }
