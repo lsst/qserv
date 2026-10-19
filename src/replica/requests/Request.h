@@ -35,6 +35,7 @@
 
 // Qserv headers
 #include "replica/config/ConfigWorker.h"
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/util/Performance.h"
 #include "replica/util/Mutex.h"
@@ -145,7 +146,7 @@ public:
 
     /// @return the string representation of the combined state
     static std::string state2string(State state, ExtendedState extendedState,
-                                    ProtocolStatusExt extendedServerStatus);
+                                    protocol::StatusExt extendedServerStatus);
 
     Request() = delete;
     Request(Request const&) = delete;
@@ -175,7 +176,7 @@ public:
     ExtendedState extendedState() const { return _extendedState; }
 
     /// @return a status code received from a worker server
-    ProtocolStatusExt extendedServerStatus() const { return _extendedServerStatus; }
+    protocol::StatusExt extendedServerStatus() const { return _extendedServerStatus; }
 
     /// @return the performance info
     Performance performance() const;
@@ -363,7 +364,7 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method
      * @param status The new status to be set.
      */
-    void setExtendedServerStatus(replica::Lock const& lock, ProtocolStatusExt status) {
+    void setExtendedServerStatus(replica::Lock const& lock, protocol::StatusExt status) {
         _extendedServerStatus = status;
     }
 
@@ -548,7 +549,7 @@ private:
     std::atomic<ExtendedState> _extendedState;
 
     /// Request status reported by a worker (where this applies)
-    std::atomic<ProtocolStatusExt> _extendedServerStatus;
+    std::atomic<protocol::StatusExt> _extendedServerStatus;
 
     /// Performance counters
     Performance _performance;

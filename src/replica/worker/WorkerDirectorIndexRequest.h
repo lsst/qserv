@@ -25,6 +25,7 @@
 #include <string>
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerRequest.h"
 
@@ -120,7 +121,7 @@ private:
      * @param offset A position of the first byte in the file to read.
      * @return The completion status to be returned to the Controller.
      */
-    ProtocolStatusExt _readFile(size_t offset);
+    protocol::StatusExt _readFile(size_t offset);
 
     /// Get rid of the temporary file if it's still there.
     void _removeFile() const;

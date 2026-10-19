@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
@@ -201,8 +202,8 @@ private:
     bool _verifyInstance(ProtocolRequestHeader const& hdr, RESPONSE& response) const {
         if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
             return true;
-        WorkerProcessor::setDefaultResponse(response, ProtocolStatus::BAD,
-                                            ProtocolStatusExt::FOREIGN_INSTANCE);
+        WorkerProcessor::setDefaultResponse(response, protocol::Status::BAD,
+                                            protocol::StatusExt::FOREIGN_INSTANCE);
         return false;
     }
 
@@ -211,8 +212,8 @@ private:
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseStop& response) const {
         if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
             return true;
-        response.set_status(ProtocolStatus::BAD);
-        response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::FOREIGN_INSTANCE));
         return false;
     }
 
@@ -221,8 +222,8 @@ private:
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseDispose& response) const {
         if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
             return true;
-        response.set_status(ProtocolStatus::BAD);
-        response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::FOREIGN_INSTANCE));
         return false;
     }
 
@@ -231,8 +232,8 @@ private:
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolServiceResponse& response) const {
         if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
             return true;
-        response.set_status(ProtocolStatus::BAD);
-        response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::FOREIGN_INSTANCE));
         return false;
     }
 
