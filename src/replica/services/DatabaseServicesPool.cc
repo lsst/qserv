@@ -108,12 +108,12 @@ void DatabaseServicesPool::saveState(QservWorkerMgtRequest const& request, Perfo
     service()->saveState(request, performance, serverError);
 }
 
-void DatabaseServicesPool::saveState(Request const& request, Performance const& performance) {
+void DatabaseServicesPool::saveState(RequestI const& request, Performance const& performance) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->saveState(request, performance);
 }
 
-void DatabaseServicesPool::updateRequestState(Request const& request, string const& targetRequestId,
+void DatabaseServicesPool::updateRequestState(RequestI const& request, string const& targetRequestId,
                                               Performance const& targetRequestPerformance) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->updateRequestState(request, targetRequestId, targetRequestPerformance);

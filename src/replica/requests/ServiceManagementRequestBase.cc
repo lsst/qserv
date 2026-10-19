@@ -204,7 +204,7 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);

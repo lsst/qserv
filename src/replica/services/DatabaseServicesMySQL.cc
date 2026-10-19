@@ -39,7 +39,7 @@
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/proto/Protocol.h"
 #include "replica/qserv/QservWorkerMgtRequest.h"
-#include "replica/requests/Request.h"
+#include "replica/requests/RequestI.h"
 #include "replica/util/Common.h"
 #include "replica/util/NamedMutexRegistry.h"
 #include "replica/util/ReplicaInfo.h"
@@ -59,14 +59,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesMySQL");
 /**
  * Typical use:
  * @code
- * bool yesFound = in(Request::ExtendedState::SUCCESS, {
- *                          Request::ExtendedState::SUCCESS,
- *                          Request::ExtendedState::SERVER_ERROR,
- *                          Request::ExtendedState::SERVER_CANCELLED});
- * @code
+ * bool yesFound = in(RequestI::ExtendedState::SUCCESS, {
+ *                          RequestI::ExtendedState::SUCCESS,
+ *                          RequestI::ExtendedState::SERVER_ERROR,
+ *                          RequestI::ExtendedState::SERVER_CANCELLED});
+ * @endcode
  * @return 'true' if the specified state is found in a collection.
  */
-bool in(Request::ExtendedState val, vector<Request::ExtendedState> const& col) {
+bool in(RequestI::ExtendedState val, vector<RequestI::ExtendedState> const& col) {
     return col.end() != find(col.begin(), col.end(), val);
 }
 
@@ -217,9 +217,9 @@ void DatabaseServicesMySQL::saveState(QservWorkerMgtRequest const& request, Perf
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(Request const& request, Performance const& performance) {
+void DatabaseServicesMySQL::saveState(RequestI const& request, Performance const& performance) {
     string const context =
-            "DatabaseServicesMySQL::" + string(__func__) + "[Request::" + request.type() + "] ";
+            "DatabaseServicesMySQL::" + string(__func__) + "[RequestI::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     // Requests which haven't started yet or the ones which aren't associated
@@ -244,8 +244,8 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         auto const insert = [&](decltype(_conn) conn) {
             string const query =
                     _g.insert("request", request.id(), request.jobId(), request.type(), request.workerName(),
-                              request.priority(), Request::state2string(request.state()),
-                              Request::state2string(request.extendedState()),
+                              request.priority(), RequestI::state2string(request.state()),
+                              RequestI::state2string(request.extendedState()),
                               protocol::toString(request.extendedServerStatus()), performance.c_create_time,
                               performance.c_start_time, performance.w_receive_time, performance.w_start_time,
                               performance.w_finish_time, performance.c_finish_time);
@@ -259,8 +259,8 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         };
         auto const update = [&](decltype(_conn) conn) {
             string const query =
-                    _g.update("request", make_pair("state", Request::state2string(request.state())),
-                              make_pair("ext_state", Request::state2string(request.extendedState())),
+                    _g.update("request", make_pair("state", RequestI::state2string(request.state())),
+                              make_pair("ext_state", RequestI::state2string(request.extendedState())),
                               make_pair("server_status", protocol::toString(request.extendedServerStatus())),
                               make_pair("c_create_time", performance.c_create_time),
                               make_pair("c_start_time", performance.c_start_time),
@@ -279,10 +279,10 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::updateRequestState(Request const& request, string const& targetRequestId,
+void DatabaseServicesMySQL::updateRequestState(RequestI const& request, string const& targetRequestId,
                                                Performance const& targetRequestPerformance) {
     string const context =
-            "DatabaseServicesMySQL::" + string(__func__) + "[Request::" + request.type() + "] ";
+            "DatabaseServicesMySQL::" + string(__func__) + "[RequestI::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     replica::Lock lock(_mtx, context);
@@ -294,15 +294,15 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request, string co
     //
     // IMPLEMENTATION NOTE: the request state filter is placed in this method
     // to avoid code duplication in each monitoring request.
-    if ((request.state() == Request::State::FINISHED) and
+    if ((request.state() == RequestI::State::FINISHED) and
         ::in(request.extendedState(),
-             {Request::ExtendedState::SUCCESS, Request::ExtendedState::SERVER_QUEUED,
-              Request::ExtendedState::SERVER_IN_PROGRESS, Request::ExtendedState::SERVER_IS_CANCELLING,
-              Request::ExtendedState::SERVER_ERROR, Request::ExtendedState::SERVER_CANCELLED})) {
+             {RequestI::ExtendedState::SUCCESS, RequestI::ExtendedState::SERVER_QUEUED,
+              RequestI::ExtendedState::SERVER_IN_PROGRESS, RequestI::ExtendedState::SERVER_IS_CANCELLING,
+              RequestI::ExtendedState::SERVER_ERROR, RequestI::ExtendedState::SERVER_CANCELLED})) {
         try {
             string const query =
-                    _g.update("request", make_pair("state", Request::state2string(request.state())),
-                              make_pair("ext_state", Request::state2string(request.extendedState())),
+                    _g.update("request", make_pair("state", RequestI::state2string(request.state())),
+                              make_pair("ext_state", RequestI::state2string(request.extendedState())),
                               make_pair("server_status", protocol::toString(request.extendedServerStatus())),
                               make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
                               make_pair("w_start_time", targetRequestPerformance.w_start_time),

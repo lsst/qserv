@@ -102,7 +102,7 @@ public:
 
     /**
      * Make an extended print of the request which would include a result set.
-     * The method will also make a call to Request::defaultPrinter().
+     * The method will also make a call to RequestI::defaultPrinter().
      * @param ptr  An object to be printed.
      */
     static void extendedPrinter(Ptr const& ptr);
