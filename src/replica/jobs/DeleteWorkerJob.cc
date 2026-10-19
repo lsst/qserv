@@ -126,7 +126,7 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
             controller(), workerName(), noCallbackOnFinish, priority(), id(), requestExpirationIvalSec);
     statusRequest->wait();
 
-    if (statusRequest->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (statusRequest->extendedState() == RequestI::ExtendedState::SUCCESS) {
         if (statusRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfering with the current job's requests
@@ -134,7 +134,7 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
                     ServiceDrainRequest::createAndStart(controller(), workerName(), noCallbackOnFinish,
                                                         priority(), id(), requestExpirationIvalSec);
             drainRequest->wait();
-            if (drainRequest->extendedState() == Request::ExtendedState::SUCCESS) {
+            if (drainRequest->extendedState() == RequestI::ExtendedState::SUCCESS) {
                 if (drainRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
@@ -194,7 +194,7 @@ void DeleteWorkerJob::_onRequestFinish(shared_ptr<FindAllRequest> const& request
     if (state() == State::FINISHED) return;
 
     _numFinished++;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) _numSuccess++;
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) _numSuccess++;
 
     // Evaluate the status of on-going operations to see if the job
     // has finished. If so then proceed to the next stage of the job.

@@ -104,7 +104,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -145,7 +145,7 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);
