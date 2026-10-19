@@ -215,8 +215,8 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     mutablePerformance().update(message.performance());
 
     // Capture the general status of the operation.
-    switch (message.status()) {
-        case ProtocolStatus::SUCCESS:
+    switch (protocol::toStatus(message.status())) {
+        case protocol::Status::SUCCESS:
             // Transfer the state of the remote service into a local data member
             // before initiating state transition of the request object.
             _serviceState.set(message);

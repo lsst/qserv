@@ -60,9 +60,6 @@ int const PRIORITY_NORMAL = 3;
 int const PRIORITY_HIGH = 4;
 int const PRIORITY_VERY_HIGH = 5;
 
-/// @return The string representation of the extended status.
-std::string status2string(ProtocolStatusExt status);
-
 /// The chunk overlap selector is used where the tri-state is required.
 enum class ChunkOverlapSelector : int { CHUNK = 1, OVERLAP = 2, CHUNK_AND_OVERLAP = 3 };
 

@@ -71,8 +71,8 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     // Carry over the result of the query only after the request
     // has finished (or failed).
     switch (status()) {
-        case ProtocolStatus::SUCCESS:
-        case ProtocolStatus::FAILED:
+        case protocol::Status::SUCCESS:
+        case protocol::Status::FAILED:
             *(response.mutable_result_sets()) = _response.result_sets();
             break;
         default:
@@ -132,29 +132,33 @@ bool WorkerSqlRequest::execute() {
                     });
                 } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
                     ++numFailures;
-                    currentResultSet->set_status_ext(ProtocolStatusExt::NO_SUCH_TABLE);
+                    currentResultSet->set_status_ext(
+                            protocol::toUnsignedInt(protocol::StatusExt::NO_SUCH_TABLE));
                     currentResultSet->set_error(ex.what());
 
                 } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
                     ++numFailures;
-                    currentResultSet->set_status_ext(ProtocolStatusExt::NOT_PARTITIONED_TABLE);
+                    currentResultSet->set_status_ext(
+                            protocol::toUnsignedInt(protocol::StatusExt::NOT_PARTITIONED_TABLE));
                     currentResultSet->set_error(ex.what());
 
                 } catch (database::mysql::ER_DUP_KEYNAME_ const& ex) {
                     ++numFailures;
-                    currentResultSet->set_status_ext(ProtocolStatusExt::DUPLICATE_KEY);
+                    currentResultSet->set_status_ext(
+                            protocol::toUnsignedInt(protocol::StatusExt::DUPLICATE_KEY));
                     currentResultSet->set_error(ex.what());
 
                 } catch (database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
                     ++numFailures;
-                    currentResultSet->set_status_ext(ProtocolStatusExt::CANT_DROP_KEY);
+                    currentResultSet->set_status_ext(
+                            protocol::toUnsignedInt(protocol::StatusExt::CANT_DROP_KEY));
                     currentResultSet->set_error(ex.what());
                 }
             }
             if (numFailures > 0) {
-                setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::MULTIPLE);
+                setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::MULTIPLE);
             } else {
-                setStatus(lock, ProtocolStatus::SUCCESS);
+                setStatus(lock, protocol::Status::SUCCESS);
             }
         } else {
             // TODO: the algorithm will only report a result set of the last query
@@ -174,31 +178,31 @@ bool WorkerSqlRequest::execute() {
                 }
                 conn_->commit();
             });
-            setStatus(lock, ProtocolStatus::SUCCESS);
+            setStatus(lock, protocol::Status::SUCCESS);
         }
     } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::NO_SUCH_TABLE, ex.what());
+        _reportFailure(lock, protocol::StatusExt::NO_SUCH_TABLE, ex.what());
 
     } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::NOT_PARTITIONED_TABLE, ex.what());
+        _reportFailure(lock, protocol::StatusExt::NOT_PARTITIONED_TABLE, ex.what());
 
     } catch (database::mysql::ER_DUP_KEYNAME_ const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::DUPLICATE_KEY, ex.what());
+        _reportFailure(lock, protocol::StatusExt::DUPLICATE_KEY, ex.what());
 
     } catch (database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::CANT_DROP_KEY, ex.what());
+        _reportFailure(lock, protocol::StatusExt::CANT_DROP_KEY, ex.what());
 
     } catch (database::mysql::Error const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::MYSQL_ERROR, ex.what());
+        _reportFailure(lock, protocol::StatusExt::MYSQL_ERROR, ex.what());
 
     } catch (invalid_argument const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::INVALID_PARAM, ex.what());
+        _reportFailure(lock, protocol::StatusExt::INVALID_PARAM, ex.what());
 
     } catch (out_of_range const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::LARGE_RESULT, ex.what());
+        _reportFailure(lock, protocol::StatusExt::LARGE_RESULT, ex.what());
 
     } catch (exception const& ex) {
-        _reportFailure(lock, ProtocolStatusExt::OTHER_EXCEPTION, ex.what());
+        _reportFailure(lock, protocol::StatusExt::OTHER_EXCEPTION, ex.what());
     }
     return true;
 }
@@ -368,7 +372,7 @@ void WorkerSqlRequest::_extractResultSet(replica::Lock const& lock, Connection::
 
     // This will explicitly reset the default failure mode as it was
     // initialized by the constructor of the result set class.
-    resultSet->set_status_ext(ProtocolStatusExt::NONE);
+    resultSet->set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
 
     // Now carry over the actual rest set (if any)
     resultSet->set_char_set_name(conn->charSetName());
@@ -392,7 +396,7 @@ void WorkerSqlRequest::_extractResultSet(replica::Lock const& lock, Connection::
     }
 }
 
-void WorkerSqlRequest::_reportFailure(replica::Lock const& lock, ProtocolStatusExt statusExt,
+void WorkerSqlRequest::_reportFailure(replica::Lock const& lock, protocol::StatusExt statusExt,
                                       string const& error) {
     LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << error);
 
@@ -401,9 +405,9 @@ void WorkerSqlRequest::_reportFailure(replica::Lock const& lock, ProtocolStatusE
     // depending on a kind of the request - if it's a simple or the "batch"
     // request.
     auto resultSet = _currentResultSet(lock);
-    resultSet->set_status_ext(statusExt);
+    resultSet->set_status_ext(protocol::toUnsignedInt(statusExt));
     resultSet->set_error(error);
-    setStatus(lock, ProtocolStatus::FAILED, _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
+    setStatus(lock, protocol::Status::FAILED, _batchMode() ? statusExt : protocol::StatusExt::MULTIPLE);
 }
 
 ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(replica::Lock const& lock) {

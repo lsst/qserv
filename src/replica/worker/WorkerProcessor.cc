@@ -30,6 +30,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/worker/WorkerDeleteRequest.h"
 #include "replica/worker/WorkerEchoRequest.h"
@@ -164,13 +165,13 @@ void WorkerProcessor::enqueueForReplication(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -193,13 +194,13 @@ void WorkerProcessor::enqueueForDeletion(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -222,13 +223,13 @@ void WorkerProcessor::enqueueForFind(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -249,13 +250,13 @@ void WorkerProcessor::enqueueForFindAll(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -273,8 +274,8 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
-        response.set_status(ProtocolStatus::SUCCESS);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(performance.info().release());
         response.set_data(request.data());
         return;
@@ -289,14 +290,14 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
 
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -318,13 +319,13 @@ void WorkerProcessor::enqueueForSql(std::string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -349,13 +350,13 @@ void WorkerProcessor::enqueueForDirectorIndex(string const& id, int32_t priority
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -384,27 +385,27 @@ void WorkerProcessor::checkStatus(ProtocolRequestStatus const& request, Protocol
             }
             // No such request?
             if (targetRequestPtr == nullptr) {
-                response.set_status(ProtocolStatus::BAD);
-                response.set_status_ext(ProtocolStatusExt::INVALID_ID);
+                response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+                response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::INVALID_ID));
                 return;
             }
         }
     }
-    response.set_status(ProtocolStatus::SUCCESS);
-    response.set_status_ext(ProtocolStatusExt::NONE);
-    response.set_target_status(targetRequestPtr->status());
-    response.set_target_status_ext(targetRequestPtr->extendedStatus());
+    response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
+    response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
+    response.set_target_status(protocol::toUnsignedInt(targetRequestPtr->status()));
+    response.set_target_status_ext(protocol::toUnsignedInt(targetRequestPtr->extendedStatus()));
     response.set_allocated_target_performance(targetRequestPtr->performance().info().release());
 }
 
 void WorkerProcessor::dequeueOrCancel(ProtocolRequestStop const& request, ProtocolResponseStop& response) {
     replica::Lock lock(_mtx, _context(__func__));
     if (_dequeueOrCancelImpl(lock, request.id()) == nullptr) {
-        response.set_status(ProtocolStatus::BAD);
-        response.set_status_ext(ProtocolStatusExt::INVALID_ID);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::INVALID_ID));
     } else {
-        response.set_status(ProtocolStatus::SUCCESS);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
     }
 }
 
@@ -426,14 +427,14 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
             ptr->cancel();
 
             switch (ptr->status()) {
-                case ProtocolStatus::CANCELLED: {
+                case protocol::Status::CANCELLED: {
                     _newRequests.remove(id);
                     _finishedRequests[ptr->id()] = ptr;
                     return ptr;
                 }
                 default:
                     throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                      WorkerRequest::status2string(ptr->status()) + " in new requests");
+                                      protocol::toString(ptr->status()) + " in new requests");
             }
         }
     }
@@ -452,8 +453,8 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
 
         switch (ptr->status()) {
             // These are the most typical states for request in this queue
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::IS_CANCELLING:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::IS_CANCELLING:
 
             // The following two states are also allowed here because
             // in-progress requests are still allowed to progress to the completed
@@ -463,12 +464,12 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
             // replica::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
             // queue as soon as replica::Lock lock(_mtx) will be released.
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
+                                  protocol::toString(ptr->status()) + " in in-progress requests");
         }
     }
 
@@ -480,13 +481,13 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
         // reporting the completion status of the request. It's up to a client
         // to figure out what to do about this situation.
         switch (ptr->status()) {
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in finished requests");
+                                  protocol::toString(ptr->status()) + " in finished requests");
         }
     }
 
@@ -502,11 +503,11 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
         if (ptr->id() == id) {
             switch (ptr->status()) {
                 // This state requirement is strict for the non-active requests
-                case ProtocolStatus::CREATED:
+                case protocol::Status::CREATED:
                     return ptr;
                 default:
                     throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                      WorkerRequest::status2string(ptr->status()) + " in new requests");
+                                      protocol::toString(ptr->status()) + " in new requests");
             }
         }
     }
@@ -517,8 +518,8 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
         auto ptr = itrInProgress->second;
         switch (ptr->status()) {
             // These are the most typical states for request in this queue
-            case ProtocolStatus::IS_CANCELLING:
-            case ProtocolStatus::IN_PROGRESS:
+            case protocol::Status::IS_CANCELLING:
+            case protocol::Status::IN_PROGRESS:
 
             // The following three states are also allowed here because
             // in-progress requests are still allowed to progress to the completed
@@ -528,13 +529,13 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
             // replica::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
             // queue as soon as replica::Lock lock(_mtx) will be released.
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
+                                  protocol::toString(ptr->status()) + " in in-progress requests");
         }
     }
 
@@ -544,13 +545,13 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
         auto ptr = itrFinished->second;
         switch (ptr->status()) {
             // This state requirement is strict for the completed requests
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in finished requests");
+                                  protocol::toString(ptr->status()) + " in finished requests");
         }
     }
 
@@ -559,11 +560,11 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
 }
 
 void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, string const& id,
-                                         ProtocolStatus status, bool extendedReport) {
+                                         protocol::Status status, bool extendedReport) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     replica::Lock lock(_mtx, _context(__func__));
 
-    response.set_status(status);
+    response.set_status(protocol::toUnsignedInt(status));
     response.set_start_time(_startTime);
 
     switch (state()) {
@@ -704,7 +705,7 @@ void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
 void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context(__func__) << "  id: " << request->id()
-                            << "  status: " << WorkerRequest::status2string(request->status()));
+                            << "  status: " << protocol::toString(request->status()));
     replica::Lock lock(_mtx, _context(__func__));
 
     // Note that disposed requests won't be found in any queue.

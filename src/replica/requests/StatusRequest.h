@@ -28,6 +28,7 @@
 #include <string>
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/requests/Request.h"
 #include "replica/util/Common.h"
@@ -83,8 +84,8 @@ public:
     // Status info on the target request (as reported by the worker) is only available after
     // the status request is successfully completed. Otherwise std::logic_error is thrown.
 
-    ProtocolStatus targetRequestStatus() const;
-    ProtocolStatusExt targetRequestExtendedStatus() const;
+    protocol::Status targetRequestStatus() const;
+    protocol::StatusExt targetRequestExtendedStatus() const;
     Performance const& targetRequestPerformance() const;
 
     /// @see Request::toString()
@@ -122,8 +123,8 @@ private:
     CallbackType _onFinish;
 
     // Status of of the target request
-    ProtocolStatus _targetStatus;
-    ProtocolStatusExt _targetExtendedServerStatus;
+    protocol::Status _targetStatus;
+    protocol::StatusExt _targetExtendedServerStatus;
     Performance _targetPerformance;
 };
 

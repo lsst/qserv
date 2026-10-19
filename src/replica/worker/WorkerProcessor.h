@@ -32,6 +32,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Mutex.h"
@@ -234,15 +235,15 @@ public:
      * @param extendedStatus extended completion status of a request
      */
     template <class PROTOCOL_RESPONSE_TYPE>
-    static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response, ProtocolStatus status,
-                                   ProtocolStatusExt extendedStatus) {
+    static void setDefaultResponse(PROTOCOL_RESPONSE_TYPE& response, protocol::Status status,
+                                   protocol::StatusExt extendedStatus) {
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
         response.set_allocated_performance(performance.info().release());
 
-        response.set_status(status);
-        response.set_status_ext(extendedStatus);
+        response.set_status(protocol::toUnsignedInt(status));
+        response.set_status_ext(protocol::toUnsignedInt(extendedStatus));
     }
 
     /**
@@ -269,7 +270,7 @@ public:
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_ID);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_ID);
         if (WorkerRequest::Ptr const ptr = _trackRequestImpl(lock, request.id())) {
             try {
                 // Set request-specific fields. Note exception handling for scenarios
@@ -277,8 +278,8 @@ public:
                 _setInfo(ptr, response);
 
                 // The status field is present in all response types
-                response.set_status(ptr->status());
-                response.set_status_ext(ptr->extendedStatus());
+                response.set_status(protocol::toUnsignedInt(ptr->status()));
+                response.set_status_ext(protocol::toUnsignedInt(ptr->extendedStatus()));
             } catch (std::logic_error const&) {
                 ;
             }
@@ -306,7 +307,7 @@ public:
      * @param status desired status to set
      * @param extendedReport to return detailed info on all known replica-related requests
      */
-    void setServiceResponse(ProtocolServiceResponse& response, std::string const& id, ProtocolStatus status,
+    void setServiceResponse(ProtocolServiceResponse& response, std::string const& id, protocol::Status status,
                             bool extendedReport = false);
 
     size_t numNewRequests() const;

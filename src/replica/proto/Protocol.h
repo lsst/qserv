@@ -32,111 +32,287 @@
 // This header declarations
 namespace lsst::qserv::replica::protocol {
 
-/// Subtypes of the SQL requests.
-enum class SqlRequestType : int {
+/**
+ * @brief Subtypes of the SQL requests.
+ */
+enum class SqlRequestType : unsigned int {
+    _FIRST = 0,
+    QUERY = _FIRST,
+    CREATE_DATABASE,
+    DROP_DATABASE,
+    ENABLE_DATABASE,   ///< in Qserv
+    DISABLE_DATABASE,  ///< in Qserv
+    GRANT_ACCESS,
+    CREATE_TABLE,
+    DROP_TABLE,
+    REMOVE_TABLE_PARTITIONING,
+    DROP_TABLE_PARTITION,
+    GET_TABLE_INDEX,
+    CREATE_TABLE_INDEX,
+    DROP_TABLE_INDEX,
+    ALTER_TABLE,
+    TABLE_ROW_STATS,
+    _LAST = TABLE_ROW_STATS
 
-    QUERY = 0,
-    CREATE_DATABASE = 1,
-    DROP_DATABASE = 2,
-    ENABLE_DATABASE = 3,   ///< in Qserv
-    DISABLE_DATABASE = 4,  ///< in Qserv
-    GRANT_ACCESS = 5,
-    CREATE_TABLE = 6,
-    DROP_TABLE = 7,
-    REMOVE_TABLE_PARTITIONING = 8,
-    DROP_TABLE_PARTITION = 9,
-    GET_TABLE_INDEX = 10,
-    CREATE_TABLE_INDEX = 11,
-    DROP_TABLE_INDEX = 12,
-    ALTER_TABLE = 13,
-    TABLE_ROW_STATS = 14
 };
 
-/// Traslate a string representation of the SQL request type into the corresponding enum value.
-/// @param str The string representation of the SQL request type.
-/// @return the corresponding enum value.
-/// @throws std::invalid_argument if the string doesn't match any of the known SQL request types.
-SqlRequestType parseSqlRequestType(std::string const& str);
+/**
+ * @brief Translate a string representation of the SQL request type into the corresponding enum value.
+ * @param str The string representation of the SQL request type.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the string doesn't match any of the known SQL request types.
+ */
+SqlRequestType toSqlRequestType(std::string const& str);
 
-/// @return the string representation of the SQL request type
+/**
+ * @brief Translate an unsigned integer representation of the SQL request type into
+ * the corresponding enum value.
+ * @param value The unsigned integer representation of the SQL request type.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the value doesn't match any of the known SQL request types.
+ */
+SqlRequestType toSqlRequestType(unsigned int);
+
+/**
+ * @brief Translate the SQL request type into its string representation.
+ * @param status The SQL request type.
+ * @return the string representation of the SQL request type.
+ * @throws std::invalid_argument if the status doesn't match any of the known SQL request types.
+ */
 std::string toString(SqlRequestType status);
 
-/// Types of the table indexes specified in the index management requests requests.
-enum class SqlIndexSpec : int { DEFAULT = 1, UNIQUE = 2, FULLTEXT = 3, SPATIAL = 4 };
+/**
+ * @brief Translate the SQL request type into its unsigned integer representation.
+ * @param status The SQL request type.
+ * @return the underlying unsigned integer representation.
+ * @throws std::invalid_argument if the status doesn't match any of the known SQL request types.
+ */
+unsigned int toUnsignedInt(SqlRequestType status);
 
-/// Status values returned by all request related to operations at workers.
-/// Request management operations always return messages whose types
-/// match the return types of the corresponding (original) replica-related requests.
-/// Service management requests have their own set of status values.
-///
-enum class Status : int {
-    CREATED = 0,
-    SUCCESS = 1,
-    QUEUED = 2,
-    IN_PROGRESS = 3,
-    IS_CANCELLING = 4,
-    BAD = 5,
-    FAILED = 6,
-    CANCELLED = 7
+/**
+ * @brief Types of the table indexes specified in the index management requests.
+ */
+enum class SqlIndexSpec : unsigned int {
+    _FIRST = 1,
+    DEFAULT = _FIRST,
+    UNIQUE,
+    FULLTEXT,
+    SPATIAL,
+    _LAST = SPATIAL
 };
 
-/// Extended status values apply to requests in the final states BAD or FAILED only.
-/// In all other cases, the extended status is expected to be StatusExt::NONE.
-enum class StatusExt : int {
-    NONE = 0,                    ///< Unspecified problem.
-    INVALID_PARAM = 1,           ///< Invalid parameter(s) of a request.
-    INVALID_ID = 2,              ///< An invalid request identifier.
-    FOLDER_STAT = 4,             ///< Failed to obtain fstat() for a folder.
-    FOLDER_CREATE = 5,           ///< Failed to create a folder.
-    FILE_STAT = 6,               ///< Failed to obtain fstat() for a file.
-    FILE_SIZE = 7,               ///< Failed to obtain a size of a file.
-    FOLDER_READ = 8,             ///< Failed to read the contents of a folder.
-    FILE_READ = 9,               ///< Failed to read the contents of a file.
-    FILE_ROPEN = 10,             ///< Failed to open a remote file.
-    FILE_CREATE = 11,            ///< Failed to create a file.
-    FILE_OPEN = 12,              ///< Failed to open a file.
-    FILE_RESIZE = 13,            ///< Failed to resize a file.
-    FILE_WRITE = 14,             ///< Failed to write into a file.
-    FILE_COPY = 15,              ///< Failed to copy a file.
-    FILE_DELETE = 16,            ///< Failed to delete a file.
-    FILE_RENAME = 17,            ///< Failed to rename a file.
-    FILE_EXISTS = 18,            ///< File already exists.
-    SPACE_REQ = 19,              ///< Space availability check failed.
-    NO_FOLDER = 20,              ///< Folder doesn't exist.
-    NO_FILE = 21,                ///< File doesn't exist.
-    NO_ACCESS = 22,              ///< No access to a file or a folder.
-    NO_SPACE = 23,               ///< No space left on a device as required by an operation.
-    FILE_MTIME = 24,             ///< Get/set 'mtime' operation failed.
-    MYSQL_ERROR = 25,            ///< General MySQL error (other than any specific ones listed here).
-    LARGE_RESULT = 26,           ///< Result exceeds a limit set in a request.
-    NO_SUCH_TABLE = 27,          ///< No table found while performing a MySQL operation.
-    NOT_PARTITIONED_TABLE = 28,  ///< The table is not MySQL partitioned as it was expected.
-    NO_SUCH_PARTITION = 29,      ///< No MySQL partition found in a table as it was expected.
-    MULTIPLE = 30,               ///< Multiple unspecified errors encountered when processing a request.
-    OTHER_EXCEPTION = 31,        ///< Other exception not listed here.
-    FOREIGN_INSTANCE = 32,       ///< Detected a request from a Controller serving an unrelated Qserv.
-    DUPLICATE_KEY = 33,          ///< Duplicate key found when creating an index or altering a table schema.
-    CANT_DROP_KEY = 34,          ///< Can't drop a field or a key which doesn't exist.
-    CONFIG_NO_SUCH_DB =
-            35,  ///< A database mentioned in the worker request was not found at the worker's configuration.
-    CONFIG_NO_SUCH_TABLE =
-            36  ///< A table mentioned in the worker request was not found at the worker's configuration.
+/**
+ * @brief Translate a string representation of the SQL index specification into the corresponding enum value.
+ * @param str The string representation of the SQL index specification.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the string doesn't match any of the known SQL index specifications.
+ */
+SqlIndexSpec toSqlIndexSpec(std::string const& str);
+
+/**
+ * @brief Translate an unsigned integer representation of the SQL index specification into the corresponding
+ * enum value.
+ * @param value The unsigned integer representation of the SQL index specification.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the value doesn't match any of the known SQL index specifications.
+ */
+SqlIndexSpec toSqlIndexSpec(unsigned int value);
+
+/**
+ * @brief Translate the SQL index specification into its string representation.
+ * @param spec The SQL index specification.
+ * @return the string representation of the SQL index specification.
+ * @throws std::invalid_argument if the spec doesn't match any of the known SQL index specifications.
+ */
+std::string toString(SqlIndexSpec spec);
+
+/**
+ * @brief Translate the SQL index specification into its unsigned integer representation.
+ * @param spec The SQL index specification.
+ * @return the underlying unsigned integer representation.
+ * @throws std::invalid_argument if the spec doesn't match any of the known SQL index specifications.
+ */
+unsigned int toUnsignedInt(SqlIndexSpec spec);
+
+/**
+ * @brief Status values returned by all request related to operations at workers.
+ * Request management operations always return messages whose types
+ * match the return types of the corresponding (original) replica-related requests.
+ * Service management requests have their own set of status values.
+ */
+enum class Status : unsigned int {
+    _FIRST = 0,
+    CREATED = _FIRST,
+    SUCCESS,
+    QUEUED,
+    IN_PROGRESS,
+    IS_CANCELLING,
+    BAD,
+    FAILED,
+    CANCELLED,
+    _LAST = CANCELLED
 };
 
-/// @return the string representation of the status
+/**
+ * @brief Translate a string representation of the status into the corresponding enum value.
+ * @param str The string representation of the status.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the string doesn't match any of the known status values.
+ */
+Status toStatus(std::string const& str);
+
+/**
+ * @brief Translate an unsigned integer representation of the status into the corresponding enum value.
+ * @param value The unsigned integer representation of the status.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the value doesn't match any of the known status values.
+ */
+Status toStatus(unsigned int value);
+
+/**
+ * @brief Translate a status enum value into its string representation.
+ * @param status The status enum value.
+ * @return the string representation of the status.
+ * @throws std::invalid_argument if the status doesn't match any of the known status values.
+ */
 std::string toString(Status status);
 
-/// @return the string representation of the extended status
+/**
+ * @brief Translate a status enum value into its unsigned integer representation.
+ * @param status The status enum value.
+ * @return the underlying unsigned integer representation.
+ * @throws std::invalid_argument if the status doesn't match any of the known status values.
+ */
+unsigned int toUnsignedInt(Status status);
+
+/**
+ * @brief Extended status values apply to requests in the final states BAD or FAILED only.
+ * In all other cases, the extended status is expected to be StatusExt::NONE.
+ */
+enum class StatusExt : unsigned int {
+    _FIRST = 0,
+    NONE = _FIRST,          ///< Unspecified problem.
+    INVALID_PARAM,          ///< Invalid parameter(s) of a request.
+    INVALID_ID,             ///< An invalid request identifier.
+    FOLDER_STAT,            ///< Failed to obtain fstat() for a folder.
+    FOLDER_CREATE,          ///< Failed to create a folder.
+    FILE_STAT,              ///< Failed to obtain fstat() for a file.
+    FILE_SIZE,              ///< Failed to obtain a size of a file.
+    FOLDER_READ,            ///< Failed to read the contents of a folder.
+    FILE_READ,              ///< Failed to read the contents of a file.
+    FILE_ROPEN,             ///< Failed to open a remote file.
+    FILE_CREATE,            ///< Failed to create a file.
+    FILE_OPEN,              ///< Failed to open a file.
+    FILE_RESIZE,            ///< Failed to resize a file.
+    FILE_WRITE,             ///< Failed to write into a file.
+    FILE_COPY,              ///< Failed to copy a file.
+    FILE_DELETE,            ///< Failed to delete a file.
+    FILE_RENAME,            ///< Failed to rename a file.
+    FILE_EXISTS,            ///< File already exists.
+    SPACE_REQ,              ///< Space availability check failed.
+    NO_FOLDER,              ///< Folder doesn't exist.
+    NO_FILE,                ///< File doesn't exist.
+    NO_ACCESS,              ///< No access to a file or a folder.
+    NO_SPACE,               ///< No space left on a device as required by an operation.
+    FILE_MTIME,             ///< Get/set 'mtime' operation failed.
+    MYSQL_ERROR,            ///< General MySQL error (other than any specific ones listed here).
+    LARGE_RESULT,           ///< Result exceeds a limit set in a request.
+    NO_SUCH_TABLE,          ///< No table found while performing a MySQL operation.
+    NOT_PARTITIONED_TABLE,  ///< The table is not MySQL partitioned as it was expected.
+    NO_SUCH_PARTITION,      ///< No MySQL partition found in a table as it was expected.
+    MULTIPLE,               ///< Multiple unspecified errors encountered when processing a request.
+    OTHER_EXCEPTION,        ///< Other exception not listed here.
+    FOREIGN_INSTANCE,       ///< Detected a request from a Controller serving an unrelated Qserv.
+    DUPLICATE_KEY,          ///< Duplicate key found when creating an index or altering a table schema.
+    CANT_DROP_KEY,          ///< Can't drop a field or a key which doesn't exist.
+    CONFIG_NO_SUCH_DB,      ///< A database mentioned in the worker request was not found at the worker's
+                            ///< configuration.
+    CONFIG_NO_SUCH_TABLE,   ///< A table mentioned in the worker request was not found at the worker's
+                            ///< configuration.
+    _LAST = CONFIG_NO_SUCH_TABLE
+};
+
+/**
+ * @brief Convert a string representation of an extended status to the corresponding StatusExt enum value.
+ * @param str The string representation of the extended status.
+ * @return The corresponding StatusExt enum value.
+ * @throw std::invalid_argument if the string does not correspond to any known StatusExt value.
+ */
+StatusExt toStatusExt(std::string const& str);
+
+/**
+ * @brief Translate an unsigned integer representation of the extended status into the corresponding enum
+ * value.
+ * @param value The unsigned integer representation of the extended status.
+ * @return the corresponding enum value.
+ * @throws std::invalid_argument if the value doesn't match any of the known extended status values.
+ */
+StatusExt toStatusExt(unsigned int value);
+
+/**
+ * @brief Translate an extended status enum value into its string representation.
+ * @param extendedStatus The extended status enum value.
+ * @return the string representation of the extended status.
+ * @throws std::invalid_argument if the extended status doesn't match any of the known extended status values.
+ */
 std::string toString(StatusExt extendedStatus);
 
-/// @return the string representation of the full status
+/**
+ * @brief Convert an extended status to its unsigned integer representation.
+ * @param extendedStatus The extended status to convert.
+ * @return The unsigned integer representation of the extended status.
+ */
+unsigned int toUnsignedInt(StatusExt extendedStatus);
+
+/**
+ * @brief Translate a combination of status and extended status into its string representation.
+ * @param status The status enum value.
+ * @param extendedStatus The extended status enum value.
+ * @return the string representation of the combined status.
+ */
 std::string toString(Status status, StatusExt extendedStatus);
 
 /// Status of a service.
-enum class ServiceState : int { SUSPEND_IN_PROGRESS = 0, SUSPENDED = 1, RUNNING = 2 };
+enum class ServiceState : unsigned int {
+    _FIRST = 0,
+    SUSPEND_IN_PROGRESS = _FIRST,
+    SUSPENDED,
+    RUNNING = 2,
+    _LAST = RUNNING
+};
 
-/// @return the string representation of the service state
+/**
+ * @brief Convert a string representation of a service state to the corresponding ServiceState enum value.
+ * @param stateStr The string representation of the service state.
+ * @return The corresponding ServiceState enum value.
+ * @throw std::invalid_argument if the string does not correspond to any known ServiceState value.
+ */
+ServiceState toServiceState(std::string const& stateStr);
+
+/**
+ * @brief Translate an unsigned integer representation of the service state into the corresponding
+ * ServiceState enum value.
+ * @param value The unsigned integer representation of the service state.
+ * @return the corresponding ServiceState enum value.
+ * @throws std::invalid_argument if the value doesn't match any of the known service state values.
+ */
+ServiceState toServiceState(unsigned int value);
+
+/**
+ * @brief Translate a service state enum value into its string representation.
+ * @param state The service state enum value.
+ * @return the string representation of the service state.
+ * @throws std::invalid_argument if the state doesn't match any of the known service states.
+ */
 std::string toString(ServiceState state);
+
+/**
+ * @brief Translate a service state enum value into its unsigned integer representation.
+ * @param state The service state enum value.
+ * @return the unsigned integer representation of the service state.
+ * @throws std::invalid_argument if the state doesn't match any of the known service states.
+ */
+unsigned int toUnsignedInt(ServiceState state);
 
 /// The header to be sent with the requests processed through the worker's queueing system.
 struct QueuedRequestHdr {

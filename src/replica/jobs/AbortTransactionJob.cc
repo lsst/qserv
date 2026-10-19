@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -93,9 +94,10 @@ list<pair<string, string>> AbortTransactionJob::persistentLogData() const {
     list<pair<string, string>> result;
     _resultData.iterate([&result](SqlJobResult::Worker const& worker, SqlJobResult::Scope const& table,
                                   SqlResultSet::ResultSet const& resultSet) {
-        result.emplace_back("status", "worker=" + worker + " table=" + table + " completed=" +
-                                              bool2str(resultSet.extendedStatus == ProtocolStatusExt::NONE) +
-                                              " error=" + resultSet.error);
+        result.emplace_back("status",
+                            "worker=" + worker + " table=" + table + " completed=" +
+                                    bool2str(resultSet.extendedStatus == protocol::StatusExt::NONE) +
+                                    " error=" + resultSet.error);
     });
     return result;
 }

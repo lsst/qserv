@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/util/Common.h"
 #include "replica/worker/WorkerRequest.h"
@@ -145,7 +146,7 @@ private:
      * @throw std::logic_error Is thrown when the method is called before
      *   creating a result set.
      */
-    void _reportFailure(replica::Lock const& lock, ProtocolStatusExt statusExt, std::string const& error);
+    void _reportFailure(replica::Lock const& lock, protocol::StatusExt statusExt, std::string const& error);
 
     // @return A mutable pointer to the current result set
     ProtocolResponseSqlResultSet* _currentResultSet(replica::Lock const& lock);
