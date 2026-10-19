@@ -37,6 +37,7 @@
 #include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/qserv/QservWorkerMgtRequest.h"
 #include "replica/requests/Request.h"
 #include "replica/util/Common.h"
@@ -245,7 +246,7 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
                     _g.insert("request", request.id(), request.jobId(), request.type(), request.workerName(),
                               request.priority(), Request::state2string(request.state()),
                               Request::state2string(request.extendedState()),
-                              status2string(request.extendedServerStatus()), performance.c_create_time,
+                              protocol::toString(request.extendedServerStatus()), performance.c_create_time,
                               performance.c_start_time, performance.w_receive_time, performance.w_start_time,
                               performance.w_finish_time, performance.c_finish_time);
             conn->execute(query);
@@ -260,7 +261,7 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
             string const query =
                     _g.update("request", make_pair("state", Request::state2string(request.state())),
                               make_pair("ext_state", Request::state2string(request.extendedState())),
-                              make_pair("server_status", status2string(request.extendedServerStatus())),
+                              make_pair("server_status", protocol::toString(request.extendedServerStatus())),
                               make_pair("c_create_time", performance.c_create_time),
                               make_pair("c_start_time", performance.c_start_time),
                               make_pair("w_receive_time", performance.w_receive_time),
@@ -302,7 +303,7 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request, string co
             string const query =
                     _g.update("request", make_pair("state", Request::state2string(request.state())),
                               make_pair("ext_state", Request::state2string(request.extendedState())),
-                              make_pair("server_status", status2string(request.extendedServerStatus())),
+                              make_pair("server_status", protocol::toString(request.extendedServerStatus())),
                               make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
                               make_pair("w_start_time", targetRequestPerformance.w_start_time),
                               make_pair("w_finish_time", targetRequestPerformance.w_finish_time)) +

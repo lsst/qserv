@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlAlterTablesRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlAlterTablesRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -48,10 +47,10 @@ SqlAlterTablesRequest::SqlAlterTablesRequest(shared_ptr<Controller> const& contr
                                              string const& workerName, string const& database,
                                              vector<string> const& tables, string const& alterSpec,
                                              CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_ALTER_TABLES", workerName, ::unlimitedMaxRows, priority, keepTracking),
+        : SqlRequest(controller, "SQL_ALTER_TABLES", protocol::SqlRequestType::ALTER_TABLE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::ALTER_TABLE);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -62,8 +61,6 @@ SqlAlterTablesRequest::SqlAlterTablesRequest(shared_ptr<Controller> const& contr
 }
 
 void SqlAlterTablesRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlAlterTablesRequest>(lock, _onFinish);
 }
 

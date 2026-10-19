@@ -59,12 +59,6 @@ namespace lsst::qserv::replica {
 
 replica::Mutex WorkerRequest::_mtxDataFolderOperations;
 
-string WorkerRequest::status2string(ProtocolStatus status) { return ProtocolStatus_Name(status); }
-
-string WorkerRequest::status2string(ProtocolStatus status, ProtocolStatusExt extendedStatus) {
-    return status2string(status) + "::" + replica::status2string(extendedStatus);
-}
-
 atomic<size_t> WorkerRequest::_numInstances{0};
 
 WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -81,8 +75,8 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider, string
                           ? serviceProvider->config()->get<unsigned int>("worker", "request-timeout-sec")
                           : requestExpirationIvalSec),
           _requestExpirationTimer(serviceProvider->io_service()),
-          _status(ProtocolStatus::CREATED),
-          _extendedStatus(ProtocolStatusExt::NONE),
+          _status(protocol::Status::CREATED),
+          _extendedStatus(protocol::StatusExt::NONE),
           _performance(),
           _durationMillisec(0) {
     _numInstances++;
@@ -97,19 +91,19 @@ WorkerRequest::~WorkerRequest() {
 
 void WorkerRequest::checkIfCancelling(replica::Lock const& lock, string const& func) {
     switch (status()) {
-        case ProtocolStatus::IN_PROGRESS:
+        case protocol::Status::IN_PROGRESS:
             break;
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::CANCELLED);
+        case protocol::Status::IS_CANCELLING:
+            setStatus(lock, protocol::Status::CANCELLED);
             throw WorkerRequestCancelled();
         default:
             throw logic_error(context(func) +
-                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
+                              "  not allowed while in status: " + protocol::toString(status()));
     }
 }
 
 WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(bool errorCondition,
-                                                         ProtocolStatusExt extendedStatus,
+                                                         protocol::StatusExt extendedStatus,
                                                          string const& errorMsg) {
     WorkerRequest::ErrorContext errorContext;
     if (errorCondition) {
@@ -123,7 +117,7 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(bool errorCondition,
 void WorkerRequest::init() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-    if (status() != ProtocolStatus::CREATED) return;
+    if (status() != protocol::Status::CREATED) return;
 
     // Start the expiration timer
     if (_requestExpirationIvalSec != 0) {
@@ -141,12 +135,12 @@ void WorkerRequest::start() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
     switch (status()) {
-        case ProtocolStatus::CREATED:
-            setStatus(lock, ProtocolStatus::IN_PROGRESS);
+        case protocol::Status::CREATED:
+            setStatus(lock, protocol::Status::IN_PROGRESS);
             break;
         default:
             throw logic_error(context(__func__) +
-                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
+                              "  not allowed while in status: " + protocol::toString(status()));
     }
 }
 
@@ -160,7 +154,7 @@ bool WorkerRequest::execute() {
     // Success/failure modes will be also simulated using the corresponding generator.
     _durationMillisec += ::incrementIvalMillisec.wait();
     if (_durationMillisec < ::maxDurationMillisec) return false;
-    setStatus(lock, ::successRateGenerator.success() ? ProtocolStatus::SUCCESS : ProtocolStatus::FAILED);
+    setStatus(lock, ::successRateGenerator.success() ? protocol::Status::SUCCESS : protocol::Status::FAILED);
     return true;
 }
 
@@ -168,20 +162,20 @@ void WorkerRequest::cancel() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
     switch (status()) {
-        case ProtocolStatus::QUEUED:
-        case ProtocolStatus::CREATED:
-        case ProtocolStatus::CANCELLED:
-            setStatus(lock, ProtocolStatus::CANCELLED);
+        case protocol::Status::QUEUED:
+        case protocol::Status::CREATED:
+        case protocol::Status::CANCELLED:
+            setStatus(lock, protocol::Status::CANCELLED);
             break;
-        case ProtocolStatus::IN_PROGRESS:
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::IS_CANCELLING);
+        case protocol::Status::IN_PROGRESS:
+        case protocol::Status::IS_CANCELLING:
+            setStatus(lock, protocol::Status::IS_CANCELLING);
             break;
 
         // Nothing to be done to the completed requests
-        case ProtocolStatus::SUCCESS:
-        case ProtocolStatus::BAD:
-        case ProtocolStatus::FAILED:
+        case protocol::Status::SUCCESS:
+        case protocol::Status::BAD:
+        case protocol::Status::FAILED:
             break;
     }
 }
@@ -190,24 +184,24 @@ void WorkerRequest::rollback() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
     switch (status()) {
-        case ProtocolStatus::CREATED:
-        case ProtocolStatus::IN_PROGRESS:
-            setStatus(lock, ProtocolStatus::CREATED);
+        case protocol::Status::CREATED:
+        case protocol::Status::IN_PROGRESS:
+            setStatus(lock, protocol::Status::CREATED);
             break;
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::CANCELLED);
+        case protocol::Status::IS_CANCELLING:
+            setStatus(lock, protocol::Status::CANCELLED);
             throw WorkerRequestCancelled();
             break;
         default:
             throw logic_error(context(__func__) +
-                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
+                              "  not allowed while in status: " + protocol::toString(status()));
     }
 }
 
 void WorkerRequest::stop() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-    setStatus(lock, ProtocolStatus::CREATED);
+    setStatus(lock, protocol::Status::CREATED);
 }
 
 void WorkerRequest::dispose() noexcept {
@@ -223,23 +217,23 @@ void WorkerRequest::dispose() noexcept {
     }
 }
 
-void WorkerRequest::setStatus(replica::Lock const& lock, ProtocolStatus status,
-                              ProtocolStatusExt extendedStatus) {
+void WorkerRequest::setStatus(replica::Lock const& lock, protocol::Status status,
+                              protocol::StatusExt extendedStatus) {
     LOGS(_log, LOG_LVL_TRACE,
-         context(__func__) << "  " << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
-                           << WorkerRequest::status2string(status, extendedStatus));
+         context(__func__) << "  " << protocol::toString(_status, _extendedStatus) << " -> "
+                           << protocol::toString(status, extendedStatus));
     switch (status) {
-        case ProtocolStatus::CREATED:
+        case protocol::Status::CREATED:
             _performance.start_time = 0;
             _performance.finish_time = 0;
             break;
-        case ProtocolStatus::IN_PROGRESS:
+        case protocol::Status::IN_PROGRESS:
             _performance.setUpdateStart();
             _performance.finish_time = 0;
             break;
-        case ProtocolStatus::IS_CANCELLING:
+        case protocol::Status::IS_CANCELLING:
             break;
-        case ProtocolStatus::CANCELLED:
+        case protocol::Status::CANCELLED:
 
             // Set the start time to some meaningful value in case if the request was
             // cancelled while sitting in the input queue
@@ -247,12 +241,12 @@ void WorkerRequest::setStatus(replica::Lock const& lock, ProtocolStatus status,
             _performance.setUpdateFinish();
             break;
 
-        case ProtocolStatus::SUCCESS:
-        case ProtocolStatus::FAILED:
+        case protocol::Status::SUCCESS:
+        case protocol::Status::FAILED:
             _performance.setUpdateFinish();
             break;
         default:
-            throw logic_error(context(__func__) + "  unhandled status: " + to_string(status));
+            throw logic_error(context(__func__) + "  unhandled status: " + protocol::toString(status));
     }
 
     // ATTENTION: the top-level status is the last to be modified in

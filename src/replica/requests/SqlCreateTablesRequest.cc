@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlCreateTablesRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTablesRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -52,10 +51,10 @@ SqlCreateTablesRequest::SqlCreateTablesRequest(
         std::vector<std::string> const& tables, std::string const& engine, string const& partitionByColumn,
         std::list<SqlColDef> const& columns, std::string const& charsetName, std::string const& collationName,
         CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_CREATE_TABLES", workerName, ::unlimitedMaxRows, priority, keepTracking),
+        : SqlRequest(controller, "SQL_CREATE_TABLES", protocol::SqlRequestType::CREATE_TABLE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::CREATE_TABLE);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -74,8 +73,6 @@ SqlCreateTablesRequest::SqlCreateTablesRequest(
 }
 
 void SqlCreateTablesRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlCreateTablesRequest>(lock, _onFinish);
 }
 
