@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlGetIndexesRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGetIndexesRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -47,11 +46,10 @@ SqlGetIndexesRequest::Ptr SqlGetIndexesRequest::createAndStart(
 SqlGetIndexesRequest::SqlGetIndexesRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                            string const& database, vector<string> const& tables,
                                            CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_GET_TABLE_INDEXES", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_GET_TABLE_INDEXES", protocol::SqlRequestType::GET_TABLE_INDEX,
+                     workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::GET_TABLE_INDEX);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -61,8 +59,6 @@ SqlGetIndexesRequest::SqlGetIndexesRequest(shared_ptr<Controller> const& control
 }
 
 void SqlGetIndexesRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlGetIndexesRequest>(lock, _onFinish);
 }
 

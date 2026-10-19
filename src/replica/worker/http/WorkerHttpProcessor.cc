@@ -270,6 +270,7 @@ json WorkerHttpProcessor::toJson(string const& type, protocol::Status status, bo
                           {"timeout", 0},
                           {"params", json::object({{"include_requests", includeRequests ? 1 : 0}})}});
     json result = json::object({{"service_state", protocol::toString(state())},
+                                {"start_time", _startTime},
                                 {"num_new_requests", _newRequests.size()},
                                 {"num_in_progress_requests", _inProgressRequests.size()},
                                 {"num_finished_requests", _finishedRequests.size()},
