@@ -23,13 +23,7 @@
 #include "replica/requests/Request.h"
 
 // System headers
-#include <algorithm>
-#include <functional>
-#include <sstream>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
 #include "replica/config/Config.h"
@@ -42,7 +36,6 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-using namespace std::placeholders;
 
 namespace {
 
@@ -52,303 +45,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Request");
 
 namespace lsst::qserv::replica {
 
-atomic<size_t> Request::_numClassInstances(0);
-
-string Request::state2string(State state) {
-    switch (state) {
-        case CREATED:
-            return "CREATED";
-        case IN_PROGRESS:
-            return "IN_PROGRESS";
-        case FINISHED:
-            return "FINISHED";
-    }
-    throw logic_error("Request::" + string(__func__) + "(State)  incomplete implementation");
-}
-
-string Request::state2string(ExtendedState state) {
-    switch (state) {
-        case NONE:
-            return "NONE";
-        case SUCCESS:
-            return "SUCCESS";
-        case CLIENT_ERROR:
-            return "CLIENT_ERROR";
-        case SERVER_BAD:
-            return "SERVER_BAD";
-        case SERVER_ERROR:
-            return "SERVER_ERROR";
-        case SERVER_CREATED:
-            return "SERVER_CREATED";
-        case SERVER_QUEUED:
-            return "SERVER_QUEUED";
-        case SERVER_IN_PROGRESS:
-            return "SERVER_IN_PROGRESS";
-        case SERVER_IS_CANCELLING:
-            return "SERVER_IS_CANCELLING";
-        case SERVER_CANCELLED:
-            return "SERVER_CANCELLED";
-        case TIMEOUT_EXPIRED:
-            return "TIMEOUT_EXPIRED";
-        case CANCELLED:
-            return "CANCELLED";
-    }
-    throw logic_error("Request::" + string(__func__) + "(ExtendedState)  incomplete implementation");
-}
-
-string Request::state2string(State state, ExtendedState extendedState) {
-    return state2string(state) + "::" + state2string(extendedState);
-}
-
-string Request::state2string(State state, ExtendedState extendedState,
-                             replica::protocol::StatusExt serverStatus) {
-    return state2string(state, extendedState) + "::" + protocol::toString(serverStatus);
-}
-
 Request::Request(shared_ptr<Controller> const& controller, string const& type, string const& workerName,
                  int priority, bool keepTracking, bool disposeRequired)
-        : _controller(controller),
-          _type(type),
-          _id(Generators::uniqueId()),
-          _workerName(workerName),
-          _priority(priority),
-          _keepTracking(keepTracking),
-          _disposeRequired(disposeRequired),
-          _state(CREATED),
-          _extendedState(NONE),
-          _extendedServerStatus(protocol::StatusExt::NONE),
-          _bufferPtr(new ProtocolBuffer(
-                  controller->serviceProvider()->config()->get<size_t>("common", "request-buf-size-bytes"))),
-          _worker(controller->serviceProvider()->config()->worker(workerName)),
-          _timerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                  "controller", "request-retry-interval-sec")),
-          _timer(controller->serviceProvider()->io_service()),
-          _requestExpirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                  "controller", "request-timeout-sec")),
-          _requestExpirationTimer(controller->serviceProvider()->io_service()) {
-    controller->serviceProvider()->config()->assertWorkerIsValid(workerName);
-
-    // This report is used solely for debugging purposes to allow tracking
-    // potential memory leaks within applications.
-    ++_numClassInstances;
-    LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
-}
-
-Request::~Request() {
-    --_numClassInstances;
-    LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
-}
-
-string Request::state2string() const {
-    replica::Lock lock(_mtx, context() + __func__);
-    return state2string(state(), extendedState()) + "::" + protocol::toString(extendedServerStatus());
-}
-
-string Request::context() const {
-    return "REQUEST " + id() + "  " + type() + "  " + state2string(state(), extendedState()) +
-           "::" + protocol::toString(extendedServerStatus()) + "  ";
-}
-
-unsigned int Request::nextTimeIvalMsec() {
-    auto result = _currentTimeIvalMsec;
-    _currentTimeIvalMsec = min(2 * _currentTimeIvalMsec, 1000 * timerIvalSec());
-    return result;
-}
-
-Performance Request::performance() const {
-    replica::Lock lock(_mtx, context() + __func__);
-    return performance(lock);
-}
-
-Performance Request::performance(replica::Lock const& lock) const { return _performance; }
-
-string Request::toString(bool extended) const {
-    ostringstream oss;
-    oss << context() << "\n"
-        << "  worker: " << workerName() << "\n"
-        << "  priority: " << priority() << "\n"
-        << "  keepTracking: " << bool2str(keepTracking()) << "\n"
-        << "  disposeRequired: " << bool2str(disposeRequired()) << "\n"
-        << "  performance: " << performance() << "\n";
-    if (extended) {
-        for (auto&& kv : extendedPersistentState()) {
-            oss << "  " << kv.first << ": " << kv.second << "\n";
-        }
-    }
-    return oss.str();
-}
-
-void Request::start(string const& jobId, unsigned int requestExpirationIvalSec) {
-    replica::Lock lock(_mtx, context() + __func__);
-
-    assertState(lock, CREATED, context() + __func__);
-
-    // Change the expiration interval if requested
-    if (requestExpirationIvalSec) {
-        _requestExpirationIvalSec = requestExpirationIvalSec;
-    }
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  _requestExpirationIvalSec: " << _requestExpirationIvalSec);
-
-    // Build optional associations with the corresponding the job
-    if (_jobId.empty() and not jobId.empty()) _jobId = jobId;
-
-    _performance.setUpdateStart();
-    if (_requestExpirationIvalSec) {
-        _requestExpirationTimer.cancel();
-        _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
-        _requestExpirationTimer.async_wait(bind(&Request::expired, shared_from_this(), _1));
-    }
-
-    // Let a subclass to proceed with its own sequence of actions.
-    // Terminate the processing and notify the client if an exception is thrown.
-    try {
-        startImpl(lock);
-    } catch (std::exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR,
-             context() << __func__ << "  caught exception: " << ex.what()
-                       << "  finishing the request with CLIENT_ERROR");
-        finish(lock, CLIENT_ERROR);
-        return;
-    }
-
-    // Finalize state transition before saving the persistent state
-    setState(lock, IN_PROGRESS);
-}
-
-void Request::wait() {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    if (_finished) return;
-    unique_lock<mutex> onFinishLock(_onFinishMtx);
-    _onFinishCv.wait(onFinishLock, [&] { return _finished; });
-}
-
-string const& Request::jobId() const {
-    if (state() == State::CREATED) {
-        throw logic_error("Request::" + string(__func__) +
-                          "  the Job Id is not available because the request has not started yet");
-    }
-    return _jobId;
-}
-
-void Request::expired(boost::system::error_code const& ec) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
-
-    // Ignore this event if the timer was aborted
-    if (ec == boost::asio::error::operation_aborted) return;
-
-    if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
-    if (state() == State::FINISHED) return;
-
-    finish(lock, TIMEOUT_EXPIRED);
-}
-
-void Request::cancel() {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
-    if (state() == FINISHED) return;
-
-    finish(lock, CANCELLED);
-}
-
-void Request::keepTrackingOrFinish(replica::Lock const& lock, ExtendedState extendedState) {
-    if (keepTracking()) {
-        timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-        timer().async_wait(bind(&Request::awaken, shared_from_this(), _1));
-    } else {
-        finish(lock, extendedState);
-    }
-}
-
-void Request::awaken(boost::system::error_code const& ec) {
-    throw runtime_error(context() + string(__func__) + "  the default implementation is not allowed.");
-}
-
-void Request::finish(replica::Lock const& lock, ExtendedState extendedState) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // Check if it's not too late for this operation
-    if (state() == FINISHED) return;
-
-    // We have to update the timestamp before making a state transition
-    // to ensure a client gets a consistent view onto the object's state.
-    _performance.setUpdateFinish();
-
-    // Set new state to make sure all event handlers will recognize
-    // this scenario and avoid making any modifications to the request's state.
-    setState(lock, FINISHED, extendedState);
-
-    // Stop the timer if the one is still running
-    _requestExpirationTimer.cancel();
-
-    // Make sure the request (if any) has been eliminated from the messenger.
-    // This operation is unnecessary if the request has successfully finished,
-    // in which case it's guaranteed that no outstanding message for the request
-    // will be at the messenger's queue. This optimization also reduces extra
-    // locking (and delays) in the messenger because the operation is synchronized.
-    if (extendedState != Request::ExtendedState::SUCCESS) {
-        controller()->messenger()->cancel(workerName(), id());
-    }
-
-    // Tell the worker to dispose the request if a subclass made such requirement,
-    // and only if the request has successfully finished. This will remove the request
-    // from the worker's "finished" queue and release memory taken by the request
-    // much earlier than after request expiration deadline.
-    // Don't dispose requests in other states since any such actions may result in
-    // unnecessary increase of the traffic on a communication channel with the worker
-    // and increase processing latency (and increasing a probability of running into
-    // the Controller side timeouts while waiting for the completion of the requests)
-    // of the on-going or queued requests.
-    // Requests in other states ended up at workers would be automatically disposed
-    // by workers after requests's expiration deadlines.
-    if (disposeRequired() && (extendedState == Request::ExtendedState::SUCCESS)) {
-        // Don't require any callback notification for the completion of
-        // the operation. This will also prevent incrementing a shared pointer
-        // counter for the current object.
-        dispose(lock, priority(), nullptr);
-    }
-
-    // Notify a subscriber (if any) about the completion of the request.
-    notify(lock);
-
-    // Unblock threads (if any) waiting on the synchronization call
-    // to method Request::wait()
-    _finished = true;
-    _onFinishCv.notify_all();
-}
-
-bool Request::isAborted(boost::system::error_code const& ec) const {
-    if (ec == boost::asio::error::operation_aborted) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ** ABORTED **");
-        return true;
-    }
-    return false;
-}
-
-void Request::assertState(replica::Lock const& lock, State desiredState, string const& context) const {
-    if (desiredState != state()) {
-        throw logic_error(context + ": wrong state " + state2string(state()) + " instead of " +
-                          state2string(desiredState));
-    }
-}
-
-void Request::setState(replica::Lock const& lock, State newState, ExtendedState newExtendedState) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  " << state2string(newState, newExtendedState));
-
-    // ATTENTION: ensure the top-level state is the last to change in
-    // in the transient state transition in order to guarantee a consistent
-    // view on to the object's state from the client's prospective.
-    {
-        unique_lock<mutex> onFinishLock(_onFinishMtx);
-        _extendedState = newExtendedState;
-        _state = newState;
-    }
-    savePersistentState(lock);
-}
+        : RequestI(controller, type, workerName, priority, keepTracking, disposeRequired),
+          _bufferPtr(new ProtocolBuffer(controller->serviceProvider()->config()->get<size_t>(
+                  "common", "request-buf-size-bytes"))) {}
 
 void Request::dispose(replica::Lock const& lock, int priority, OnDisposeCallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -366,10 +67,11 @@ void Request::dispose(replica::Lock const& lock, int priority, OnDisposeCallback
     message.add_ids(id());
     buffer()->serialize(message);
 
-    controller()->messenger()->send<ProtocolResponseDispose>(workerName(), id(), priority, buffer(),
-                                                             onFinish);
+    controller()->messenger()->send<ProtocolResponseDispose>(
+            workerName(), id(), priority, buffer(),
+            [onFinish](string const& id, bool success, ProtocolResponseDispose const& response) {
+                if (onFinish) onFinish(success);
+            });
 }
-
-boost::asio::io_service& Request::_ioService() { return controller()->serviceProvider()->io_service(); }
 
 }  // namespace lsst::qserv::replica
