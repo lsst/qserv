@@ -120,10 +120,10 @@ protected:
      * @param jobName The name of a job in the persistent state of the Replication system.
      * @param priority The priority level of the job.
      * @param ignoreNonPartitioned The optional flag which if 'true' then don't report as
-     *   errors tables for which ProtocolStatusExt::NOT_PARTITIONED_TABLE was reported.
+     *   errors tables for which protocol::StatusExt::NOT_PARTITIONED_TABLE was reported.
      *   The flag can be useful for tables in which the partitions may have already been removed.
      * @param ignoreDuplicateKey The optional flag which if 'true' then don't report as
-     *   errors tables for which ProtocolStatusExt::DUPLICATE_KEY was reported.
+     *   errors tables for which protocol::StatusExt::DUPLICATE_KEY was reported.
      *   The flag can be useful for tables in which the index may already exist.
      */
     SqlJob(uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,

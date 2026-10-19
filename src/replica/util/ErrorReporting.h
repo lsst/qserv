@@ -31,6 +31,7 @@
 #include <ostream>
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/util/Common.h"
 
 // This header declarations
@@ -59,7 +60,7 @@ void reportRequestState(COLLECTION const& requests, std::ostream& os) {
         os << " " << std::setw(36) << ptr->id() << " | " << std::setw(20) << ptr->type() << " | "
            << std::setw(6) << ptr->workerName() << " | " << std::setw(11) << ptr->state2string(ptr->state())
            << " | " << std::setw(20) << ptr->state2string(ptr->extendedState()) << " | " << std::setw(24)
-           << replica::status2string(ptr->extendedServerStatus()) << "\n";
+           << protocol::toString(ptr->extendedServerStatus()) << "\n";
     }
     os << "--------------------------------------+----------------------+--------+-------------+-------------"
           "---------+--------------------------\n"
