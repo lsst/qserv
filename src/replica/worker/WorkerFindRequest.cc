@@ -30,6 +30,7 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "replica/worker/WorkerUtils.h"
@@ -118,13 +119,13 @@ bool WorkerFindRequest::execute() {
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =
                 errorContext ||
-                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FOLDER_STAT,
                               "failed to check the status of directory: " + dataDir.string() +
                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
-                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                reportErrorIf(!fs::exists(stat), protocol::StatusExt::NO_FOLDER,
                               "the directory does not exists: " + dataDir.string());
         if (errorContext.failed) {
-            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+            setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -150,7 +151,7 @@ bool WorkerFindRequest::execute() {
             fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
             errorContext = errorContext ||
-                           reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
+                           reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FILE_STAT,
                                          "failed to check the status of file: " + path.string() + ", code: " +
                                                  to_string(ec.value()) + ", error: " + ec.message());
             if (fs::exists(stat)) {
@@ -159,7 +160,7 @@ bool WorkerFindRequest::execute() {
 
                     uint64_t const size = fs::file_size(path, ec);
                     errorContext = errorContext ||
-                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
+                                   reportErrorIf(ec.value() != 0, protocol::StatusExt::FILE_SIZE,
                                                  "failed to read file size: " + path.string() + ", code: " +
                                                          to_string(ec.value()) + ", error: " + ec.message());
                     time_t mtime = 0;
@@ -167,7 +168,7 @@ bool WorkerFindRequest::execute() {
                         mtime = replica::getMTime(path.string());
                     } catch (exception const& ex) {
                         errorContext =
-                                errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                errorContext || reportErrorIf(true, protocol::StatusExt::FILE_MTIME,
                                                               "failed to read file mtime: " + path.string() +
                                                                       ", ex: " + ex.what());
                     }
@@ -180,7 +181,7 @@ bool WorkerFindRequest::execute() {
             }
         }
         if (errorContext.failed) {
-            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+            setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -196,7 +197,7 @@ bool WorkerFindRequest::execute() {
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
-            setStatus(lock, ProtocolStatus::SUCCESS);
+            setStatus(lock, protocol::Status::SUCCESS);
             return true;
         }
 
@@ -222,7 +223,7 @@ bool WorkerFindRequest::execute() {
                     mtime = replica::getMTime(path.string());
                 } catch (exception const& ex) {
                     errorContext =
-                            errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                            errorContext || reportErrorIf(true, protocol::StatusExt::FILE_MTIME,
                                                           "failed to read file mtime: " + path.string() +
                                                                   ", ex: " + ex.what());
                 }
@@ -231,7 +232,7 @@ bool WorkerFindRequest::execute() {
                                                 endTransferTime, size);
             }
             if (errorContext.failed) {
-                setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+                setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
                 return true;
             }
 
@@ -245,12 +246,12 @@ bool WorkerFindRequest::execute() {
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
-            setStatus(lock, ProtocolStatus::SUCCESS);
+            setStatus(lock, protocol::Status::SUCCESS);
         }
     } catch (exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
-        errorContext = errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_READ, ex.what());
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+        errorContext = errorContext || reportErrorIf(true, protocol::StatusExt::FILE_READ, ex.what());
+        setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
     }
 
     // If done (either way) then get rid of the engine right away because

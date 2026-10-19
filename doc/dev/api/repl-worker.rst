@@ -1947,9 +1947,10 @@ Responses returned by the services report the status of the worker request proce
 
     "result" : {
         "service_state" : <string>,
-        "num_new_requests" : <int>,
-        "num_in_progress_requests" : <int>,
-        "num_finished_requests" : <int>,
+        "start_time" : <uint64_t>,
+        "num_new_requests" : <uint64_t>,
+        "num_in_progress_requests" : <uint64_t>,
+        "num_finished_requests" : <uint64_t>,
         "new_requests" : [
             ...
         ],
@@ -1967,11 +1968,13 @@ Where:
   The human readable representation of current state of the worker request processor. Values are defined in
   the C++ ``enum`` type ``replica::protocol::ServiceState``.
   The allowed values are: ``SUSPEND_IN_PROGRESS``, ``SUSPENDED``, ``RUNNING``.
-``num_new_requests`` : *int*
+``start_time`` : *uint64_t*
+  The start time of the worker service (milliseconds since the epoch, represented as an unsigned 64-bit integer).
+``num_new_requests`` : *uint64_t*
   The number of requests in the processing queue that have not been started by the worker service yet.
-``num_in_progress_requests`` : *int*
+``num_in_progress_requests`` : *uint64_t*
   The number of requests that are currently being processed by the worker service.
-``num_finished_requests`` : *int*
+``num_finished_requests`` : *uint64_t*
   The number of requests that were finished by the worker service during a certain time period (e.g., since the last restart).
 ``new_requests`` : *array*
   An array of objects representing requests that are in the processing queue but have not been started by the worker service yet.
