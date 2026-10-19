@@ -93,7 +93,7 @@ public:
                               int priority = PRIORITY_NORMAL, bool keepTracking = true,
                               std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
-    /// @see Request::extendedPersistentState()
+    /// @see RequestI::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
@@ -109,7 +109,7 @@ private:
 
     /**
      * Send the serialized content of the buffer to a worker
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on RequestI::mtx must be acquired before calling this method
      */
     void _send(replica::Lock const& lock);
 

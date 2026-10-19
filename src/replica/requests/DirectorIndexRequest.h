@@ -130,19 +130,19 @@ private:
 
     /**
      * Send the initial request for pulling data from the server.
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on RequestI::mtx must be acquired before calling this method
      */
     void _sendInitialRequest(replica::Lock const& lock);
 
     /**
      * Send the status inquery request to the server.
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on RequestI::mtx must be acquired before calling this method
      */
     void _sendStatusRequest(replica::Lock const& lock);
 
     /**
      * Send the serialized content of the buffer to a worker
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on RequestI::mtx must be acquired before calling this method
      */
     void _send(replica::Lock const& lock);
 
@@ -156,15 +156,14 @@ private:
     /**
      * Process the completion of the request disposal operation.
      * @param success 'true' indicates a successful response from a worker
-     * @param message response from a worker (if success)
      */
-    void _disposed(bool success, ProtocolResponseDispose const& message);
+    void _disposed(bool success);
 
     /**
      * Open the input file and write the data into the file.
      * @note The method may throw exceptions in case if any problems will be encountered
      *  with opening the output file or writing data into the file.
-     * @param lock A lock on the mutex _mtx acquired before calling the method.
+     * @param lock A lock on the mutex mtx acquired before calling the method.
      * @param data The data to be writrten onto the file.
      */
     void _writeInfoFile(replica::Lock const& lock, std::string const& data);

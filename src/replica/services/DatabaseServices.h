@@ -51,7 +51,7 @@ class Job;
 class NamedMutexRegistry;
 class QservWorkerMgtRequest;
 class Performance;
-class Request;
+class RequestI;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -130,12 +130,12 @@ public:
 };
 
 /**
- * Class RequestInfo encapsulates a persistent state of the Request (its
+ * Class RequestInfo encapsulates a persistent state of the RequestI (its
  * subclasses) objects fetched from the database.
  */
 class RequestInfo {
 public:
-    std::string id;      /// Unique identifier of the Request instance
+    std::string id;      /// Unique identifier of the RequestI instance
     std::string jobId;   /// Unique identifier of the parent Job instance
     std::string name;    /// The name (actually - its specific type) of the request
     std::string worker;  /// The name of a worker where the request was sent
@@ -367,7 +367,7 @@ public:
 
 /**
  * Class DatabaseServices is a high-level interface to the database services
- * for replication entities: Controller, Job and Request.
+ * for replication entities: Controller, Job and RequestI.
  *
  * This is also a base class for database technology-specific implementations
  * of the service.
@@ -438,16 +438,16 @@ public:
                            std::string const& serverError) = 0;
 
     /**
-     * Save the state of the Request. This operation can be called many times for
-     * a particular instance of the Request.
+     * Save the state of the RequestI. This operation can be called many times for
+     * a particular instance of the RequestI.
      *
      * The Performance object is explicitly passed as a parameter to avoid
      * making a blocked call back to the request which may create a deadlock.
      *
-     * @param request a reference to a Request object
+     * @param request a reference to a RequestI object
      * @param performance a reference to a Performance object
      */
-    virtual void saveState(Request const& request, Performance const& performance) = 0;
+    virtual void saveState(RequestI const& request, Performance const& performance) = 0;
 
     /**
      * Update a state of a target request.
@@ -455,12 +455,12 @@ public:
      * This method is supposed to be called by monitoring requests (State* and Stop*)
      * to update state of the corresponding target requests.
      *
-     * @param request a reference to the monitoring Request object
+     * @param request a reference to the monitoring RequestI object
      * @param targetRequestId an identifier of a target request
      * @param targetRequestPerformance performance counters of a target request
      *   obtained from a worker
      */
-    virtual void updateRequestState(Request const& request, std::string const& targetRequestId,
+    virtual void updateRequestState(RequestI const& request, std::string const& targetRequestId,
                                     Performance const& targetRequestPerformance) = 0;
 
     /**
