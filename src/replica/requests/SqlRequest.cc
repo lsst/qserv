@@ -52,8 +52,8 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-void SqlRequest::extendedPrinter(Ptr const& ptr) {
-    Request::defaultPrinter(ptr);
+void SqlRequest::extendedPrinter(shared_ptr<SqlRequest> const& ptr) {
+    RequestI::defaultPrinter(ptr);
     for (auto&& itr : ptr->responseData().queryResultSet) {
         auto&& scope = itr.first;
         auto&& resultSet = itr.second;
@@ -127,7 +127,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
 
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the status request's body into
@@ -168,7 +168,7 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);
