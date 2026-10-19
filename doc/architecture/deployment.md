@@ -81,8 +81,69 @@ resources:
 - `*-cm.yaml` / secrets — config files and passwords/auth keys mounted into pods.
 - `czar-external-svc.yaml` (optional) — LoadBalancer exposing the SQL/HTTP frontends
   outside the cluster (MetalLB at USDF).
-- `mode: full | db-only` in values — `db-only` runs just the MariaDBs (used
-  operationally for maintenance; see `qserv.enable` helper in `_helpers.tpl`).
+- `mode: full | db-only | mariadb-upgrade` in values — `db-only` runs just the MariaDBs
+  (used operationally for maintenance); `mariadb-upgrade` additionally replaces the
+  MariaDB container command with an in-place `mariadb-upgrade` run (see
+  *MariaDB major-version upgrades* below). Both gate off every Qserv sidecar; see the
+  `qserv.enable` helper in `_helpers.tpl`. An unrecognised mode fails the render.
+
+## MariaDB major-version upgrades
+
+After a MariaDB major-version bump, each MariaDB instance needs `mariadb-upgrade` run
+against its own data. `mariadb-upgrade` learns the datadir from the server
+(`SHOW VARIABLES LIKE 'datadir'`) but then writes its version stamp on its *own*
+filesystem, so it cannot be run usefully from a floating Job the way the smig jobs are —
+it needs the data volume mounted. `mode: mariadb-upgrade` solves this by reusing the
+StatefulSets: each pod already has its own PVC attached on the right node, so the
+upgrade runs locally with no co-scheduling or PVC-name games.
+
+Operating sequence (the teardown/redeploy cycle already used for every upgrade, which
+leaves PVCs intact):
+
+1. Delete the deployed release (pods go away, PVCs remain).
+2. Deploy with `mode: mariadb-upgrade`. MariaDB pods come up, upgrade their own data,
+   then park with `mariadbd` running so the probes keep passing.
+3. Audit completion (below), then delete and redeploy with `mode: full`.
+
+Notes on the design, all deliberate:
+
+- The upgrade runs the **full** `mariadb-upgrade`, *not* `--upgrade-system-tables`. That
+  means `mariadb-check` runs over all databases with `--auto-repair` and
+  `--process-views=UPGRADE`, which remediates drift accumulated across MariaDB
+  revisions. On workers this is expected to take minutes and to hammer the disks; run it
+  in a planned maintenance window.
+- No full data snapshot is taken — at worker scale that would be hundreds of terabytes
+  of copying. Back up separately if you want one.
+- Upstream's `MARIADB_AUTO_UPGRADE` is deliberately **not** used: it hardcodes
+  `--upgrade-system-tables` (so it cannot do the full check) and its backup is only
+  suppressible wholesale. The mode bypasses the image's `docker-entrypoint.sh` entirely.
+- Repair scratch space is pointed at `/qserv/data/tmp` rather than the default `/tmp`,
+  which is a small `emptyDir` a large MyISAM repair could fill.
+- `livenessProbe.failureThreshold` is relaxed in this mode so a long `REPAIR TABLE`
+  cannot get the container killed mid-repair.
+
+**Pod phase is not the completion signal** — pods stay Running and Ready by design. Use:
+
+- `/qserv/data/mysql-upgrade.json` on each PVC — the durable, machine-readable record:
+  `{"status":"ok|running|failed|failed-startup","version":…,"checked":N,"repaired":N,…}`.
+  `running` distinguishes "killed mid-upgrade" from "never started". This is the source
+  of truth, and it survives the teardown in step 3 (pod logs do not).
+- A `QSERV-UPGRADE-RESULT status=… checked=… repaired=…` line in the container log — the
+  convenient view:
+
+  ```sh
+  kubectl logs -l app.kubernetes.io/component=worker --tail=-1 --prefix \
+    | grep QSERV-UPGRADE-RESULT
+  ```
+
+  Count the lines against the replica count and check `repaired=` for the drift audit.
+- `/qserv/data/mysql-upgrade.log` — the full `mariadb-check` output, retained per volume,
+  for auditing *which* tables needed repair.
+
+The script is idempotent: a volume whose marker already records success for the running
+server version is skipped, so the mode can be re-applied to finish a partially-completed
+multi-worker run. A volume whose marker records a *failure* is also skipped rather than
+retried automatically — investigate, then clear the marker to re-run.
 
 `deploy/helm/environments/usdf-{dev,int,prod}.yaml` are in-repo presets, but the values
 actually deployed live in **qserv-deployments** (below).

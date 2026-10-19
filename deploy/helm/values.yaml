@@ -8,7 +8,11 @@ mariadbImagePullPolicy: IfNotPresent
 sslProxyImagePullPolicy: IfNotPresent
 ingestHelperPullPolicy: IfNotPresent
 
-mode: full  # full | db-only
+# full            - the whole system
+# db-only         - MariaDB only, all Qserv sidecars gated off (maintenance)
+# mariadb-upgrade - MariaDB only, running mariadb-upgrade in place on each data volume;
+#                   see "MariaDB major-version upgrades" in doc/architecture/deployment.md
+mode: full  # full | db-only | mariadb-upgrade
 podManagementPolicy: Parallel  # Parallel | OrderedReady
 
 czars:
