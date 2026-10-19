@@ -371,6 +371,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
             ProtocolRequestDispose request;
             if (!::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             ProtocolResponseDispose response;
+            response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
             if (_verifyInstance(hdr, response)) {
                 for (int i = 0; i < request.ids_size(); ++i) {
                     string const id = request.ids(i);
@@ -408,9 +409,9 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
                 // extra time for the processor's threads to finish on-going processing
                 _processor->stop();
                 _processor->setServiceResponse(response, hdr.id(),
-                                               _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING
-                                                       ? ProtocolStatus::FAILED
-                                                       : ProtocolStatus::SUCCESS);
+                                               _processor->state() == protocol::ServiceState::RUNNING
+                                                       ? protocol::Status::FAILED
+                                                       : protocol::Status::SUCCESS);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_RESUME: {
@@ -418,33 +419,33 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
                 // (or be denied) instantaneously.
                 _processor->run();
                 _processor->setServiceResponse(response, hdr.id(),
-                                               _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING
-                                                       ? ProtocolStatus::SUCCESS
-                                                       : ProtocolStatus::FAILED);
+                                               _processor->state() == protocol::ServiceState::RUNNING
+                                                       ? protocol::Status::SUCCESS
+                                                       : protocol::Status::FAILED);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_STATUS: {
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_REQUESTS: {
                 const bool extendedReport = true;  // to return detailed info on all known
                                                    // replica-related requests
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS, extendedReport);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_DRAIN: {
                 const bool extendedReport = true;  // to return detailed info on all known
                                                    // replica-related requests
                 _processor->drain();
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS, extendedReport);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_RECONFIG: {
                 const bool extendedReport = true;  // to return detailed info on all known
                                                    // replica-related requests
                 _processor->reconfig();
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS, extendedReport);
                 break;
             }
             default:

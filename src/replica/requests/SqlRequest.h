@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/Request.h"
 #include "replica/requests/SqlResultSet.h"
 #include "replica/util/Common.h"
@@ -97,11 +98,14 @@ protected:
      *   of all subclasses.
      */
     SqlRequest(std::shared_ptr<Controller> const& controller, std::string const& requestName,
-               std::string const& workerName, uint64_t maxRows, int priority, bool keepTracking);
+               protocol::SqlRequestType type, std::string const& workerName, std::uint64_t maxRows,
+               int priority, bool keepTracking);
 
     void startImpl(replica::Lock const& lock) final;
     void savePersistentState(replica::Lock const& lock) final;
     void awaken(boost::system::error_code const& ec) final;
+
+    protocol::SqlRequestType const requestType;  ///< The type of the SQL request.
 
     /**
      * Request body to be sent to the worker. The content of the request is partially

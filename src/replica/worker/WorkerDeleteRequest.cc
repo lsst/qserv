@@ -29,6 +29,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "util/TimeUtils.h"
@@ -99,23 +100,23 @@ bool WorkerDeleteRequest::execute() {
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =
                 errorContext ||
-                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FOLDER_STAT,
                               "failed to check the status of directory: " + dataDir.string() +
                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
-                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                reportErrorIf(!fs::exists(stat), protocol::StatusExt::NO_FOLDER,
                               "the directory does not exists: " + dataDir.string());
         for (const auto& name : files) {
             const fs::path file = dataDir / fs::path(name);
             if (fs::remove(file, ec)) ++numFilesDeleted;
-            errorContext = errorContext || reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_DELETE,
+            errorContext = errorContext || reportErrorIf(ec.value() != 0, protocol::StatusExt::FILE_DELETE,
                                                          "failed to delete file: " + file.string());
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+        setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
         return true;
     }
-    setStatus(lock, ProtocolStatus::SUCCESS);
+    setStatus(lock, protocol::Status::SUCCESS);
     return true;
 }
 

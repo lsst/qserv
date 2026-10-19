@@ -30,6 +30,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "replica/worker/WorkerUtils.h"
@@ -113,10 +114,10 @@ bool WorkerFindAllRequest::execute() {
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =
                 errorContext ||
-                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FOLDER_STAT,
                               "failed to check the status of directory: " + dataDir.string() +
                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
-                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                reportErrorIf(!fs::exists(stat), protocol::StatusExt::NO_FOLDER,
                               "the directory does not exists: " + dataDir.string());
         try {
             for (fs::directory_entry const& entry : fs::directory_iterator(dataDir)) {
@@ -129,7 +130,7 @@ bool WorkerFindAllRequest::execute() {
 
                     uint64_t const size = fs::file_size(entry.path(), ec);
                     errorContext = errorContext ||
-                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
+                                   reportErrorIf(ec.value() != 0, protocol::StatusExt::FILE_SIZE,
                                                  "failed to read file size: " + entry.path().string() +
                                                          ", code: " + to_string(ec.value()) +
                                                          ", error: " + ec.message());
@@ -139,7 +140,7 @@ bool WorkerFindAllRequest::execute() {
                         mtime = replica::getMTime(entry.path().string());
                     } catch (exception const& ex) {
                         errorContext = errorContext ||
-                                       reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                       reportErrorIf(true, protocol::StatusExt::FILE_MTIME,
                                                      "failed to read file mtime: " + entry.path().string() +
                                                              ", ex: " + ex.what());
                     }
@@ -153,13 +154,13 @@ bool WorkerFindAllRequest::execute() {
                 }
             }
         } catch (fs::filesystem_error const& ex) {
-            errorContext = errorContext || reportErrorIf(true, ProtocolStatusExt::FOLDER_READ,
+            errorContext = errorContext || reportErrorIf(true, protocol::StatusExt::FOLDER_READ,
                                                          "failed to read the directory: " + dataDir.string() +
                                                                  ", error: " + string(ex.what()));
         }
     }
     if (errorContext.failed) {
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+        setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
         return true;
     }
 
@@ -173,7 +174,7 @@ bool WorkerFindAllRequest::execute() {
                 numFiles < numFilesPerChunkRequired ? ReplicaInfo::INCOMPLETE : ReplicaInfo::COMPLETE,
                 worker(), database(), chunk, util::TimeUtils::now(), chunk2fileInfoCollection[chunk]);
     }
-    setStatus(lock, ProtocolStatus::SUCCESS);
+    setStatus(lock, protocol::Status::SUCCESS);
     return true;
 }
 
