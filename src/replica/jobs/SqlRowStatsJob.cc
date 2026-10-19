@@ -27,6 +27,7 @@
 #include "global/stringUtil.h"
 #include "replica/config/Config.h"
 #include "replica/jobs/SqlJobResult.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/SqlRowStatsRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/ChunkedTable.h"
@@ -260,7 +261,7 @@ bool SqlRowStatsJob::_process(string const& context_, bool isPartitioned, SqlJob
 
     // This scenario is possible in the FORCED mode. And we're guaranteed
     // not to seen it in the ENABLED mode.
-    if (resultSet.extendedStatus != ProtocolStatusExt::NONE) return succeeded;
+    if (resultSet.extendedStatus != protocol::StatusExt::NONE) return succeeded;
 
     // Skip special tables.
     if (isPartitioned) {

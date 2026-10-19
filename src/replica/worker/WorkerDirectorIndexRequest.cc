@@ -131,7 +131,7 @@ bool WorkerDirectorIndexRequest::execute() {
             if (ec.value() != 0) {
                 _error = "failed to create folder '" + _tmpDirName + "'";
                 LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-                setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FOLDER_CREATE);
+                setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::FOLDER_CREATE);
             }
 
             // Make sure no file exists from any previous attempt to harvest the index data
@@ -150,39 +150,39 @@ bool WorkerDirectorIndexRequest::execute() {
                         conn->execute(self->_query(conn, primaryKeyColumn));
                     });
         }
-        if (auto const status = _readFile(_request.offset()); status != ProtocolStatusExt::NONE) {
-            setStatus(lock, ProtocolStatus::FAILED, status);
+        if (auto const status = _readFile(_request.offset()); status != protocol::StatusExt::NONE) {
+            setStatus(lock, protocol::Status::FAILED, status);
         } else {
-            setStatus(lock, ProtocolStatus::SUCCESS);
+            setStatus(lock, protocol::Status::SUCCESS);
         }
     } catch (ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_TABLE);
+        setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::NO_SUCH_TABLE);
     } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NOT_PARTITIONED_TABLE);
+        setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::NOT_PARTITIONED_TABLE);
     } catch (database::mysql::ER_UNKNOWN_PARTITION_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_PARTITION);
+        setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::NO_SUCH_PARTITION);
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
-        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::MYSQL_ERROR);
+        setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::MYSQL_ERROR);
     } catch (invalid_argument const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
         _error = ex.what();
-        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::INVALID_PARAM);
+        setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::INVALID_PARAM);
     } catch (out_of_range const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
         _error = ex.what();
-        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::LARGE_RESULT);
+        setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::LARGE_RESULT);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << ex.what());
         _error = "Exception: " + string(ex.what());
-        setStatus(lock, ProtocolStatus::FAILED);
+        setStatus(lock, protocol::Status::FAILED);
     }
     return true;
 }
@@ -207,7 +207,7 @@ string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn, string co
     return query + g.intoOutfile(_fileName);
 }
 
-ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
+protocol::StatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     // Open the the file.
@@ -215,7 +215,7 @@ ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     if (!f.good()) {
         _error = "failed to open file '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return ProtocolStatusExt::FILE_ROPEN;
+        return protocol::StatusExt::FILE_ROPEN;
     }
 
     // Get the file size.
@@ -224,18 +224,18 @@ ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     if (ec.value() != 0) {
         _error = "failed to get file size '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return ProtocolStatusExt::FILE_SIZE;
+        return protocol::StatusExt::FILE_SIZE;
     }
 
     // Validate a value of the offset and position indicator as requested.
     if (offset == _fileSizeBytes) {
         _removeFile();
-        return ProtocolStatusExt::NONE;
+        return protocol::StatusExt::NONE;
     } else if (offset > _fileSizeBytes) {
         _error = "attempted to read the file '" + _fileName + "' at the offset " + to_string(offset) +
                  " that is beyond the file size of " + to_string(_fileSizeBytes) + " bytes.";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return ProtocolStatusExt::INVALID_PARAM;
+        return protocol::StatusExt::INVALID_PARAM;
     } else if (offset != 0) {
         f.seekg(offset, ios::beg);
     }
@@ -248,13 +248,13 @@ ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     _data.resize(recordSize, ' ');
 
     // Read the specified number of bytes into the buffer.
-    ProtocolStatusExt result = ProtocolStatusExt::NONE;
+    protocol::StatusExt result = protocol::StatusExt::NONE;
     f.read(&_data[0], recordSize);
     if (f.bad()) {
         _error = "failed to read " + to_string(recordSize) + " bytes from the file '" + _fileName +
                  "' at the offset " + to_string(offset) + ".";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        result = ProtocolStatusExt::FILE_READ;
+        result = protocol::StatusExt::FILE_READ;
     }
     f.close();
 

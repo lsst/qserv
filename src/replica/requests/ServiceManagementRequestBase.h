@@ -24,7 +24,6 @@
 // System headers
 #include <cstdint>
 #include <memory>
-#include <ostream>
 #include <string>
 #include <vector>
 
@@ -32,6 +31,7 @@
 #include "replica/proto/protocol.pb.h"
 #include "replica/requests/Request.h"
 #include "replica/util/Common.h"
+#include "replica/util/ServiceStateInfo.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -40,39 +40,6 @@ class Controller;
 
 // This header declarations
 namespace lsst::qserv::replica {
-
-/**
- * Structure ServiceState encapsulates various parameters representing the state
- * of the remote request processing service. The parameters are available
- * upon the completion of the request.
- */
-struct ServiceState {
-    // Its state
-    enum State { SUSPEND_IN_PROGRESS = 0, SUSPENDED = 1, RUNNING = 2 };
-    State state;
-
-    /// When the service started (milliseconds since UNIX Epoch)
-    uint64_t startTime;
-
-    // Counters for requests known to the service since its last start
-
-    uint32_t numNewRequests;
-    uint32_t numInProgressRequests;
-    uint32_t numFinishedRequests;
-
-    std::vector<ProtocolServiceResponseInfo> newRequests;
-    std::vector<ProtocolServiceResponseInfo> inProgressRequests;
-    std::vector<ProtocolServiceResponseInfo> finishedRequests;
-
-    /// @return string representation of the state
-    std::string state2string() const;
-
-    /// Set parameter values from a protobuf object
-    void set(const ProtocolServiceResponse& message);
-};
-
-/// Overloaded streaming operator for type ServiceState
-std::ostream& operator<<(std::ostream& os, const ServiceState& ss);
 
 /**
  * Class ServiceManagementRequestBase is the base class for a family of requests
@@ -98,7 +65,7 @@ public:
      *   extended state is neither 'SUCCESS' or 'SERVER_ERROR'.
      * @return  The state of the worker-side service.
      */
-    ServiceState const& getServiceState() const;
+    ServiceStateInfo const& getServiceState() const;
 
     /**
      * Make an extended print of the request which would include a result set.
@@ -136,7 +103,7 @@ private:
 
     /// Detailed status of the worker-side service obtained upon completion of
     /// the management request.
-    ServiceState _serviceState;
+    ServiceStateInfo _serviceState;
 };
 
 }  // namespace lsst::qserv::replica

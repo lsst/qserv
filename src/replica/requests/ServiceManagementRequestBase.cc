@@ -47,16 +47,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
 
-/// Dump a collection of request descriptions onto the output stream
-void dumpRequestInfo(ostream& os, vector<ProtocolServiceResponseInfo> const& requests) {
-    for (auto&& r : requests) {
-        os << "\n"
-           << "    type:     " << ProtocolQueuedRequestType_Name(r.queued_type()) << "\n"
-           << "    id:       " << r.id() << "\n"
-           << "    priority: " << r.priority() << "\n";
-    }
-}
-
 bool const keepTrackingNo = false;
 bool const disposeRequiredNo = false;
 
@@ -64,89 +54,12 @@ bool const disposeRequiredNo = false;
 
 namespace lsst::qserv::replica {
 
-///////////////////////////////////
-//         ServiceState          //
-///////////////////////////////////
-
-string ServiceState::state2string() const {
-    switch (state) {
-        case SUSPEND_IN_PROGRESS:
-            return "SUSPEND_IN_PROGRESS";
-        case SUSPENDED:
-            return "SUSPENDED";
-        case RUNNING:
-            return "RUNNING";
-        default:
-            throw runtime_error("ServiceState::" + string(__func__) +
-                                "  unhandled state: " + to_string(state));
-    }
-    return string();
-}
-
-void ServiceState::set(ProtocolServiceResponse const& message) {
-    switch (message.service_state()) {
-        case ProtocolServiceResponse::SUSPEND_IN_PROGRESS:
-            state = ServiceState::State::SUSPEND_IN_PROGRESS;
-            break;
-
-        case ProtocolServiceResponse::SUSPENDED:
-            state = ServiceState::State::SUSPENDED;
-            break;
-
-        case ProtocolServiceResponse::RUNNING:
-            state = ServiceState::State::RUNNING;
-            break;
-
-        default:
-            throw runtime_error("ServiceState::" + string(__func__) +
-                                "  service state found in protocol is unknown");
-    }
-    startTime = message.start_time();
-
-    numNewRequests = message.num_new_requests();
-    numInProgressRequests = message.num_in_progress_requests();
-    numFinishedRequests = message.num_finished_requests();
-
-    for (int num = message.new_requests_size(), idx = 0; idx < num; ++idx) {
-        newRequests.emplace_back(message.new_requests(idx));
-    }
-    for (int num = message.in_progress_requests_size(), idx = 0; idx < num; ++idx) {
-        inProgressRequests.emplace_back(message.in_progress_requests(idx));
-    }
-    for (int num = message.finished_requests_size(), idx = 0; idx < num; ++idx) {
-        finishedRequests.emplace_back(message.finished_requests(idx));
-    }
-}
-
-ostream& operator<<(ostream& os, ServiceState const& ss) {
-    unsigned int const secondsAgo = (util::TimeUtils::now() - ss.startTime) / 1000.0f;
-
-    os << "ServiceState:\n"
-       << "\n  Summary:\n\n"
-       << "    service state:              " << ss.state2string() << "\n"
-       << "    start time [ms]:            " << ss.startTime << " (" << secondsAgo << " seconds ago)\n"
-       << "    total new requests:         " << ss.numNewRequests << "\n"
-       << "    total in-progress requests: " << ss.numInProgressRequests << "\n"
-       << "    total finished requests:    " << ss.numFinishedRequests << "\n";
-
-    os << "\n  New:\n";
-    ::dumpRequestInfo(os, ss.newRequests);
-
-    os << "\n  In-Progress:\n";
-    ::dumpRequestInfo(os, ss.inProgressRequests);
-
-    os << "\n  Finished:\n";
-    ::dumpRequestInfo(os, ss.finishedRequests);
-
-    return os;
-}
-
-void ServiceManagementRequestBase::extendedPrinter(Ptr const& ptr) {
+void ServiceManagementRequestBase::extendedPrinter(shared_ptr<ServiceManagementRequestBase> const& ptr) {
     Request::defaultPrinter(ptr);
     cout << ptr->getServiceState();
 }
 
-ServiceState const& ServiceManagementRequestBase::getServiceState() const {
+ServiceStateInfo const& ServiceManagementRequestBase::getServiceState() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     switch (Request::state()) {
@@ -215,8 +128,8 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     mutablePerformance().update(message.performance());
 
     // Capture the general status of the operation.
-    switch (message.status()) {
-        case ProtocolStatus::SUCCESS:
+    switch (protocol::toStatus(message.status())) {
+        case protocol::Status::SUCCESS:
             // Transfer the state of the remote service into a local data member
             // before initiating state transition of the request object.
             _serviceState.set(message);

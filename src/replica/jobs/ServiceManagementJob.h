@@ -32,7 +32,12 @@
 #include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
 #include "replica/requests/ServiceManagementRequest.h"
-#include "replica/services/ServiceProvider.h"
+#include "replica/util/ServiceStateInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -43,7 +48,7 @@ namespace lsst::qserv::replica {
  */
 struct ServiceManagementJobResult {
     /// Result sets for each worker
-    std::map<std::string, ServiceState> serviceState;
+    std::map<std::string, ServiceStateInfo> serviceState;
 
     /// Per-worker flags indicating which workers responded to the requests
     std::map<std::string, bool> workers;

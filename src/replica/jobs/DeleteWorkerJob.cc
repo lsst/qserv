@@ -125,7 +125,7 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
     statusRequest->wait();
 
     if (statusRequest->extendedState() == Request::ExtendedState::SUCCESS) {
-        if (statusRequest->getServiceState().state == ServiceState::State::RUNNING) {
+        if (statusRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfering with the current job's requests
             auto const drainRequest =
@@ -133,7 +133,7 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
                                                         priority(), id(), requestExpirationIvalSec);
             drainRequest->wait();
             if (drainRequest->extendedState() == Request::ExtendedState::SUCCESS) {
-                if (drainRequest->getServiceState().state == ServiceState::State::RUNNING) {
+                if (drainRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
                     bool const saveReplicaInfo = true;  // always save the replica info in a database because

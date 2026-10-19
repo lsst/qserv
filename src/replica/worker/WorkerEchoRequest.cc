@@ -84,7 +84,7 @@ bool WorkerEchoRequest::execute() {
 
     // Done if have reached or exceeded the initial delay
     if (0 == _delayLeft) {
-        setStatus(lock, ProtocolStatus::SUCCESS);
+        setStatus(lock, protocol::Status::SUCCESS);
         return true;
     }
     return false;

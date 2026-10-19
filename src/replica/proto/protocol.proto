@@ -225,7 +225,7 @@ message ProtocolRequestSql {
     required Type type = 6;
 
     /// A limit for the maximum number of rows to be returned by a request.
-    /// If the limit is exceeded then extended error code ProtocolStatusExt::LARGE_RESULT
+    /// If the limit is exceeded then extended error code protocol::StatusExt::LARGE_RESULT
     /// will be returned to a caller.
     required uint64 max_rows = 5;
 
@@ -384,60 +384,6 @@ message ProtocolPerformance {
     required uint64 finish_time = 3;
 }
 
-// Status values returned by all request related to operations with
-// replicas. Request management operations always return messages whose types
-// match the return types of the corresponding (original) replica-related requests.
-// Service management requests have their own set of status values.
-//
-enum ProtocolStatus {
-    CREATED       = 0;
-    SUCCESS       = 1;
-    QUEUED        = 2;
-    IN_PROGRESS   = 3;
-    IS_CANCELLING = 4;
-    BAD           = 5;
-    FAILED        = 6;
-    CANCELLED     = 7;
-}
-enum ProtocolStatusExt {
-    NONE = 0;                   // unspecified problem
-    INVALID_PARAM = 1;          // invalid parameter(s) of a request
-    INVALID_ID = 2;             // an invalid request identifier
-    FOLDER_STAT = 4;            // failed to obtain fstat() for a folder
-    FOLDER_CREATE = 5;          // failed to create a folder
-    FILE_STAT = 6;              // failed to obtain fstat() for a file
-    FILE_SIZE = 7;              // failed to obtain a size of a file
-    FOLDER_READ = 8;            // failed to read the contents of a folder
-    FILE_READ = 9;              // failed to read the contents of a file
-    FILE_ROPEN = 10;            // failed to open a remote file
-    FILE_CREATE = 11;           // failed to create a file
-    FILE_OPEN = 12;             // failed to open a file
-    FILE_RESIZE = 13;           // failed to resize a file
-    FILE_WRITE = 14;            // failed to write into a file
-    FILE_COPY = 15;             // failed to copy a file
-    FILE_DELETE = 16;           // failed to delete a file
-    FILE_RENAME = 17;           // failed to rename a file
-    FILE_EXISTS = 18;           // file already exists
-    SPACE_REQ = 19;             // space availability check failed
-    NO_FOLDER = 20;             // folder doesn't exist
-    NO_FILE = 21;               // file doesn't exist
-    NO_ACCESS = 22;             // no access to a file or a folder
-    NO_SPACE = 23;              // no space left on a device as required by an operation
-    FILE_MTIME = 24;            // get/set 'mtime' operation failed
-    MYSQL_ERROR = 25;           // general MySQL error (other than any specific ones listed here)
-    LARGE_RESULT = 26;          // result exceeds a limit set in a request
-    NO_SUCH_TABLE = 27;         // no table found while performing a MySQL operation
-    NOT_PARTITIONED_TABLE = 28; // the table is not MySQL partitioned as it was expected
-    NO_SUCH_PARTITION = 29;     // no MySQL partition found in a table as it was expected
-    MULTIPLE = 30;              // multiple unspecified errors encountered when processing a request
-    OTHER_EXCEPTION = 31;       // other exception not listed here
-    FOREIGN_INSTANCE = 32;      // detected a request from a Controller serving an unrelated Qserv
-    DUPLICATE_KEY = 33;         // duplicate key found when creating an index or altering a table schema
-    CANT_DROP_KEY = 34;         // can't drop a field or a key which doesn't exist
-    CONFIG_NO_SUCH_DB = 35;     // a database mentioned in the worker request was not found at the worker's configuration
-    CONFIG_NO_SUCH_TABLE = 36;  // a table mentioned in the worker request was not found at the worker's configuration
-}
-
 message ProtocolFileInfo {
 
     /// The name of a file
@@ -487,10 +433,10 @@ message ProtocolReplicaInfo {
 message ProtocolResponseReplicate {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 8;
+    required uint32 status = 9;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 4;
@@ -516,10 +462,10 @@ message ProtocolResponseReplicate {
 message ProtocolResponseDelete {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 8;
+    required uint32 status = 9;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];    // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 4;
@@ -546,10 +492,10 @@ message ProtocolResponseDelete {
 message ProtocolResponseFind {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 7;
+    required uint32 status = 8;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 3;
@@ -575,10 +521,10 @@ message ProtocolResponseFind {
 message ProtocolResponseFindAll {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 7;
+    required uint32 status = 8;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 3;
@@ -607,10 +553,10 @@ message ProtocolResponseFindAll {
 message ProtocolResponseEcho {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 7;
+    required uint32 status = 8;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 3;
@@ -681,8 +627,8 @@ message ProtocolResponseSqlResultSet {
     /// Extended status of an operation in a scope of a query. It needs to be
     /// explicitly set for queries with a different outcome (if they succeeded
     /// or failed due to a specific problem). The successful completion of a query
-    /// is indicated by status set to NONE.
-    optional ProtocolStatusExt status_ext = 2 [default = MYSQL_ERROR];
+    /// is indicated by status set to protocol::StatusExt::NONE.
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// MySQL-specific error (if any)
     optional string error = 3 [default = ""];
@@ -707,10 +653,10 @@ message ProtocolResponseSqlResultSet {
 message ProtocolResponseSql {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 12;
+    required uint32 status = 13;
 
     /// Extended status of an operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 3;
@@ -736,10 +682,10 @@ message ProtocolResponseSql {
 message ProtocolResponseDirectorIndex {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 8;
+    required uint32 status = 10;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 3;
@@ -788,19 +734,19 @@ message ProtocolResponseDispose {
     repeated ProtocolResponseDisposeStatus ids = 1;
 
     /// The completion status of the operation
-    optional ProtocolStatus status = 4 [default = SUCCESS];
+    required uint32 status = 4;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 3 [default = NONE];
+    optional uint32 status_ext = 3 [default = 0];   // protocol::StatusExt::NONE
 }
 
 message ProtocolResponseStop {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 8;
+    required uint32 status = 9;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 4;
@@ -809,10 +755,10 @@ message ProtocolResponseStop {
 message ProtocolResponseStatus {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 1;
+    required uint32 status = 7;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+    optional uint32 status_ext = 2 [default = 0];   // protocol::StatusExt::NONE
 
     /// The performance of this operation
     required ProtocolPerformance performance = 3;
@@ -821,10 +767,10 @@ message ProtocolResponseStatus {
     // Otherwise, there is no point in setting any default values of the attributes.
 
     /// The completion status of the target request
-    optional ProtocolStatus target_status = 4;
+    optional uint32 target_status = 8;
 
     /// Extended status of the target request
-    optional ProtocolStatusExt target_status_ext = 5;
+    optional uint32 target_status_ext = 5 [default = 0];    // protocol::StatusExt::NONE
 
     /// The performance of the target request
     optional ProtocolPerformance target_performance = 6;
@@ -847,19 +793,14 @@ message ProtocolServiceResponseInfo {
 message ProtocolServiceResponse {
 
     /// The completion status of the operation
-    required ProtocolStatus status = 14;
+    required uint32 status = 15;
 
     /// Extended status of this operation
-    optional ProtocolStatusExt status_ext = 13 [default = NONE];
+    optional uint32 status_ext = 13 [default = 0];  // protocol::StatusExt::NONE
 
     required ProtocolPerformance performance = 2;
 
-    enum ServiceState {
-        SUSPEND_IN_PROGRESS = 0;
-        SUSPENDED           = 1;
-        RUNNING             = 2;
-    }
-    required ServiceState service_state = 3;
+    required uint32 service_state = 16;
 
     /// When the service started (milliseconds since UNIX Epoch)
     required uint64 start_time = 5;

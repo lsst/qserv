@@ -35,8 +35,6 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-string status2string(ProtocolStatusExt status) { return ProtocolStatusExt_Name(status); }
-
 string overlapSelector2str(ChunkOverlapSelector selector) {
     switch (selector) {
         case ChunkOverlapSelector::CHUNK:

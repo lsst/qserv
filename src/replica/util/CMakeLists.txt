@@ -13,6 +13,7 @@ target_sources(replica_util PRIVATE
     Performance.cc
     ProtocolBuffer.cc
     ReplicaInfo.cc
+    ServiceStateInfo.cc
     SqlSchemaUtils.cc
     SuccessRateGenerator.cc
 )

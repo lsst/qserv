@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/config/ConfigExceptions.h"
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerProcessor.h"
 #include "replica/worker/WorkerRequest.h"
@@ -95,27 +96,27 @@ void WorkerProcessorThread::run() {
                          self->context() << "failed processing"
                                          << "  id: " << request->id() << "  database: " << ex.databaseName
                                          << " was not found in the configuration");
-                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::CONFIG_NO_SUCH_DB);
+                    request->setStatus(protocol::Status::FAILED, protocol::StatusExt::CONFIG_NO_SUCH_DB);
                     finished = true;
                 } catch (ConfigUnknownTable const& ex) {
                     LOGS(_log, LOG_LVL_ERROR,
                          self->context() << "failed processing"
                                          << "  id: " << request->id() << "  table: " << ex.databaseName << "."
                                          << ex.tableName << " was not found in the configuration");
-                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::CONFIG_NO_SUCH_TABLE);
+                    request->setStatus(protocol::Status::FAILED, protocol::StatusExt::CONFIG_NO_SUCH_TABLE);
                     finished = true;
                 } catch (std::exception const& ex) {
                     LOGS(_log, LOG_LVL_ERROR,
                          self->context() << "failed processing"
                                          << "  id: " << request->id() << "  exception: " << ex.what());
-                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::OTHER_EXCEPTION);
+                    request->setStatus(protocol::Status::FAILED, protocol::StatusExt::OTHER_EXCEPTION);
                     finished = true;
                 }
                 if (finished) {
                     LOGS(_log, LOG_LVL_DEBUG,
                          self->context() << "finish processing"
                                          << "  id: " << request->id()
-                                         << "  status: " << WorkerRequest::status2string(request->status()));
+                                         << "  status: " << protocol::toString(request->status()));
                     self->_processor->_processingFinished(request);
                 }
             }

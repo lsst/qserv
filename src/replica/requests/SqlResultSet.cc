@@ -141,7 +141,7 @@ SqlResultSet::ResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
 }
 
 SqlResultSet::ResultSet::ResultSet(ProtocolResponseSqlResultSet const& result) {
-    extendedStatus = result.status_ext();
+    extendedStatus = protocol::toStatusExt(result.status_ext());
     error = result.error();
     charSetName = result.char_set_name();
     hasResult = result.has_result();
@@ -156,7 +156,7 @@ SqlResultSet::ResultSet::ResultSet(ProtocolResponseSqlResultSet const& result) {
 json SqlResultSet::ResultSet::toJson() const {
     json resultJson = json::object();
 
-    resultJson["extended_status"] = status2string(extendedStatus);
+    resultJson["extended_status"] = protocol::toString(extendedStatus);
     resultJson["error"] = error;
     resultJson["char_set_name"] = charSetName;
     resultJson["has_result"] = hasResult;
@@ -246,23 +246,23 @@ json SqlResultSet::toJson() const {
 
 bool SqlResultSet::hasErrors() const {
     return any_of(queryResultSet.cbegin(), queryResultSet.cend(),
-                  [](auto const& elem) { return elem.second.extendedStatus != ProtocolStatusExt::NONE; });
+                  [](auto const& elem) { return elem.second.extendedStatus != protocol::StatusExt::NONE; });
 }
 
-bool SqlResultSet::allErrorsOf(ProtocolStatusExt status) const {
+bool SqlResultSet::allErrorsOf(protocol::StatusExt status) const {
     return not any_of(queryResultSet.cbegin(), queryResultSet.cend(), [status](auto const& elem) {
-        return !((elem.second.extendedStatus == ProtocolStatusExt::NONE) ||
+        return !((elem.second.extendedStatus == protocol::StatusExt::NONE) ||
                  (elem.second.extendedStatus == status));
     });
 }
 
 string SqlResultSet::firstError() const {
     auto const itr = find_if(queryResultSet.cbegin(), queryResultSet.cend(), [](auto const& elem) {
-        return elem.second.extendedStatus != ProtocolStatusExt::NONE;
+        return elem.second.extendedStatus != protocol::StatusExt::NONE;
     });
-    return itr == queryResultSet.cend()
-                   ? string()
-                   : itr->first + ":" + status2string(itr->second.extendedStatus) + ":" + itr->second.error;
+    return itr == queryResultSet.cend() ? string()
+                                        : itr->first + ":" + protocol::toString(itr->second.extendedStatus) +
+                                                  ":" + itr->second.error;
 }
 
 vector<string> SqlResultSet::allErrors() const {
@@ -270,8 +270,8 @@ vector<string> SqlResultSet::allErrors() const {
     for (auto&& itr : queryResultSet) {
         auto&& scope = itr.first;
         auto&& result = itr.second;
-        if (result.extendedStatus != ProtocolStatusExt::NONE) {
-            errors.push_back(scope + ":" + status2string(result.extendedStatus) + ":" + result.error);
+        if (result.extendedStatus != protocol::StatusExt::NONE) {
+            errors.push_back(scope + ":" + protocol::toString(result.extendedStatus) + ":" + result.error);
         }
     }
     return errors;
@@ -309,7 +309,7 @@ ostream& operator<<(ostream& os, SqlResultSet const& info) {
             os << ",";
         }
         os << "{scope:'" << scope << "',"
-           << "extendedStatus:" << status2string(result.extendedStatus) << ","
+           << "extendedStatus:" << protocol::toString(result.extendedStatus) << ","
            << "error:'" << result.error << "',"
            << "charSetName:'" << result.charSetName << "',"
            << "hasResult:" << bool2str(result.hasResult) << ","

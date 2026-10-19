@@ -35,6 +35,7 @@
 #include "replica/config/Config.h"
 #include "replica/ingest/TransactionContrib.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -337,7 +338,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
         // This request has data that will be loaded into the table.
         _completedRequests.push_back(request);
         _cv.notify_one();
-    } else if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
+    } else if (request->extendedServerStatus() == protocol::StatusExt::NO_SUCH_PARTITION) {
         // No contribution is expected into the non-existing (in this chunk) partition.
         // This is would be the normal situaton for many chunks. However, we still
         // need to increment the counter of the fully completed chunks.

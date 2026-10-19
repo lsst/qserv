@@ -60,14 +60,12 @@ ServiceManagementJobResult const& ServiceManagementBaseJob::getResultData() cons
 
 void ServiceManagementBaseJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
-                                          : controller()->serviceProvider()->config()->workers();
-
-    for (auto&& worker : workerNames) {
-        _resultData.serviceState[worker] = ServiceState();
-        _resultData.workers[worker] = false;
-        _requests.push_back(submitRequest(worker));
+    auto const config = controller()->serviceProvider()->config();
+    auto const workerNames = allWorkers() ? config->allWorkers() : config->workers();
+    for (auto const& workerName : workerNames) {
+        _resultData.serviceState[workerName] = ServiceStateInfo();
+        _resultData.workers[workerName] = false;
+        _requests.push_back(submitRequest(workerName));
     }
 
     // In case if no workers are present in the Config

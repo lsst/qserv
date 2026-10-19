@@ -34,9 +34,11 @@
 #include "replica/ingest/IngestHttpSvc.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/registry/Registry.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
+#include "replica/util/ServiceStateInfo.h"
 #include "replica/worker/FileServer.h"
 #include "replica/worker/http/WorkerHttpSvc.h"
 #include "replica/worker/WorkerExporterHttpSvc.h"
@@ -116,7 +118,7 @@ int WorkerApp::runImpl() {
         }
         LOGS(_log, LOG_LVL_DEBUG,
              "HEARTBEAT" << "  worker: " << reqProcSvr->worker()
-                         << "  processor.state: " << reqProcSvr->processor()->state2string()
+                         << "  processor.state: " << protocol::toString(reqProcSvr->processor()->state())
                          << "  new, in-progress, finished: " << reqProcSvr->processor()->numNewRequests()
                          << ", " << reqProcSvr->processor()->numInProgressRequests() << ", "
                          << reqProcSvr->processor()->numFinishedRequests());
@@ -124,6 +126,7 @@ int WorkerApp::runImpl() {
                 chrono::seconds(max(1U, config->get<unsigned int>("registry", "heartbeat-ival-sec"))));
     }
     reqProcSvrThread.join();
+    reqProcHttpSvrThread.join();
     fileSvrThread.join();
     ingestHttpSvrThread.join();
     exportHttpSvrThread.join();

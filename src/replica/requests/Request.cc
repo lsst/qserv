@@ -101,8 +101,8 @@ string Request::state2string(State state, ExtendedState extendedState) {
 }
 
 string Request::state2string(State state, ExtendedState extendedState,
-                             replica::ProtocolStatusExt serverStatus) {
-    return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
+                             replica::protocol::StatusExt serverStatus) {
+    return state2string(state, extendedState) + "::" + protocol::toString(serverStatus);
 }
 
 Request::Request(shared_ptr<Controller> const& controller, string const& type, string const& workerName,
@@ -116,7 +116,7 @@ Request::Request(shared_ptr<Controller> const& controller, string const& type, s
           _disposeRequired(disposeRequired),
           _state(CREATED),
           _extendedState(NONE),
-          _extendedServerStatus(ProtocolStatusExt::NONE),
+          _extendedServerStatus(protocol::StatusExt::NONE),
           _bufferPtr(new ProtocolBuffer(
                   controller->serviceProvider()->config()->get<size_t>("common", "request-buf-size-bytes"))),
           _worker(controller->serviceProvider()->config()->worker(workerName)),
@@ -141,12 +141,12 @@ Request::~Request() {
 
 string Request::state2string() const {
     replica::Lock lock(_mtx, context() + __func__);
-    return state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus());
+    return state2string(state(), extendedState()) + "::" + protocol::toString(extendedServerStatus());
 }
 
 string Request::context() const {
     return "REQUEST " + id() + "  " + type() + "  " + state2string(state(), extendedState()) +
-           "::" + replica::status2string(extendedServerStatus()) + "  ";
+           "::" + protocol::toString(extendedServerStatus()) + "  ";
 }
 
 unsigned int Request::nextTimeIvalMsec() {
