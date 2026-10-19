@@ -102,7 +102,7 @@ private:
 
     /**
      * Send the serialized content of the buffer to a worker.
-     * @param lock A lock on Request::_mtx must be acquired before calling this method.
+     * @param lock A lock on RequestI::mtx must be acquired before calling this method.
      */
     void _send(replica::Lock const& lock);
 
