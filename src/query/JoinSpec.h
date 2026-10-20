@@ -23,7 +23,7 @@
 /**
  * @file
  *
- * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
+ * @brief Specification of JOIN conditions with ON or USING.
  *
  * @author Daniel L. Wang, SLAC
  */

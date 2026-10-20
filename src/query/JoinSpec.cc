@@ -34,6 +34,7 @@
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
 
 namespace lsst::qserv::query {
 
@@ -57,7 +58,6 @@ std::ostream& operator<<(std::ostream& os, JoinSpec const* js) {
 }
 
 std::ostream& JoinSpec::putStream(std::ostream& os) const {
-    // boilerplate impl until we can think of something better
     QueryTemplate qt;
     putTemplate(qt);
     return os << qt;
@@ -82,11 +82,10 @@ void JoinSpec::putTemplate(QueryTemplate& qt) const {
 JoinSpec::Ptr JoinSpec::clone() const {
     _validate();
     if (_usingColumn) {
-        std::shared_ptr<ColumnRef> col = std::make_shared<ColumnRef>(*_usingColumn);
+        auto col = std::make_shared<ColumnRef>(*_usingColumn);
         return std::make_shared<JoinSpec>(col);
-    } else {
-        return std::make_shared<JoinSpec>(_onTerm->copySyntax());
     }
+    return std::make_shared<JoinSpec>(_onTerm->copySyntax());
 }
 
 bool JoinSpec::operator==(const JoinSpec& rhs) const {

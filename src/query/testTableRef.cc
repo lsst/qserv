@@ -37,6 +37,12 @@
 #include <string>
 
 // Qserv headers
+#include "query/AndTerm.h"
+#include "query/ColumnRef.h"
+#include "query/FromList.h"
+#include "query/JoinRef.h"
+#include "query/JoinSpec.h"
+#include "query/QueryTemplate.h"
 #include "query/TableRef.h"
 
 // Boost unit test header
@@ -192,6 +198,55 @@ BOOST_AUTO_TEST_CASE(setEmptyTableWithDb) {
 
 BOOST_AUTO_TEST_CASE(setEmptyTableInCtorWithDb) {
     BOOST_REQUIRE_THROW(TableRef tableRef("db", "", ""), std::logic_error);
+}
+
+BOOST_AUTO_TEST_CASE(renderFromListAfterJoin) {
+    // Ensure table alias mode is set and restored appropriately
+    for (auto const joinType : {JoinRef::DEFAULT, JoinRef::LEFT}) {
+        auto joined = std::make_shared<TableRef>("db", "A", "a");
+        auto joinRef =
+                std::make_shared<JoinRef>(std::make_shared<TableRef>("db", "B", "b"), joinType, false,
+                                          std::make_shared<JoinSpec>(std::make_shared<ColumnRef>("id")));
+        joined->addJoin(joinRef);
+        auto tables = std::make_shared<TableRefList>();
+        tables->push_back(joined);
+        tables->push_back(std::make_shared<TableRef>("db", "C", "c"));
+        QueryTemplate qt(QueryTemplate::DEFINE_TABLE_ALIAS);
+        FromList(tables).renderTo(qt);
+        std::string const join = joinType == JoinRef::LEFT ? "LEFT OUTER JOIN" : "JOIN";
+        BOOST_CHECK_EQUAL(qt.sqlFragment(),
+                          "`db`.`A` AS `a` " + join + " `db`.`B` AS `b` USING(`id`),`db`.`C` AS `c`");
+        BOOST_CHECK_EQUAL(qt.getAliasMode(), QueryTemplate::DEFINE_TABLE_ALIAS);
+
+        QueryTemplate joinQt(QueryTemplate::NO_ALIAS);
+        joinRef->putTemplate(joinQt);
+        BOOST_CHECK_EQUAL(joinQt.sqlFragment(), join + " `db`.`B` AS `b` USING(`id`)");
+        BOOST_CHECK_EQUAL(joinQt.getAliasMode(), QueryTemplate::NO_ALIAS);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(joinSpecValidation) {
+    for (bool const hasOn : {false, true}) {
+        for (bool const hasUsing : {false, true}) {
+            BOOST_TEST_CONTEXT("ON=" << hasOn << ", USING=" << hasUsing) {
+                JoinSpec spec(hasUsing ? std::make_shared<ColumnRef>("id") : nullptr,
+                              hasOn ? std::make_shared<AndTerm>() : nullptr);
+                QueryTemplate qt(QueryTemplate::DEFINE_TABLE_ALIAS);
+                qt.append("existing");
+                if (hasOn == hasUsing) {
+                    BOOST_CHECK_THROW(spec.putTemplate(qt), std::logic_error);
+                    BOOST_CHECK_THROW(spec.clone(), std::logic_error);
+                    BOOST_CHECK_EQUAL(qt.sqlFragment(), "existing");
+                } else {
+                    BOOST_CHECK_NO_THROW(spec.putTemplate(qt));
+                    auto cloned = spec.clone();
+                    BOOST_REQUIRE(cloned != nullptr);
+                    BOOST_CHECK(spec == *cloned);
+                }
+                BOOST_CHECK_EQUAL(qt.getAliasMode(), QueryTemplate::DEFINE_TABLE_ALIAS);
+            }
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
