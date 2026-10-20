@@ -34,10 +34,15 @@
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
+#include "util/PointerCompare.h"
 
 namespace lsst::qserv::query {
 
-inline bool isInconsistent(JoinSpec const& s) { return s.getOn() && s.getUsing(); }
+void JoinSpec::_validate() const {
+    if ((_onTerm != nullptr) == (_usingColumn != nullptr)) {
+        throw std::logic_error("JoinSpec must contain exactly *one* of: ON / USING");
+    }
+}
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     os << "JoinSpec(";
@@ -53,40 +58,34 @@ std::ostream& operator<<(std::ostream& os, JoinSpec const* js) {
 }
 
 std::ostream& JoinSpec::putStream(std::ostream& os) const {
-    // boilerplate impl until we can think of something better
     QueryTemplate qt;
     putTemplate(qt);
     return os << qt;
 }
 
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
-    if (isInconsistent(*this)) {
-        throw std::logic_error("Inconsistent JoinSpec with ON and USING");
-    }
+    _validate();
+    auto const prevAliasMode = qt.getAliasMode();
     qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS);
     if (_onTerm) {
         qt.append("ON");
         _onTerm->renderTo(qt);
-    } else if (_usingColumn) {
+    } else {
         qt.append("USING");
         qt.append("(");
         qt.append(*_usingColumn);  // FIXME: update to support column lists
         qt.append(")");
-    } else {
-        throw std::logic_error("Empty JoinSpec");
     }
+    qt.setAliasMode(prevAliasMode);
 }
 
 JoinSpec::Ptr JoinSpec::clone() const {
-    if (isInconsistent(*this)) {
-        throw std::logic_error("Can't clone JoinSpec with ON and USING");
-    }
+    _validate();
     if (_usingColumn) {
-        std::shared_ptr<ColumnRef> col = std::make_shared<ColumnRef>(*_usingColumn);
+        auto col = std::make_shared<ColumnRef>(*_usingColumn);
         return std::make_shared<JoinSpec>(col);
-    } else {
-        return std::make_shared<JoinSpec>(_onTerm->copySyntax());
     }
+    return std::make_shared<JoinSpec>(_onTerm->copySyntax());
 }
 
 bool JoinSpec::operator==(const JoinSpec& rhs) const {
