@@ -65,18 +65,18 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
 
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
     _validate();
+    auto const prevAliasMode = qt.getAliasMode();
     qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS);
     if (_onTerm) {
         qt.append("ON");
         _onTerm->renderTo(qt);
-    } else if (_usingColumn) {
+    } else {
         qt.append("USING");
         qt.append("(");
         qt.append(*_usingColumn);  // FIXME: update to support column lists
         qt.append(")");
-    } else {
-        throw std::logic_error("Empty JoinSpec");
     }
+    qt.setAliasMode(prevAliasMode);
 }
 
 JoinSpec::Ptr JoinSpec::clone() const {

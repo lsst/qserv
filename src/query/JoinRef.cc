@@ -45,12 +45,14 @@ std::ostream& JoinRef::putStream(std::ostream& os) const {
 }
 
 void JoinRef::putTemplate(QueryTemplate& qt) const {
+    auto const prevAliasMode = qt.getAliasMode();
     _putJoinTemplate(qt);
     qt.setAliasMode(QueryTemplate::DEFINE_TABLE_ALIAS);
     _right->putTemplate(qt);
     if (_spec) {
         _spec->putTemplate(qt);
     }
+    qt.setAliasMode(prevAliasMode);
 }
 
 JoinRef::Ptr JoinRef::clone() const {
