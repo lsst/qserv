@@ -37,7 +37,11 @@
 
 namespace lsst::qserv::query {
 
-inline bool isInconsistent(JoinSpec const& s) { return s.getOn() && s.getUsing(); }
+void JoinSpec::_validate() const {
+    if ((_onTerm != nullptr) == (_usingColumn != nullptr)) {
+        throw std::logic_error("JoinSpec must contain exactly *one* of: ON / USING");
+    }
+}
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     os << "JoinSpec(";
@@ -60,9 +64,7 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
 }
 
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
-    if (isInconsistent(*this)) {
-        throw std::logic_error("Inconsistent JoinSpec with ON and USING");
-    }
+    _validate();
     qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS);
     if (_onTerm) {
         qt.append("ON");
@@ -78,9 +80,7 @@ void JoinSpec::putTemplate(QueryTemplate& qt) const {
 }
 
 JoinSpec::Ptr JoinSpec::clone() const {
-    if (isInconsistent(*this)) {
-        throw std::logic_error("Can't clone JoinSpec with ON and USING");
-    }
+    _validate();
     if (_usingColumn) {
         std::shared_ptr<ColumnRef> col = std::make_shared<ColumnRef>(*_usingColumn);
         return std::make_shared<JoinSpec>(col);
