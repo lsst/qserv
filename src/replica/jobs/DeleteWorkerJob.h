@@ -34,7 +34,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpFindAllRequest;
+#else
 class FindAllRequest;
+#endif
 class ReplicateJob;
 }  // namespace lsst::qserv::replica
 
@@ -151,7 +155,11 @@ private:
      * The callback function to be invoked on a completion of each request.
      * @param request A pointer to a request
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpFindAllRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<FindAllRequest> const& request);
+#endif
 
     /**
      * The callback function to be invoked on a completion of a job
@@ -173,7 +181,11 @@ private:
     /// A collection of requests (one per a database) to be launched against
     /// the affected worker in order to get the latest state of the worker's
     /// replicas
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpFindAllRequest>> _findAllRequests;
+#else
     std::list<std::shared_ptr<FindAllRequest>> _findAllRequests;
+#endif
 
     /// The chained jobs (one per each database family which are launched after
     /// disabling the worker in order to ensure the minimum replication level

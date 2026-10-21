@@ -27,7 +27,11 @@
 
 // Qserv headers
 #include "replica/mysql/DatabaseMySQLRow.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlGetIndexesRequest.h"
+#else
 #include "replica/requests/SqlGetIndexesRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -251,9 +255,16 @@ SqlIndexes SqlGetIndexesJob::indexes() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock const& lock,
+                                                                  string const& worker,
+                                                                  size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                               size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -267,11 +278,21 @@ list<shared_ptr<SqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock cons
     // the requests for the current worker.
     for (auto const& tables : distributeTables(_workers2tables[worker], maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlGetIndexesRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlGetIndexesJob>()](
+                        shared_ptr<HttpSqlGetIndexesRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlGetIndexesRequest::createAndStart(
                 controller(), worker, database(), tables,
                 [self = shared_from_base<SqlGetIndexesJob>()](
                         shared_ptr<SqlGetIndexesRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

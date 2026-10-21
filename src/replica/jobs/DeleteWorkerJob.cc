@@ -31,9 +31,15 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/ReplicateJob.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpFindAllRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#include "replica/requests/http/HttpSvcMgtRequest.h"
+#else
 #include "replica/requests/FindAllRequest.h"
 #include "replica/requests/ServiceManagementRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ErrorReporting.h"
@@ -122,25 +128,50 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
 
     // Check the status of the worker service, and if it's still running
     // try to get as much info from it as possible
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    auto const statusRequest = HttpSvcStatusRequest::createAndStart(
+            controller(), workerName(), noCallbackOnFinish, priority(), id(), requestExpirationIvalSec);
+    statusRequest->wait();
+    if (statusRequest->extendedState() == RequestI::ExtendedState::SUCCESS) {
+        if (statusRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
+#else
     auto const statusRequest = ServiceStatusRequest::createAndStart(
             controller(), workerName(), noCallbackOnFinish, priority(), id(), requestExpirationIvalSec);
     statusRequest->wait();
-
     if (statusRequest->extendedState() == RequestI::ExtendedState::SUCCESS) {
         if (statusRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
+#endif
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfering with the current job's requests
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            auto const drainRequest =
+                    HttpSvcDrainRequest::createAndStart(controller(), workerName(), noCallbackOnFinish,
+                                                        priority(), id(), requestExpirationIvalSec);
+            drainRequest->wait();
+            if (drainRequest->extendedState() == RequestI::ExtendedState::SUCCESS) {
+                if (drainRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
+#else
             auto const drainRequest =
                     ServiceDrainRequest::createAndStart(controller(), workerName(), noCallbackOnFinish,
                                                         priority(), id(), requestExpirationIvalSec);
             drainRequest->wait();
             if (drainRequest->extendedState() == RequestI::ExtendedState::SUCCESS) {
                 if (drainRequest->getServiceState().state == protocol::ServiceState::RUNNING) {
+#endif
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
                     bool const saveReplicaInfo = true;  // always save the replica info in a database because
                                                         // the algorithm depends on it.
                     for (auto const& databaseName : controller()->serviceProvider()->config()->databases()) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+                        auto const request = HttpFindAllRequest::createAndStart(
+                                controller(), workerName(), databaseName, saveReplicaInfo,
+                                [self = shared_from_base<DeleteWorkerJob>()](
+                                        shared_ptr<HttpFindAllRequest> const& request) {
+                                    self->_onRequestFinish(request);
+                                },
+                                priority());
+#else
                         auto const request = FindAllRequest::createAndStart(
                                 controller(), workerName(), databaseName, saveReplicaInfo,
                                 [self = shared_from_base<DeleteWorkerJob>()](
@@ -148,6 +179,7 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
                                     self->_onRequestFinish(request);
                                 },
                                 priority());
+#endif
                         _findAllRequests.push_back(request);
                         _numLaunched++;
                     }
@@ -174,17 +206,25 @@ void DeleteWorkerJob::cancelImpl(replica::Lock const& lock) {
     auto const keepTracking = true;
     for (auto const& ptr : _findAllRequests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
-
     // Stop chained jobs (if any) as well
     for (auto const& ptr : _replicateJobs) ptr->cancel();
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void DeleteWorkerJob::_onRequestFinish(shared_ptr<HttpFindAllRequest> const& request) {
+#else
 void DeleteWorkerJob::_onRequestFinish(shared_ptr<FindAllRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  worker=" << request->workerName()
                    << "  database=" << request->database());
