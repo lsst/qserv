@@ -25,12 +25,19 @@
 #include <cstdint>
 #include <functional>
 #include <list>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
 
 // Qserv headers
 #include "replica/jobs/SqlJob.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class SqlRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -46,63 +53,65 @@ public:
     typedef std::shared_ptr<SqlQueryJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SqlQueryJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
      * @param query the query to be executed on all workers
      * @param user the name of a database account for connecting to the database service
      * @param password a database for connecting to the database service
      * @param maxRows (optional) limit for the maximum number of rows to be returned with the request.
-     *   Leaving the default value of the parameter to 0 will result in not imposing any
-     *   explicit restrictions on a size of the result set. Note that other, resource-defined
-     *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
-     *   objects, the amount of available memory, etc.
-     * @param allWorkers engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
+     *  Leaving the default value of the parameter to 0 will result in not imposing any
+     *  explicit restrictions on a size of the result set. Note that other, resource-defined
+     *  restrictions will still apply. The later includes the maximum size of the Google Protobuf
+     *  objects, the amount of available memory, etc.
+     * @param allWorkers engage all known workers regardless of their status. If the flag is set to 'false'
+     *  then only 'ENABLED' workers which are not in the 'READ-ONLY' state will be involved into the
+     * operation.
      * @param controller is needed launching requests and accessing the Config
      * @param parentJobId an identifier of the parent job
      * @param onFinish a callback function to be called upon a completion of the job
      * @param priority defines the job priority
-     * @return pointer to the created object
+     * @return A pointer to the created object
      */
-    static Ptr create(std::string const& query, std::string const& user, std::string const& password,
-                      uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static std::shared_ptr<SqlQueryJob> create(std::string const& query, std::string const& user,
+                                               std::string const& password, std::uint64_t maxRows,
+                                               bool allWorkers, std::shared_ptr<Controller> const& controller,
+                                               std::string const& parentJobId, CallbackType const& onFinish,
+                                               int priority);
 
     SqlQueryJob() = delete;
     SqlQueryJob(SqlQueryJob const&) = delete;
     SqlQueryJob& operator=(SqlQueryJob const&) = delete;
 
-    ~SqlQueryJob() final = default;
+    virtual ~SqlQueryJob() final = default;
 
     std::string const& query() const { return _query; }
     std::string const& user() const { return _user; }
     std::string const& password() const { return _password; }
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    void notify(replica::Lock const& lock) final;
-    std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
-                                              size_t maxRequestsPerWorker) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual std::list<std::shared_ptr<SqlRequest>> launchRequests(replica::Lock const& lock,
+                                                                  std::string const& worker,
+                                                                  std::size_t maxRequestsPerWorker) final;
 
 private:
     SqlQueryJob(std::string const& query, std::string const& user, std::string const& password,
-                uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
+                std::uint64_t maxRows, bool allWorkers, std::shared_ptr<Controller> const& controller,
                 std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Input parameters
     std::string const _query;
     std::string const _user;
     std::string const _password;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.
     /// The registry prevents duplicate requests because exactly one
