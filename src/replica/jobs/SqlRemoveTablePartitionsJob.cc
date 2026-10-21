@@ -34,30 +34,29 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRemoveTablePartitionsJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlRemoveTablePartitionsJob::typeName() { return "SqlRemoveTablePartitionsJob"; }
 
-SqlRemoveTablePartitionsJob::Ptr SqlRemoveTablePartitionsJob::create(
+shared_ptr<SqlRemoveTablePartitionsJob> SqlRemoveTablePartitionsJob::create(
         string const& database, string const& table, bool allWorkers, bool ignoreNonPartitioned,
-        Controller::Ptr const& controller, string const& parentJobId, CallbackType const& onFinish,
+        shared_ptr<Controller> const& controller, string const& parentJobId, CallbackType const& onFinish,
         int priority) {
-    return Ptr(new SqlRemoveTablePartitionsJob(database, table, allWorkers, ignoreNonPartitioned, controller,
-                                               parentJobId, onFinish, priority));
+    return shared_ptr<SqlRemoveTablePartitionsJob>(new SqlRemoveTablePartitionsJob(
+            database, table, allWorkers, ignoreNonPartitioned, controller, parentJobId, onFinish, priority));
 }
 
 SqlRemoveTablePartitionsJob::SqlRemoveTablePartitionsJob(string const& database, string const& table,
                                                          bool allWorkers, bool ignoreNonPartitioned,
-                                                         Controller::Ptr const& controller,
+                                                         shared_ptr<Controller> const& controller,
                                                          string const& parentJobId,
                                                          CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_REMOVE_TABLE_PARTITIONING", priority,
-                 ignoreNonPartitioned),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_REMOVE_TABLE_PARTITIONING",
+                 priority, ignoreNonPartitioned),
           _database(database),
           _table(table),
           _onFinish(onFinish) {}
@@ -71,10 +70,10 @@ list<pair<string, string>> SqlRemoveTablePartitionsJob::extendedPersistentState(
     return result;
 }
 
-list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock const& lock,
-                                                                  string const& worker,
-                                                                  size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+list<shared_ptr<SqlRequest>> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock const& lock,
+                                                                         string const& worker,
+                                                                         size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -86,12 +85,12 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock 
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
-        bool const keepTracking = true;
+    bool const keepTracking = true;
+    for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
         requests.push_back(SqlRemoveTablePartitionsRequest::createAndStart(
                 controller(), worker, database(), tables,
                 [self = shared_from_base<SqlRemoveTablePartitionsJob>()](
-                        SqlRemoveTablePartitionsRequest::Ptr const& request) {
+                        shared_ptr<SqlRemoveTablePartitionsRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));

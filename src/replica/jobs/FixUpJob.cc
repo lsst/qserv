@@ -28,6 +28,9 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#include "replica/jobs/FindAllJob.h"
+#include "replica/requests/ReplicationRequest.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -37,22 +40,20 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FixUpJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string FixUpJob::typeName() { return "FixUpJob"; }
 
-FixUpJob::Ptr FixUpJob::create(string const& databaseFamily, Controller::Ptr const& controller,
-                               string const& parentJobId, CallbackType const& onFinish, int priority) {
-    return FixUpJob::Ptr(new FixUpJob(databaseFamily, controller, parentJobId, onFinish, priority));
+shared_ptr<FixUpJob> FixUpJob::create(string const& databaseFamily, shared_ptr<Controller> const& controller,
+                                      string const& parentJobId, CallbackType const& onFinish, int priority) {
+    return shared_ptr<FixUpJob>(new FixUpJob(databaseFamily, controller, parentJobId, onFinish, priority));
 }
 
-FixUpJob::FixUpJob(string const& databaseFamily, Controller::Ptr const& controller, string const& parentJobId,
-                   CallbackType const& onFinish, int priority)
+FixUpJob::FixUpJob(string const& databaseFamily, shared_ptr<Controller> const& controller,
+                   string const& parentJobId, CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "FIXUP", priority),
           _databaseFamily(databaseFamily),
           _onFinish(onFinish) {}
@@ -115,7 +116,9 @@ void FixUpJob::startImpl(replica::Lock const& lock) {
     bool const allWorkers = false;     // only consider enabled workers
     _findAllJob = FindAllJob::create(
             databaseFamily(), saveReplicInfo, allWorkers, controller(), id(),
-            [self = shared_from_base<FixUpJob>()](FindAllJob::Ptr job) { self->_onPrecursorJobFinish(); },
+            [self = shared_from_base<FixUpJob>()](shared_ptr<FindAllJob> job) {
+                self->_onPrecursorJobFinish();
+            },
             priority());
     _findAllJob->start();
 }
@@ -222,7 +225,7 @@ void FixUpJob::_onPrecursorJobFinish() {
     }
 }
 
-void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
+void FixUpJob::_onRequestFinish(shared_ptr<ReplicationRequest> const& request) {
     string const database = request->database();
     string const workerName = request->workerName();
     unsigned int const chunk = request->chunk();
@@ -266,7 +269,7 @@ size_t FixUpJob::_launchNext(replica::Lock const& lock, string const& destinatio
         ReplicationTask const& task = tasks.front();
         _requests.push_back(ReplicationRequest::createAndStart(
                 controller(), task.destinationWorker, task.sourceWorker, task.database, task.chunk,
-                [self = shared_from_base<FixUpJob>()](ReplicationRequest::Ptr ptr) {
+                [self = shared_from_base<FixUpJob>()](shared_ptr<ReplicationRequest> ptr) {
                     self->_onRequestFinish(ptr);
                 },
                 priority(), keepTracking, id()));

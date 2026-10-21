@@ -28,6 +28,8 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#include "replica/jobs/SqlDeleteTablePartitionJob.h"
 #include "replica/proto/Protocol.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -39,25 +41,23 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AbortTransactionJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
-AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId, bool allWorkers,
-                                                     Controller::Ptr const& controller,
-                                                     string const& parentJobId, CallbackType const& onFinish,
-                                                     int priority) {
-    return AbortTransactionJob::Ptr(
+shared_ptr<AbortTransactionJob> AbortTransactionJob::create(TransactionId transactionId, bool allWorkers,
+                                                            shared_ptr<Controller> const& controller,
+                                                            string const& parentJobId,
+                                                            CallbackType const& onFinish, int priority) {
+    return shared_ptr<AbortTransactionJob>(
             new AbortTransactionJob(transactionId, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 AbortTransactionJob::AbortTransactionJob(TransactionId transactionId, bool allWorkers,
-                                         Controller::Ptr const& controller, string const& parentJobId,
+                                         shared_ptr<Controller> const& controller, string const& parentJobId,
                                          CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "ABORT_TRANSACTION", priority),
           _transactionId(transactionId),
@@ -171,13 +171,11 @@ void AbortTransactionJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<AbortTransactionJob>(lock, _onFinish);
 }
 
-void AbortTransactionJob::_onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job) {
+void AbortTransactionJob::_onChildJobFinish(shared_ptr<SqlDeleteTablePartitionJob> const& job) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__ << "  table=" << job->table() << " id=" << job->id());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + string(__func__));
-
     if (state() == State::FINISHED) return;
 
     ++_numFinished;

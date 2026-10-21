@@ -28,7 +28,9 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
+#include "replica/requests/DeleteRequest.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -39,28 +41,26 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-using namespace lsst::qserv::replica;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteReplicaJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
 
-DeleteReplicaJob::Ptr DeleteReplicaJob::create(string const& databaseFamily, unsigned int chunk,
-                                               string const& workerName, Controller::Ptr const& controller,
-                                               string const& parentJobId, CallbackType const& onFinish,
-                                               int priority) {
-    return DeleteReplicaJob::Ptr(new DeleteReplicaJob(databaseFamily, chunk, workerName, controller,
-                                                      parentJobId, onFinish, priority));
+shared_ptr<DeleteReplicaJob> DeleteReplicaJob::create(string const& databaseFamily, unsigned int chunk,
+                                                      string const& workerName,
+                                                      shared_ptr<Controller> const& controller,
+                                                      string const& parentJobId, CallbackType const& onFinish,
+                                                      int priority) {
+    return shared_ptr<DeleteReplicaJob>(new DeleteReplicaJob(databaseFamily, chunk, workerName, controller,
+                                                             parentJobId, onFinish, priority));
 }
 
 DeleteReplicaJob::DeleteReplicaJob(string const& databaseFamily, unsigned int chunk, string const& workerName,
-                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   shared_ptr<Controller> const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "DELETE_REPLICA", priority),
           _databaseFamily(databaseFamily),
@@ -126,13 +126,6 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
 
     // Get all databases for which this chunk is in the COMPLETE state on
     // at the worker.
-    //
-    // Alternative options would be:
-    // 1. launching requests for all databases of the family and then
-    //    filter requests based on a result status (something like FILE_ROPEN)
-    //
-    // 2. launching FindRequest for each member of the database family to
-    //    see if the chunk is available on a source node.
     try {
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
                 _replicas, chunk(), workerName(), databaseFamily());
@@ -164,7 +157,7 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
     // Notify Qserv about the change in a disposition of replicas
     // if the notification is required before actually deleting the replica.
     // ATTENTION: only for ACTUALLY participating databases
-    ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
+    auto const serviceProvider = controller()->serviceProvider();
     if (serviceProvider->config()->get<unsigned int>("xrootd", "auto-notify") != 0) {
         // Start right away
         _beginDeleteReplica(lock);
@@ -181,7 +174,7 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
         bool const force = true;
         _qservRemoveReplica(lock, chunk(), databases, workerName(), force,
                             [self = shared_from_base<DeleteReplicaJob>()](
-                                    RemoveReplicaQservMgtRequest::Ptr const& request) {
+                                    shared_ptr<RemoveReplicaQservMgtRequest> request) {
                                 replica::Lock lock(self->_mtx, self->context() + string(__func__) +
                                                                        "::qservRemoveReplica");
                                 switch (request->extendedState()) {
@@ -238,14 +231,14 @@ void DeleteReplicaJob::_beginDeleteReplica(replica::Lock const& lock) {
     for (auto&& replica : _replicas) {
         _requests.push_back(DeleteRequest::createAndStart(
                 controller(), workerName(), replica.database(), chunk(),
-                [self = shared_from_base<DeleteReplicaJob>()](DeleteRequest::Ptr ptr) {
+                [self = shared_from_base<DeleteReplicaJob>()](shared_ptr<DeleteRequest> ptr) {
                     self->_onRequestFinish(ptr);
                 },
                 priority(), keepTracking, id()));
     }
 }
 
-void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
+void DeleteReplicaJob::_onRequestFinish(shared_ptr<DeleteRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "(DeleteRequest)"
                    << "  database=" << request->database() << "  worker=" << workerName()
@@ -281,7 +274,7 @@ void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned i
 
     controller()->qservMgtServices()->removeReplica(
             chunk, databases, workerName, force,
-            [self = shared_from_this(), onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
+            [self = shared_from_this(), onFinish](shared_ptr<RemoveReplicaQservMgtRequest> request) {
                 LOGS(_log, LOG_LVL_DEBUG,
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on REMOVE replica:"
                                      << "  chunk=" << request->chunk()
