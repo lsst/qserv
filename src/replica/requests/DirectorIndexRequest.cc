@@ -25,7 +25,6 @@
 // System headers
 #include <filesystem>
 #include <functional>
-#include <iostream>
 #include <stdexcept>
 #include <system_error>
 
@@ -55,12 +54,6 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-ostream& operator<<(ostream& os, DirectorIndexRequestInfo const& info) {
-    os << "DirectorIndexRequestInfo {error:'" << info.error << "',"
-       << "fileName:'" << info.fileName << "',fileSizeBytes:" << info.fileSizeBytes << "}";
-    return os;
-}
-
 shared_ptr<DirectorIndexRequest> DirectorIndexRequest::createAndStart(
         std::shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         string const& directorTable, unsigned int chunk, bool hasTransactions, TransactionId transactionId,
@@ -85,6 +78,7 @@ DirectorIndexRequest::DirectorIndexRequest(std::shared_ptr<Controller> const& co
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
           _onFinish(onFinish) {
+    _responseData.workerName = workerName;
     _responseData.fileName =
             controller->serviceProvider()->config()->get<string>("database", "qserv-master-tmp-dir") + "/" +
             database + "_" + directorTable + "_" + to_string(chunk) +
