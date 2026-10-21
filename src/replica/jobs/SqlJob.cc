@@ -86,7 +86,7 @@ list<pair<string, string>> SqlJob::persistentLogData() const {
                 auto const& context = resultSetItr.first;
                 auto const& resultSet = resultSetItr.second;
                 workerResultSetsStr += "(context=" + context +
-                                       ",extended_status=" + protocol::toString(resultSet.extendedStatus) +
+                                       ",status_ext=" + protocol::toString(resultSet.extendedStatus) +
                                        ",char_set_name=" + resultSet.charSetName +
                                        ",has_result=" + bool2str(resultSet.hasResult) +
                                        ",fields=" + to_string(resultSet.fields.size()) +

@@ -189,7 +189,7 @@ private:
     std::string _indexName;            ///< The name of the index to be dropped
     std::string _alterTableSpec;       ///< The specification for the ALTER TABLE request
     std::string _user;                 ///< The name of the MySQL user in GRANT ACCESS request
-    std::string _host;                 ///< The host for the MySQL user in GRANT ACCESS request
+    std::vector<std::string> _hosts;   ///< The hosts for the MySQL user in GRANT ACCESS request
     bool _ifExists = true;             ///< A flag to indicate if the operation should be conditional
     bool _ifNotExists = true;          ///< A flag to indicate if the operation should be conditional
 
