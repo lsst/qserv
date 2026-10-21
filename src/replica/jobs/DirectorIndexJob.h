@@ -44,7 +44,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpDirectorIndexRequest;
+#else
 class DirectorIndexRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 namespace lsst::qserv::replica::database::mysql {
@@ -151,7 +155,11 @@ private:
     /**
      * The callback function to be invoked on a completion of requests targeting workers.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpDirectorIndexRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<DirectorIndexRequest> const& request);
+#endif
 
     /**
      * The method runs by the data loading threads to ingest the "director" index
@@ -175,7 +183,11 @@ private:
      *
      * @return A pointer to the next request or nullptr if the job has laready finished.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::shared_ptr<HttpDirectorIndexRequest> _nextRequest();
+#else
     std::shared_ptr<DirectorIndexRequest> _nextRequest();
+#endif
 
     /**
      * Launch a batch of requests with a total number not to exceed the specified limit.
@@ -185,9 +197,15 @@ private:
      * @param maxRequests The maximum number of requests to be launched.
      * @return A collection of requests launched.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpDirectorIndexRequest>> _launchRequests(replica::Lock const& lock,
+                                                                         std::string const& worker,
+                                                                         std::size_t maxRequests = 1);
+#else
     std::list<std::shared_ptr<DirectorIndexRequest>> _launchRequests(replica::Lock const& lock,
                                                                      std::string const& worker,
                                                                      std::size_t maxRequests = 1);
+#endif
 
 private:
     // Input parameters
@@ -204,11 +222,19 @@ private:
     std::map<std::string, std::queue<unsigned int>> _chunks;
 
     /// A collection of the in-flight requests (request id is the key)
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::map<std::string, std::shared_ptr<HttpDirectorIndexRequest>> _inFlightRequests;
+#else
     std::map<std::string, std::shared_ptr<DirectorIndexRequest>> _inFlightRequests;
+#endif
 
     /// A collection of the completed requests that have data ready to be loaded
     /// into the "director" table.
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpDirectorIndexRequest>> _completedRequests;
+#else
     std::list<std::shared_ptr<DirectorIndexRequest>> _completedRequests;
+#endif
 
     /// The number of the on-going operations for ingesting request's data into
     /// the destination trable.

@@ -23,7 +23,11 @@
 #include "replica/jobs/SqlCreateTablesJob.h"
 
 // Qserv headers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlCreateTablesRequest.h"
+#else
 #include "replica/requests/SqlCreateTablesRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -79,11 +83,17 @@ list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
-
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlCreateTablesJob::launchRequests(replica::Lock const& lock,
+                                                                    string const& worker,
+                                                                    size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlCreateTablesJob::launchRequests(replica::Lock const& lock,
                                                                 string const& worker,
                                                                 size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -97,6 +107,16 @@ list<shared_ptr<SqlRequest>> SqlCreateTablesJob::launchRequests(replica::Lock co
     // the requests for the current worker.
     for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlCreateTablesRequest::createAndStart(
+                controller(), worker, database(), tables, engine(), partitionByColumn(), columns(),
+                charsetName(), collationName(),
+                [self = shared_from_base<SqlCreateTablesJob>()](
+                        shared_ptr<HttpSqlCreateTablesRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlCreateTablesRequest::createAndStart(
                 controller(), worker, database(), tables, engine(), partitionByColumn(), columns(),
                 charsetName(), collationName(),
@@ -105,6 +125,7 @@ list<shared_ptr<SqlRequest>> SqlCreateTablesJob::launchRequests(replica::Lock co
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }
