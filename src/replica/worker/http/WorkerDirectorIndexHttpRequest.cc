@@ -92,10 +92,7 @@ WorkerDirectorIndexHttpRequest::WorkerDirectorIndexHttpRequest(
           _fullFilePath(_tmpDirFullPath + "/" + _fileName) {}
 
 json WorkerDirectorIndexHttpRequest::getResult() const {
-    auto const host = WorkerHttpRequest::getWorkerFqdn(expirationTimeoutSec());
-    auto const port = serviceProvider()->config()->get<uint16_t>("worker", "http-svc-port");
-    return {{"url", "http://" + host + ":" + to_string(port) + "/" + _tmpDirName + "/" + _fileName},
-            {"size_bytes", _fileSizeBytes}};
+    return {{"file_resource", "/" + _tmpDirName + "/" + _fileName}, {"file_size_bytes", _fileSizeBytes}};
 }
 
 bool WorkerDirectorIndexHttpRequest::execute() {

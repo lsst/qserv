@@ -115,6 +115,14 @@ private:
     }
 
     /**
+     * Create a database connector using appropriate credentials.
+     * @note For QUERY requests, the client-provided credentials are used.
+     *       For other types of requests, the worker's configuration credentials are used.
+     * @return A shared pointer to the database connection.
+     */
+    std::shared_ptr<database::mysql::Connection> _connector() const;
+
+    /**
      * The query generator for simple requests uses parameters of a request
      * to compose a collection of desired queries.
      * @note this method is capable of generating a single or multiple queries
@@ -188,8 +196,9 @@ private:
     TransactionId _transactionId;      ///< The transaction identifier
     std::string _indexName;            ///< The name of the index to be dropped
     std::string _alterTableSpec;       ///< The specification for the ALTER TABLE request
-    std::string _user;                 ///< The name of the MySQL user in GRANT ACCESS request
-    std::string _host;                 ///< The host for the MySQL user in GRANT ACCESS request
+    std::string _user;                 ///< The name of the MySQL user in GRANT ACCESS and QUERY requests
+    std::string _password;             ///< The password of the MySQL user in QUERY requests
+    std::vector<std::string> _hosts;   ///< The hosts for the MySQL user in GRANT ACCESS request
     bool _ifExists = true;             ///< A flag to indicate if the operation should be conditional
     bool _ifNotExists = true;          ///< A flag to indicate if the operation should be conditional
 

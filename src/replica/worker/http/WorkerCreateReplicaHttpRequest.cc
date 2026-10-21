@@ -94,7 +94,7 @@ WorkerCreateReplicaHttpRequest::~WorkerCreateReplicaHttpRequest() {
     _releaseResources(replica::Lock(mtx, _CONTEXT));
 }
 
-json WorkerCreateReplicaHttpRequest::getResult() const { return {{"replica_info", _replicaInfo.toJson()}}; }
+json WorkerCreateReplicaHttpRequest::getResult() const { return _replicaInfo.toJson(); }
 
 bool WorkerCreateReplicaHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG,
