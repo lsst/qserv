@@ -39,7 +39,6 @@
 #include "replica/registry/Registry.h"
 #include "replica/requests/http/HttpMessenger.h"
 #include "replica/requests/Messenger.h"
-#include "replica/requests/Request.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"

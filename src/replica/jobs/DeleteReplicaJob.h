@@ -36,7 +36,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpDeleteReplicaRequest;
+#else
 class DeleteRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -130,7 +134,11 @@ private:
      * The callback function to be invoked on a completion of each replica deletion request.
      * @param request a pointer to a request
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpDeleteReplicaRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<DeleteRequest> const& request);
+#endif
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -159,7 +167,11 @@ private:
     std::vector<ReplicaInfo> _replicas;
 
     /// A collection of the replica deletion requests implementing the operation
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::vector<std::shared_ptr<HttpDeleteReplicaRequest>> _requests;
+#else
     std::vector<std::shared_ptr<DeleteRequest>> _requests;
+#endif
 
     std::size_t _numRequestsFinished = 0;  ///< gets incremented for each completed request
     std::size_t _numRequestsSuccess = 0;   ///< gets incremented for each successfully completed request

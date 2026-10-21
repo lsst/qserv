@@ -30,8 +30,13 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpCreateReplicaRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/ReplicationRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ErrorReporting.h"
@@ -201,12 +206,21 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
     // only because some catalogs may not have a full coverage
     bool const keepTracking = true;
     for (auto&& replica : sourceReplicas) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        _requests.push_back(HttpCreateReplicaRequest::createAndStart(
+                controller(), destinationWorker(), sourceWorker(), replica.database(), chunk(),
+                [self = shared_from_base<CreateReplicaJob>()](shared_ptr<HttpCreateReplicaRequest> ptr) {
+                    self->_onRequestFinish(ptr);
+                },
+                priority(), keepTracking, id()));
+#else
         _requests.push_back(ReplicationRequest::createAndStart(
                 controller(), destinationWorker(), sourceWorker(), replica.database(), chunk(),
                 [self = shared_from_base<CreateReplicaJob>()](shared_ptr<ReplicationRequest> ptr) {
                     self->_onRequestFinish(ptr);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
 }
 
@@ -223,9 +237,15 @@ void CreateReplicaJob::cancelImpl(replica::Lock const& lock) {
     bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), destinationWorker(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), destinationWorker(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
+        }
     }
     _requests.clear();
 }
@@ -235,18 +255,30 @@ void CreateReplicaJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void CreateReplicaJob::_onRequestFinish(shared_ptr<HttpCreateReplicaRequest> const& request) {
+#else
 void CreateReplicaJob::_onRequestFinish(shared_ptr<ReplicationRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << string(__func__) << "(ReplicationeRequest)"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+         context() << string(__func__) << "(HttpCreateReplicaRequest)"
+#else
+         context() << string(__func__) << "(ReplicationRequest)"
+#endif
                    << "  database=" << request->database() << "  destinationWorker=" << destinationWorker()
                    << "  sourceWorker=" << sourceWorker() << "  chunk=" << chunk());
 
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicationeRequest)");
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    replica::Lock lock(_mtx, context() + string(__func__) + "(HttpCreateReplicaRequest)");
+#else
+    replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicationRequest)");
     if (state() == State::FINISHED) return;
+#endif
 
     ++_numRequestsFinished;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         ++_numRequestsSuccess;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk()][request->database()][destinationWorker()] = request->responseData();
