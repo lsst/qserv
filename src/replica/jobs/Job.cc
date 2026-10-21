@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -47,9 +48,7 @@ using namespace std::placeholders;
 using json = nlohmann::json;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Job");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -94,7 +93,8 @@ string Job::state2string(ExtendedState state) {
 
 json Job::Progress::toJson() const { return json::object({{"complete", complete}, {"total", total}}); }
 
-Job::Job(Controller::Ptr const& controller, string const& parentJobId, string const& type, int priority)
+Job::Job(shared_ptr<Controller> const& controller, string const& parentJobId, string const& type,
+         int priority)
         : _id(Generators::uniqueId()),
           _controller(controller),
           _parentJobId(parentJobId),
@@ -226,6 +226,8 @@ void Job::finish(replica::Lock const& lock, ExtendedState newExtendedState) {
     _finished = true;
     _onFinishCv.notify_all();
 }
+
+boost::asio::io_service& Job::_io_service() { return controller()->serviceProvider()->io_service(); }
 
 void Job::_assertState(replica::Lock const& lock, State desiredState, string const& context) const {
     if (desiredState != state()) {

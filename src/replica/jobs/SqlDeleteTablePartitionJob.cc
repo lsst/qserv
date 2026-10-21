@@ -22,6 +22,11 @@
 // Class header
 #include "replica/jobs/SqlDeleteTablePartitionJob.h"
 
+// System headers
+#include <algorithm>
+#include <stdexcept>
+#include <vector>
+
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
@@ -32,39 +37,36 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// System headers
-#include <algorithm>
-#include <vector>
-
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteTablePartitionJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlDeleteTablePartitionJob::typeName() { return "SqlDeleteTablePartitionJob"; }
 
-SqlDeleteTablePartitionJob::Ptr SqlDeleteTablePartitionJob::create(
-        TransactionId transactionId, string const& table, bool allWorkers, Controller::Ptr const& controller,
-        string const& parentJobId, CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlDeleteTablePartitionJob(transactionId, table, allWorkers, controller, parentJobId,
-                                              onFinish, priority));
+shared_ptr<SqlDeleteTablePartitionJob> SqlDeleteTablePartitionJob::create(
+        TransactionId transactionId, string const& table, bool allWorkers,
+        shared_ptr<Controller> const& controller, string const& parentJobId, CallbackType const& onFinish,
+        int priority) {
+    return shared_ptr<SqlDeleteTablePartitionJob>(new SqlDeleteTablePartitionJob(
+            transactionId, table, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(TransactionId transactionId, string const& table,
-                                                       bool allWorkers, Controller::Ptr const& controller,
+                                                       bool allWorkers,
+                                                       shared_ptr<Controller> const& controller,
                                                        string const& parentJobId,
                                                        CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_DROP_TABLE_PARTITION", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_DROP_TABLE_PARTITION",
+                 priority),
           _transactionId(transactionId),
           _table(table),
           _onFinish(onFinish) {
-    // Get the name of a database associated with the transaction.
-    // Verify input parameters.
+    // Get the name of a database associated with the transaction. Verify input parameters.
     try {
         auto const serviceProvider = controller->serviceProvider();
         auto const transactionInfo = serviceProvider->databaseServices()->transaction(transactionId);
@@ -91,10 +93,10 @@ list<pair<string, string>> SqlDeleteTablePartitionJob::extendedPersistentState()
     return result;
 }
 
-list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(replica::Lock const& lock,
-                                                                 string const& worker,
-                                                                 size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+list<shared_ptr<SqlRequest>> SqlDeleteTablePartitionJob::launchRequests(replica::Lock const& lock,
+                                                                        string const& worker,
+                                                                        size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -106,12 +108,12 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(replica::Lock c
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
         bool const keepTracking = true;
         requests.push_back(SqlDeleteTablePartitionRequest::createAndStart(
                 controller(), worker, database(), tables, transactionId(),
                 [self = shared_from_base<SqlDeleteTablePartitionJob>()](
-                        SqlDeleteTablePartitionRequest::Ptr const& request) {
+                        shared_ptr<SqlDeleteTablePartitionRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));

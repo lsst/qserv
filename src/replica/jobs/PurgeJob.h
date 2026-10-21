@@ -30,9 +30,15 @@
 #include <string>
 
 // Qserv headers
-#include "replica/jobs/DeleteReplicaJob.h"
-#include "replica/jobs/FindAllJob.h"
+#include "replica/jobs/Job.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class DeleteReplicaJob;
+class FindAllJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -67,76 +73,63 @@ public:
     typedef std::shared_ptr<PurgeJob> Ptr;
 
     /// The function type for notifications on the completion of the job
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<PurgeJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
      * @param databaseFamily the name of a database family
      * @param numReplicas
-     *   the optional (if not 0) override for the maximum number of replicas
-     *   for each chunk. If the parameter is set to 0 then the corresponding
-     *   configuration option for the database family will be assumed.
+     *  the optional (if not 0) override for the maximum number of replicas
+     *  for each chunk. If the parameter is set to 0 then the corresponding
+     *  configuration option for the database family will be assumed.
      * @param controller for launching jobs
      * @param parentJobId an identifier of the parent job
      * @param onFinish a callback function to be called upon a completion
-     *   of the job
+     *  of the job
      * @param priority the priority level of the job
      * @return pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily, unsigned int numReplicas,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
+    static std::shared_ptr<PurgeJob> create(std::string const& databaseFamily, unsigned int numReplicas,
+                                            std::shared_ptr<Controller> const& controller,
+                                            std::string const& parentJobId, CallbackType const& onFinish,
+                                            int priority);
 
     PurgeJob() = delete;
     PurgeJob(PurgeJob const&) = delete;
     PurgeJob& operator=(PurgeJob const&) = delete;
 
-    ~PurgeJob() final = default;
+    virtual ~PurgeJob() final = default;
 
-    /**
-     * @return maximum number of each chunk's good replicas to be reached when
-     *   the job successfully finishes.
-     */
     unsigned int numReplicas() const { return _numReplicas; }
-
-    /// @return name of a database defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
 
     /**
      * Return the result of the operation.
      *
-     * @note
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
-     * @note
-     *   The result will be extracted from jobs which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all jobs have finished.
-     * @return the data structure to be filled upon the completion of the job.
-     * @throws std::logic_error if the job didn't finished at a time when
-     *   the method was called
+     * @note The method should be invoked only after the job has finished (primary status is set to
+     * Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown. Please, verify the primary
+     * and extended status of the object to ensure that all jobs have finished.
+     * @return The data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finished at a time when the method was called.
      */
     PurgeJobResult const& getReplicaData() const;
 
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
     void notify(replica::Lock const& lock) final;
 
 private:
-    PurgeJob(std::string const& databaseFamily, unsigned int numReplicas, Controller::Ptr const& controller,
-             std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    PurgeJob(std::string const& databaseFamily, unsigned int numReplicas,
+             std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+             CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the precursor job
@@ -148,7 +141,7 @@ private:
      * The callback function to be invoked on a completion of each job
      * @param job pointer to a job
      */
-    void _onDeleteJobFinish(DeleteReplicaJob::Ptr const& job);
+    void _onDeleteJobFinish(std::shared_ptr<DeleteReplicaJob> const& job);
 
     // Input parameters
 
@@ -158,7 +151,7 @@ private:
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
-    FindAllJob::Ptr _findAllJob;
+    std::shared_ptr<FindAllJob> _findAllJob;
 
     /**
      * Analyze the work queue for the specified worker and launch up to
@@ -170,7 +163,8 @@ private:
      * @param maxJobs The maximum number of jobs to be launched
      * @return The number of jobs launched or 0 if no tasks existed for the worker.
      */
-    size_t _launchNext(replica::Lock const& lock, std::string const& targetWorkerName, size_t maxJobs);
+    std::size_t _launchNext(replica::Lock const& lock, std::string const& targetWorkerName,
+                            std::size_t maxJobs);
 
     /// Structure ReplicaPurgeTask encapsulates a task to be schedule for executing
     /// as a replica removal job.
@@ -186,10 +180,10 @@ private:
     std::map<std::string, std::queue<ReplicaPurgeTask>> _targetWorker2tasks;
 
     /// A collection of jobs implementing the operation
-    std::list<DeleteReplicaJob::Ptr> _jobs;
+    std::list<std::shared_ptr<DeleteReplicaJob>> _jobs;
 
-    size_t _numFinished = 0;  ///< the total number of finished jobs
-    size_t _numSuccess = 0;   ///< the number of successfully completed jobs
+    std::size_t _numFinished = 0;  ///< the total number of finished jobs
+    std::size_t _numSuccess = 0;   ///< the number of successfully completed jobs
 
     /// The result of the operation (gets updated as jobs are finishing)
     PurgeJobResult _replicaData;

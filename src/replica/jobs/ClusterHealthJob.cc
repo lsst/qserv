@@ -24,12 +24,12 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
+#include "replica/qserv/TestEchoQservMgtRequest.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -38,16 +38,10 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ClusterHealthJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
-
-// ----------------------
-//  Class: ClusterHealth
-// ----------------------
 
 ClusterHealth::ClusterHealth(vector<string> const& workers) : _good(false) {
     for (auto const& worker : workers) {
@@ -67,14 +61,14 @@ void ClusterHealth::updateQservState(string const& worker, bool state) {
 }
 
 void ClusterHealth::_updateSummaryState() {
-    for (auto&& entry : _replication) {
-        if (not entry.second) {
+    for (auto const& entry : _replication) {
+        if (!entry.second) {
             _good = false;
             return;
         }
     }
-    for (auto&& entry : _qserv) {
-        if (not entry.second) {
+    for (auto const& entry : _qserv) {
+        if (!entry.second) {
             _good = false;
             return;
         }
@@ -82,21 +76,18 @@ void ClusterHealth::_updateSummaryState() {
     _good = true;
 }
 
-// -------------------------
-//  Class: ClusterHealthJob
-// -------------------------
-
 string ClusterHealthJob::typeName() { return "ClusterHealthJob"; }
 
-ClusterHealthJob::Ptr ClusterHealthJob::create(unsigned int timeoutSec, bool allWorkers,
-                                               Controller::Ptr const& controller, string const& parentJobId,
-                                               CallbackType const& onFinish, int priority) {
-    return ClusterHealthJob::Ptr(
+shared_ptr<ClusterHealthJob> ClusterHealthJob::create(unsigned int timeoutSec, bool allWorkers,
+                                                      shared_ptr<Controller> const& controller,
+                                                      string const& parentJobId, CallbackType const& onFinish,
+                                                      int priority) {
+    return shared_ptr<ClusterHealthJob>(
             new ClusterHealthJob(timeoutSec, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec, bool allWorkers,
-                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   shared_ptr<Controller> const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "CLUSTER_HEALTH", priority),
           _timeoutSec(timeoutSec == 0 ? controller->serviceProvider()->config()->get<unsigned int>(
@@ -109,9 +100,7 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec, bool allWorkers,
 
 ClusterHealth const& ClusterHealthJob::clusterHealth() const {
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return _health;
-
     throw logic_error(context() + string(__func__) + "  can't use this operation before finishing the job");
 }
 
@@ -124,23 +113,19 @@ list<pair<string, string>> ClusterHealthJob::extendedPersistentState() const {
 
 list<pair<string, string>> ClusterHealthJob::persistentLogData() const {
     list<pair<string, string>> result;
-
-    auto&& health = clusterHealth();
-
-    for (auto&& entry : health.qserv()) {
-        auto worker = entry.first;
-        auto responded = entry.second;
-
-        if (not responded) {
-            result.emplace_back("failed-qserv-worker", worker);
+    auto const& health = clusterHealth();
+    for (auto const& entry : health.qserv()) {
+        auto const workerName = entry.first;
+        bool const responded = entry.second;
+        if (!responded) {
+            result.emplace_back("failed-qserv-worker", workerName);
         }
     }
-    for (auto&& entry : health.replication()) {
-        auto worker = entry.first;
-        auto responded = entry.second;
-
-        if (not responded) {
-            result.emplace_back("failed-replication-worker", worker);
+    for (auto const& entry : health.replication()) {
+        auto const workerName = entry.first;
+        bool const responded = entry.second;
+        if (!responded) {
+            result.emplace_back("failed-replication-worker", workerName);
         }
     }
     return result;
@@ -149,46 +134,43 @@ list<pair<string, string>> ClusterHealthJob::persistentLogData() const {
 void ClusterHealthJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto self = shared_from_base<ClusterHealthJob>();
-
     // There is nothing special about this value. This is just an arbitrary
     // string to be sent to a worker.
     string const testData = "123";
 
+    auto self = shared_from_base<ClusterHealthJob>();
     auto workers = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                 : controller()->serviceProvider()->config()->workers();
-
     for (auto const& worker : workers) {
         auto const replicationRequest = ServiceStatusRequest::createAndStart(
                 controller(), worker,
-                [self](ServiceStatusRequest::Ptr request) { self->_onRequestFinish(request); }, priority(),
-                id(), timeoutSec());
+                [self](shared_ptr<ServiceStatusRequest> const& request) { self->_onRequestFinish(request); },
+                priority(), id(), timeoutSec());
         _requests[replicationRequest->id()] = replicationRequest;
         ++_numStarted;
 
         auto const qservRequest = controller()->qservMgtServices()->echo(
-                worker, testData, id(), /* jobId */
-                [self](TestEchoQservMgtRequest::Ptr request) { self->_onRequestFinish(request); },
+                worker, testData, id(),
+                [self](shared_ptr<TestEchoQservMgtRequest> const& request) {
+                    self->_onRequestFinish(request);
+                },
                 timeoutSec());
-        _qservRequests[replicationRequest->id()] = qservRequest;
+        _qservRequests[qservRequest->id()] = qservRequest;
         ++_numStarted;
     }
 
     // Finish right away if no workers were configured yet
-
     if (0 == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
 void ClusterHealthJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    for (auto&& entry : _requests) {
+    for (auto const& entry : _requests) {
         auto const& request = entry.second;
         request->cancel();
     }
     _requests.clear();
-
-    for (auto&& entry : _qservRequests) {
+    for (auto const& entry : _qservRequests) {
         auto const& request = entry.second;
         request->cancel();
     }
@@ -197,17 +179,14 @@ void ClusterHealthJob::cancelImpl(replica::Lock const& lock) {
 
 void ClusterHealthJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     notifyDefaultImpl<ClusterHealthJob>(lock, _onFinish);
 }
 
-void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request) {
+void ClusterHealthJob::_onRequestFinish(shared_ptr<ServiceStatusRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[replication] worker=" << request->workerName());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + string(__func__) + "[replication]");
-
     if (state() == State::FINISHED) return;
 
     _health.updateReplicationState(request->workerName(),
@@ -216,13 +195,11 @@ void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& request) {
+void ClusterHealthJob::_onRequestFinish(shared_ptr<TestEchoQservMgtRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[qserv] worker=" << request->workerName());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + string(__func__) + "[qserv]");
-
     if (state() == State::FINISHED) return;
 
     _health.updateQservState(request->workerName(),

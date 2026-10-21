@@ -31,6 +31,7 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/proto/Protocol.h"
+#include "replica/requests/SqlRequest.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -44,14 +45,12 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlJob::SqlJob(uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
+SqlJob::SqlJob(uint64_t maxRows, bool allWorkers, shared_ptr<Controller> const& controller,
                string const& parentJobId, std::string const& jobName, int priority, bool ignoreNonPartitioned,
                bool ignoreDuplicateKey)
         : Job(controller, parentJobId, jobName, priority),
@@ -78,14 +77,14 @@ list<pair<string, string>> SqlJob::persistentLogData() const {
     auto const& resultData = getResultData();
 
     // Per-worker stats
-    for (auto&& workerItr : resultData.resultSets) {
-        auto&& workerName = workerItr.first;
-        auto&& workerResultSets = workerItr.second;
+    for (auto const& workerItr : resultData.resultSets) {
+        auto const& workerName = workerItr.first;
+        auto const& workerResultSets = workerItr.second;
         string workerResultSetsStr;
-        for (auto&& resultSet : workerResultSets) {
-            for (auto&& resultSetItr : resultSet.queryResultSet) {
-                auto&& context = resultSetItr.first;
-                auto&& resultSet = resultSetItr.second;
+        for (auto const& resultSet : workerResultSets) {
+            for (auto const& resultSetItr : resultSet.queryResultSet) {
+                auto const& context = resultSetItr.first;
+                auto const& resultSet = resultSetItr.second;
                 workerResultSetsStr += "(context=" + context +
                                        ",extended_status=" + protocol::toString(resultSet.extendedStatus) +
                                        ",char_set_name=" + resultSet.charSetName +
@@ -123,7 +122,7 @@ json SqlJob::getExtendedErrorReport() const {
     return report;
 }
 
-void SqlJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) const {
+void SqlJob::stopRequest(replica::Lock const& lock, shared_ptr<SqlRequest> const& request) const {
     auto const noCallBackOnFinish = nullptr;
     bool const keepTracking = true;
     StopRequest::createAndStart(controller(), request->workerName(), request->id(), noCallBackOnFinish,
@@ -141,9 +140,9 @@ void SqlJob::startImpl(replica::Lock const& lock) {
     size_t const maxRequestsPerWorker =
             controller()->serviceProvider()->config()->get<size_t>("controller", "num-requests-per-worker");
 
-    for (auto&& workerName : workerNames) {
+    for (auto const& workerName : workerNames) {
         _resultData.resultSets[workerName] = list<SqlResultSet>();
-        list<SqlRequest::Ptr> requests;
+        list<shared_ptr<SqlRequest>> requests;
         try {
             requests = launchRequests(lock, workerName, maxRequestsPerWorker);
         } catch (std::exception const& ex) {
@@ -168,14 +167,14 @@ void SqlJob::cancelImpl(replica::Lock const& lock) {
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
-    for (auto&& ptr : _requests) {
+    for (auto const& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) stopRequest(lock, ptr);
     }
     _requests.clear();
 }
 
-void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
+void SqlJob::onRequestFinish(shared_ptr<SqlRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->workerName());
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
@@ -187,7 +186,7 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
 
     // Try submitting a replacement request for the same worker. If none
     // would be launched then evaluate for the completion condition of the job.
-    list<SqlRequest::Ptr> requests;
+    list<shared_ptr<SqlRequest>> requests;
     try {
         requests = launchRequests(lock, request->workerName());
     } catch (std::exception const& ex) {
@@ -204,14 +203,14 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
     if (_requests.cend() == itr) {
         if (_requests.size() == _numFinished) {
             size_t numSuccess = 0;
-            for (auto&& ptr : _requests) {
+            for (auto const& ptr : _requests) {
                 if (ptr->extendedState() == Request::ExtendedState::SUCCESS) {
                     numSuccess++;
                 } else if (ptr->extendedServerStatus() == protocol::StatusExt::MULTIPLE) {
                     // These special conditions are counted as a success for tables
                     // that might be successfully processed before by another instance
                     // the same job.
-                    auto&& responseData = request->responseData();
+                    auto const& responseData = request->responseData();
                     if (responseData.hasErrors()) {
                         if (ignoreNonPartitioned()) {
                             if (responseData.allErrorsOf(protocol::StatusExt::NOT_PARTITIONED_TABLE)) {
@@ -275,7 +274,7 @@ vector<string> SqlJob::workerTables(string const& workerName, string const& data
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, workerName,
                                                                                 databaseName);
 
-        for (auto&& replica : replicas) {
+        for (auto const& replica : replicas) {
             auto const chunk = replica.chunk();
             // Avoiding the "dummy" chunk as it was already forced to be in
             // the collection.
@@ -319,7 +318,7 @@ vector<string> SqlJob::workerTables(string const& workerName, TransactionId cons
         if (allTables || !overlapTablesOnly) {
             tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, !overlap).name());
         }
-        for (auto&& contrib : contribs) {
+        for (auto const& contrib : contribs) {
             // Avoiding the "dummy" chunk as it was already forced to be in
             // the collection.
             if (contrib.chunk != lsst::qserv::DUMMY_CHUNK) {
@@ -332,7 +331,7 @@ vector<string> SqlJob::workerTables(string const& workerName, TransactionId cons
             }
         }
     } else {
-        for (auto&& contrib : contribs) {
+        for (auto const& contrib : contribs) {
             tables.push_back(contrib.table);
         }
     }

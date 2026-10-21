@@ -29,9 +29,14 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/jobs/ReplicateJob.h"
-#include "replica/requests/FindAllRequest.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class FindAllRequest;
+class ReplicateJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -82,39 +87,34 @@ public:
     typedef std::shared_ptr<DeleteWorkerJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<DeleteWorkerJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
      * @param workerName the name of a worker to be deleted
      * @param permanentDelete if set to 'true' the worker record will be completely
-     *   wiped out from the configuration
+     *  wiped out from the configuration
      * @param controller for launching requests
      * @param parentJobId an identifier of the parent job
      * @param onFinish the callback function to be called upon a completion of the job
      * @param priority the priority level of the job
      */
-    static Ptr create(std::string const& workerName, bool permanentDelete, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
+    static std::shared_ptr<DeleteWorkerJob> create(std::string const& workerName, bool permanentDelete,
+                                                   std::shared_ptr<Controller> const& controller,
+                                                   std::string const& parentJobId,
+                                                   CallbackType const& onFinish, int priority);
 
     DeleteWorkerJob() = delete;
     DeleteWorkerJob(DeleteWorkerJob const&) = delete;
     DeleteWorkerJob& operator=(DeleteWorkerJob const&) = delete;
 
-    ~DeleteWorkerJob() final = default;
+    virtual ~DeleteWorkerJob() final = default;
 
-    /// @return the name of a worker to be deleted
     std::string const& workerName() const { return _workerName; }
-
-    /// @return 'true' if this is the permanent delete
     bool permanentDelete() const { return _permanentDelete; }
 
     /**
@@ -131,57 +131,43 @@ public:
      */
     DeleteWorkerJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see DeleteWorkerJob::create()
-    DeleteWorkerJob(std::string const& workerName, bool permanentDelete, Controller::Ptr const& controller,
-                    std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    DeleteWorkerJob(std::string const& workerName, bool permanentDelete,
+                    std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+                    CallbackType const& onFinish, int priority);
 
     /**
      * Begin the actual sequence of actions for removing the worker
-     *
-     * @param lock
-     *   a lock on Job::_mtx must be acquired before calling this method
+     * @param lock A lock on Job::_mtx must be acquired before calling this method
      */
     void _disableWorker(replica::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each request.
-     *
-     * @param request
-     *   a pointer to a request
+     * @param request A pointer to a request
      */
-    void _onRequestFinish(FindAllRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<FindAllRequest> const& request);
 
     /**
      * The callback function to be invoked on a completion of a job
      * which ensures the desired replication level after disabling .
-     *
-     * @param request
-     *   a pointer to a job
+     * @param request A pointer to a job
      */
-    void _onJobFinish(ReplicateJob::Ptr const& job);
+    void _onJobFinish(std::shared_ptr<ReplicateJob> const& job);
 
     // Input parameters
 
     std::string const _workerName;
     bool const _permanentDelete;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     size_t _numLaunched = 0;  ///< the total number of requests launched
     size_t _numFinished = 0;  ///< the total number of finished requests
@@ -190,12 +176,12 @@ private:
     /// A collection of requests (one per a database) to be launched against
     /// the affected worker in order to get the latest state of the worker's
     /// replicas
-    std::list<FindAllRequest::Ptr> _findAllRequests;
+    std::list<std::shared_ptr<FindAllRequest>> _findAllRequests;
 
     /// The chained jobs (one per each database family which are launched after
     /// disabling the worker in order to ensure the minimum replication level
     /// across the replication setup
-    std::list<ReplicateJob::Ptr> _replicateJobs;
+    std::list<std::shared_ptr<ReplicateJob>> _replicateJobs;
 
     /// The result of the operation (gets updated as requests are finishing)
     DeleteWorkerJobResult _replicaData;

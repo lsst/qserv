@@ -34,27 +34,27 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlAlterTablesJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlAlterTablesJob::typeName() { return "SqlAlterTablesJob"; }
 
-SqlAlterTablesJob::Ptr SqlAlterTablesJob::create(string const& database, string const& table,
-                                                 string const& alterSpec, bool allWorkers,
-                                                 Controller::Ptr const& controller, string const& parentJobId,
-                                                 CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlAlterTablesJob(database, table, alterSpec, allWorkers, controller, parentJobId,
-                                     onFinish, priority));
+shared_ptr<SqlAlterTablesJob> SqlAlterTablesJob::create(string const& database, string const& table,
+                                                        string const& alterSpec, bool allWorkers,
+                                                        shared_ptr<Controller> const& controller,
+                                                        string const& parentJobId,
+                                                        CallbackType const& onFinish, int priority) {
+    return shared_ptr<SqlAlterTablesJob>(new SqlAlterTablesJob(database, table, alterSpec, allWorkers,
+                                                               controller, parentJobId, onFinish, priority));
 }
 
 SqlAlterTablesJob::SqlAlterTablesJob(string const& database, string const& table, string const& alterSpec,
-                                     bool allWorkers, Controller::Ptr const& controller,
+                                     bool allWorkers, shared_ptr<Controller> const& controller,
                                      string const& parentJobId, CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_ALTER_TABLES", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_ALTER_TABLES", priority),
           _database(database),
           _table(table),
           _alterSpec(alterSpec),
@@ -69,9 +69,10 @@ list<pair<string, string>> SqlAlterTablesJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                        size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+list<shared_ptr<SqlRequest>> SqlAlterTablesJob::launchRequests(replica::Lock const& lock,
+                                                               string const& worker,
+                                                               size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -84,13 +85,12 @@ list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(replica::Lock const& loc
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
         requests.push_back(SqlAlterTablesRequest::createAndStart(
                 controller(), worker, database(), tables, alterSpec(),
-                [self = shared_from_base<SqlAlterTablesJob>()](SqlAlterTablesRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
+                [self = shared_from_base<SqlAlterTablesJob>()](
+                        shared_ptr<SqlAlterTablesRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
     }
     return requests;
