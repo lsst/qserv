@@ -6,9 +6,17 @@ target_sources(replica_requests PRIVATE
     EchoRequest.cc
     FindAllRequest.cc
     FindRequest.cc
+    http/HttpCreateReplicaRequest.cc
+    http/HttpDeleteReplicaRequest.cc
+    http/HttpEchoRequest.cc
+    http/HttpFindAllRequest.cc
+    http/HttpFindRequest.cc
     http/HttpMessenger.cc
     http/HttpMessengerConnector.cc
     http/HttpMessengerRequest.cc
+    http/HttpRequest.cc
+    http/HttpStatusRequest.cc
+    http/HttpStopRequest.cc
     Messenger.cc
     MessengerConnector.cc
     ReplicationRequest.cc
