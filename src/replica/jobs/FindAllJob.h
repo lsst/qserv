@@ -29,9 +29,13 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/requests/FindAllRequest.h"
 #include "replica/util/ReplicaInfo.h"
 #include "replica/util/SemanticMaps.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class FindAllRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -168,7 +172,7 @@ private:
      * The callback function to be invoked on a completion of each request.
      * @param request A pointer to a request.
      */
-    void _onRequestFinish(FindAllRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<FindAllRequest> const& request);
 
     // Input parameters
 
@@ -178,7 +182,7 @@ private:
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
-    std::list<FindAllRequest::Ptr> _requests;
+    std::list<std::shared_ptr<FindAllRequest>> _requests;
 
     /// Per-worker and per database flags indicating if the corresponding replica
     /// retrieval request succeeded for all databases in the family.

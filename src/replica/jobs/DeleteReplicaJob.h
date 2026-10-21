@@ -31,8 +31,13 @@
 // Qserv headers
 #include "replica/jobs/Job.h"
 #include "replica/qserv/RemoveReplicaQservMgtRequest.h"
-#include "replica/requests/DeleteRequest.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class DeleteRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -43,8 +48,7 @@ namespace lsst::qserv::replica {
  */
 struct DeleteReplicaJobResult {
     /**
-     * Results reported by workers upon the successful completion
-     * of the replica deletion requests
+     * Results reported by workers upon the successful completion of the replica deletion requests
      */
     std::list<ReplicaInfo> replicas;
 
@@ -62,7 +66,7 @@ public:
     typedef std::shared_ptr<DeleteReplicaJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<DeleteReplicaJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
@@ -80,60 +84,44 @@ public:
      * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& databaseFamily, unsigned int chunk, std::string const& workerName,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
+    static std::shared_ptr<DeleteReplicaJob> create(std::string const& databaseFamily, unsigned int chunk,
+                                                    std::string const& workerName,
+                                                    std::shared_ptr<Controller> const& controller,
+                                                    std::string const& parentJobId,
+                                                    CallbackType const& onFinish, int priority);
 
     DeleteReplicaJob() = delete;
     DeleteReplicaJob(DeleteReplicaJob const&) = delete;
     DeleteReplicaJob& operator=(DeleteReplicaJob const&) = delete;
 
-    ~DeleteReplicaJob() final = default;
+    virtual ~DeleteReplicaJob() final = default;
 
-    /// @return the name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
-
-    ///@return the chunk number
     unsigned int chunk() const { return _chunk; }
-
-    /// @return the name of a source worker where the affected replica is residing
     std::string const& workerName() const { return _workerName; }
 
     /**
      * Return the result of the operation.
-     * @note The method should be invoked only after the job has finished (primary
-     *  status is set to Job::Status::FINISHED). Otherwise exception
-     *  std::logic_error will be thrown
-     * @note The result will be extracted from requests which have successfully
-     *  finished. Please, verify the primary and extended status of the object
-     *  to ensure that all requests have finished.
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception of type std::logic_error will be thrown.
+     * @note The result will be extracted from requests which have successfully finished. Please, verify
+     *  the primary and extended status of the object to ensure that all requests have finished.
      * @return the data structure to be filled upon the completion of the job.
      * @throws std::logic_error if the job didn't finished at a time when the method was called
      */
     DeleteReplicaJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see DeleteReplicaJob::create()
     DeleteReplicaJob(std::string const& databaseFamily, unsigned int chunk, std::string const& workerName,
-                     Controller::Ptr const& controller, std::string const& parentJobId,
+                     std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                      CallbackType const& onFinish, int priority);
 
     /**
@@ -143,11 +131,10 @@ private:
     void _beginDeleteReplica(replica::Lock const& lock);
 
     /**
-     * The callback function to be invoked on a completion of each replica
-     * deletion request.
+     * The callback function to be invoked on a completion of each replica deletion request.
      * @param request a pointer to a request
      */
-    void _onRequestFinish(DeleteRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<DeleteRequest> const& request);
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -156,9 +143,9 @@ private:
      * @param databases  The names of databases involved into the operation.
      * @param workerName  The name of a worker to be notified.
      * @param force  The flag indicating of the removal should be done regardless
-     *   of the usage status of the replica.
+     *  of the usage status of the replica.
      * @param onFinish  An (optional) callback function to be called upon completion
-     *   of the operation.
+     *  of the operation.
      */
     void _qservRemoveReplica(replica::Lock const& lock, unsigned int chunk,
                              std::vector<std::string> const& databases, std::string const& workerName,
@@ -176,10 +163,10 @@ private:
     std::vector<ReplicaInfo> _replicas;
 
     /// A collection of the replica deletion requests implementing the operation
-    std::vector<DeleteRequest::Ptr> _requests;
+    std::vector<std::shared_ptr<DeleteRequest>> _requests;
 
-    size_t _numRequestsFinished = 0;  // gets incremented for each completed request
-    size_t _numRequestsSuccess = 0;   // gets incremented for each successfully completed request
+    std::size_t _numRequestsFinished = 0;  ///< gets incremented for each completed request
+    std::size_t _numRequestsSuccess = 0;   ///< gets incremented for each successfully completed request
 
     DeleteReplicaJobResult _replicaData;
 };

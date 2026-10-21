@@ -24,12 +24,16 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Qserv headers
+#include "replica/contr/Controller.h"
+#include "replica/requests/FindRequest.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
+
+// Third party headers
+#include "boost/asio.hpp"
 
 // LSST header
 #include "lsst/log/Log.h"
@@ -37,16 +41,10 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.VerifyJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
-
-///////////////////////////////////////////////////
-///                ReplicaDiff                  ///
-///////////////////////////////////////////////////
 
 ReplicaDiff::ReplicaDiff()
         : _notEqual(false),
@@ -67,11 +65,11 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1, ReplicaInfo const& replica
           _fileSizeMismatch(false),
           _fileCsMismatch(false),
           _fileMtimeMismatch(false) {
-    if ((replica1.database() != replica2.database()) or (replica1.chunk() != replica2.chunk())) {
+    if ((replica1.database() != replica2.database()) || (replica1.chunk() != replica2.chunk())) {
         throw invalid_argument("ReplicaDiff::" + string(__func__) + "(r1,r2)  incompatible arguments");
     }
 
-    // Status and the number of files are expeted to match
+    // Status and the number of files are expected to match
 
     _statusMismatch = replica1.status() != replica2.status();
     _numFilesMismatch = replica1.fileInfo().size() != replica2.fileInfo().size();
@@ -86,7 +84,7 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1, ReplicaInfo const& replica
         string const& name = f.first;
 
         // The file name is required to be present in both replicas
-        if (not file2info2.count(name)) {
+        if (!file2info2.count(name)) {
             _fileNamesMismatch = true;
             continue;
         }
@@ -94,16 +92,16 @@ ReplicaDiff::ReplicaDiff(ReplicaInfo const& replica1, ReplicaInfo const& replica
         ReplicaInfo::FileInfo const& file1 = file2info1[name];
         ReplicaInfo::FileInfo const& file2 = file2info2[name];
 
-        _fileSizeMismatch = _fileSizeMismatch or (file1.size != file2.size);
+        _fileSizeMismatch = _fileSizeMismatch || (file1.size != file2.size);
 
         // Control sums are considered only if they're both defined
-        _fileCsMismatch = _fileCsMismatch or
-                          ((not file1.cs.empty() and not file2.cs.empty()) and (file1.cs != file2.cs));
+        _fileCsMismatch =
+                _fileCsMismatch || ((!file1.cs.empty() && !file2.cs.empty()) && (file1.cs != file2.cs));
 
-        _fileMtimeMismatch = _fileMtimeMismatch or (file1.mtime != file2.mtime);
+        _fileMtimeMismatch = _fileMtimeMismatch || (file1.mtime != file2.mtime);
     }
-    _notEqual = _statusMismatch or _numFilesMismatch or _fileNamesMismatch or _fileSizeMismatch or
-                _fileCsMismatch or _fileMtimeMismatch;
+    _notEqual = _statusMismatch || _numFilesMismatch || _fileNamesMismatch || _fileSizeMismatch ||
+                _fileCsMismatch || _fileMtimeMismatch;
 }
 
 bool ReplicaDiff::isSelf() const { return _replica1.worker() == _replica2.worker(); }
@@ -150,22 +148,18 @@ ostream& operator<<(ostream& os, ReplicaDiff const& ri) {
     return os;
 }
 
-/////////////////////////////////////////////////
-///                VerifyJob                  ///
-/////////////////////////////////////////////////
-
 string VerifyJob::typeName() { return "VerifyJob"; }
 
-VerifyJob::Ptr VerifyJob::create(size_t maxReplicas, bool computeCheckSum,
-                                 CallbackTypeOnDiff const& onReplicaDifference,
-                                 Controller::Ptr const& controller, string const& parentJobId,
-                                 CallbackType const& onFinish, int priority) {
-    return VerifyJob::Ptr(new VerifyJob(maxReplicas, computeCheckSum, onReplicaDifference, controller,
-                                        parentJobId, onFinish, priority));
+shared_ptr<VerifyJob> VerifyJob::create(size_t maxReplicas, bool computeCheckSum,
+                                        CallbackTypeOnDiff const& onReplicaDifference,
+                                        shared_ptr<Controller> const& controller, string const& parentJobId,
+                                        CallbackType const& onFinish, int priority) {
+    return shared_ptr<VerifyJob>(new VerifyJob(maxReplicas, computeCheckSum, onReplicaDifference, controller,
+                                               parentJobId, onFinish, priority));
 }
 
 VerifyJob::VerifyJob(size_t maxReplicas, bool computeCheckSum, CallbackTypeOnDiff const& onReplicaDifference,
-                     Controller::Ptr const& controller, string const& parentJobId,
+                     shared_ptr<Controller> const& controller, string const& parentJobId,
                      CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "VERIFY", priority),
           _maxReplicas(maxReplicas),
@@ -199,15 +193,14 @@ void VerifyJob::startImpl(replica::Lock const& lock) {
         finish(lock, ExtendedState::FAILED);
         return;
     }
-    auto const currentJobPriority = priority();
     bool const keepTracking = true;
     for (ReplicaInfo const& replica : replicas) {
         auto request = FindRequest::createAndStart(
                 controller(), replica.worker(), replica.database(), replica.chunk(),
-                [self = shared_from_base<VerifyJob>()](FindRequest::Ptr request) {
+                [self = shared_from_base<VerifyJob>()](shared_ptr<FindRequest> request) {
                     self->_onRequestFinish(request);
                 },
-                currentJobPriority, computeCheckSum(), keepTracking, id());
+                priority(), computeCheckSum(), keepTracking, id());
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }
@@ -238,7 +231,7 @@ void VerifyJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<VerifyJob>(lock, _onFinish);
 }
 
-void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
+void VerifyJob::_onRequestFinish(shared_ptr<FindRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " chunk=" << request->chunk());
@@ -272,7 +265,7 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
         //             expressed by a caller (no callback provided).
         ReplicaInfo const& oldReplica = _replicas[request->id()];
         selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
-        if (selfReplicaDiff() and not _onReplicaDifference) {
+        if (selfReplicaDiff() && !_onReplicaDifference) {
             LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for self\n" << selfReplicaDiff);
         }
         vector<ReplicaInfo> otherReplicas;
@@ -287,9 +280,9 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
         }
         for (auto&& replica : otherReplicas) {
             ReplicaDiff diff(request->responseData(), replica);
-            if (not diff.isSelf()) {
+            if (!diff.isSelf()) {
                 otherReplicaDiff.push_back(diff);
-                if (diff() and not _onReplicaDifference)
+                if (diff() && !_onReplicaDifference)
                     LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for other\n" << diff);
             }
         }
@@ -314,16 +307,14 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
         finish(lock, ExtendedState::FAILED);
         return;
     }
+    bool const keepTracking = true;
     for (ReplicaInfo const& replica : replicas) {
         auto request = FindRequest::createAndStart(
                 controller(), replica.worker(), replica.database(), replica.chunk(),
-                [self = shared_from_base<VerifyJob>()](FindRequest::Ptr request) {
+                [self = shared_from_base<VerifyJob>()](shared_ptr<FindRequest> request) {
                     self->_onRequestFinish(request);
                 },
-                priority(),              /* inherited from the one of the current job */
-                computeCheckSum(), true, /* keepTracking*/
-                id()                     /* jobId */
-        );
+                priority(), computeCheckSum(), keepTracking, id());
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }
@@ -331,10 +322,10 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
     // The callback is being made asynchronously in a separate thread
     // to avoid blocking the current thread.
     if (_onReplicaDifference) {
-        thread notifier([self = shared_from_base<VerifyJob>(), selfReplicaDiff, otherReplicaDiff]() {
-            self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
-        });
-        notifier.detach();
+        controller()->serviceProvider()->io_service().post(
+                [self = shared_from_base<VerifyJob>(), selfReplicaDiff, otherReplicaDiff]() {
+                    self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
+                });
     }
 }
 

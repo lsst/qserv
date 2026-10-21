@@ -31,9 +31,14 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/jobs/FindAllJob.h"
-#include "replica/requests/ReplicationRequest.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class FindAllJob;
+class ReplicationRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -68,7 +73,7 @@ public:
     typedef std::shared_ptr<FixUpJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<FixUpJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
@@ -79,49 +84,47 @@ public:
      * low-level pointers).
      *
      * @param databaseFamily The name of a database family
-     * @param controller This is needed for launching requests
+     * @param controller A shared pointer to the controller needed for launching requests
      * @param parentJobId An identifier of the parent job
      * @param onFinish The callback function to be called upon a completion of the job
      * @param priority Priority level of the job
      * @return pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static std::shared_ptr<FixUpJob> create(std::string const& databaseFamily,
+                                            std::shared_ptr<Controller> const& controller,
+                                            std::string const& parentJobId, CallbackType const& onFinish,
+                                            int priority);
 
     FixUpJob() = delete;
     FixUpJob(FixUpJob const&) = delete;
     FixUpJob& operator=(FixUpJob const&) = delete;
 
-    ~FixUpJob() final = default;
+    virtual ~FixUpJob() final = default;
 
-    /// @return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
 
     /**
      * Return the result of the operation.
      *
-     * @note The method should be invoked only after the job has finished
-     *   (primary status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
-     * @note The result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown
+     * @note The result will be extracted from requests which have successfully finished. Please, verify
+     *  the primary and extended status of the object to ensure that all requests have finished.
      * @return the data structure to be filled upon the completion of the job.
-     * @throws std::logic_error if the job didn't finished at a time when the method
-     *   was called
+     * @throws std::logic_error if the job didn't finished at a time when the methodwas called
      */
     FixUpJobResult const& getReplicaData() const;
 
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    FixUpJob(std::string const& databaseFamily, Controller::Ptr const& controller,
+    FixUpJob(std::string const& databaseFamily, std::shared_ptr<Controller> const& controller,
              std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
@@ -134,16 +137,15 @@ private:
      * The callback function to be invoked on a completion of each replica
      * creation request launched by the job.
      */
-    void _onRequestFinish(ReplicationRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<ReplicationRequest> const& request);
 
     // Input parameters
 
     std::string const _databaseFamily;
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
-    /// The chained job to be completed first in order to figure out
-    /// replica disposition.
-    FindAllJob::Ptr _findAllJob;
+    /// The chained job to be completed first in order to figure out replica disposition.
+    std::shared_ptr<FindAllJob> _findAllJob;
 
     /**
      * Analyze the work queue for the specified worker and launch up to
@@ -155,7 +157,8 @@ private:
      * @param maxRequests The maximum number of requests to be launched
      * @return The number of requests launched or 0 if no tasks existed for the worker.
      */
-    size_t _launchNext(replica::Lock const& lock, std::string const& destinationWorker, size_t maxRequests);
+    std::size_t _launchNext(replica::Lock const& lock, std::string const& destinationWorker,
+                            std::size_t maxRequests);
 
     /// Structure ReplicationTask encapsulates a task to be schedule for executing
     /// as a replication request.
@@ -173,10 +176,10 @@ private:
     std::map<std::string, std::queue<ReplicationTask>> _destinationWorker2tasks;
 
     /// A collection of launched requests implementing the operation
-    std::list<ReplicationRequest::Ptr> _requests;
+    std::list<std::shared_ptr<ReplicationRequest>> _requests;
 
-    size_t _numFinished = 0;  ///< the total number of finished requests
-    size_t _numSuccess = 0;   ///< the number of successfully completed requests
+    std::size_t _numFinished = 0;  ///< the total number of finished requests
+    std::size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     FixUpJobResult _replicaData;
