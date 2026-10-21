@@ -36,7 +36,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpFindRequest;
+#else
 class FindRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -198,7 +202,11 @@ private:
      * The callback function to be invoked on a completion of each request.
      * @param request a pointer to a request
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpFindRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<FindRequest> const& request);
+#endif
 
     /**
      * Find the next replicas to be inspected.
@@ -227,7 +235,11 @@ private:
     std::map<std::string, ReplicaInfo> _replicas;
 
     /// The current (last) batch of requests registered by their IDs
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::map<std::string, std::shared_ptr<HttpFindRequest>> _requests;
+#else
     std::map<std::string, std::shared_ptr<FindRequest>> _requests;
+#endif
 };
 
 }  // namespace lsst::qserv::replica

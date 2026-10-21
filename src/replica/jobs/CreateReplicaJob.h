@@ -36,7 +36,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpCreateReplicaRequest;
+#else
 class ReplicationRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -135,7 +139,11 @@ private:
      * The callback function to be invoked on a completion of each replica creation request.
      * @param request a pointer to a request
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpCreateReplicaRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<ReplicationRequest> const& request);
+#endif
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -159,7 +167,11 @@ private:
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A collection of the replication requests implementing the operation
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::vector<std::shared_ptr<HttpCreateReplicaRequest>> _requests;
+#else
     std::vector<std::shared_ptr<ReplicationRequest>> _requests;
+#endif
 
     std::size_t _numRequestsFinished = 0;  ///< gets incremented for each completed request
     std::size_t _numRequestsSuccess = 0;   ///< gets incremented for each successfully completed request

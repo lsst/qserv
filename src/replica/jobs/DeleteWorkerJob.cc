@@ -33,7 +33,11 @@
 #include "replica/jobs/ReplicateJob.h"
 #include "replica/requests/FindAllRequest.h"
 #include "replica/requests/ServiceManagementRequest.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ErrorReporting.h"
@@ -175,11 +179,15 @@ void DeleteWorkerJob::cancelImpl(replica::Lock const& lock) {
     for (auto const& ptr : _findAllRequests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
-
     // Stop chained jobs (if any) as well
     for (auto const& ptr : _replicateJobs) ptr->cancel();
 }

@@ -37,7 +37,11 @@
 namespace lsst::qserv::replica {
 class Controller;
 class FindAllJob;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpCreateReplicaRequest;
+#else
 class ReplicationRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -137,7 +141,11 @@ private:
      * The callback function to be invoked on a completion of each replica
      * creation request launched by the job.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpCreateReplicaRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<ReplicationRequest> const& request);
+#endif
 
     // Input parameters
 
@@ -176,7 +184,11 @@ private:
     std::map<std::string, std::queue<ReplicationTask>> _destinationWorker2tasks;
 
     /// A collection of launched requests implementing the operation
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpCreateReplicaRequest>> _requests;
+#else
     std::list<std::shared_ptr<ReplicationRequest>> _requests;
+#endif
 
     std::size_t _numFinished = 0;  ///< the total number of finished requests
     std::size_t _numSuccess = 0;   ///< the number of successfully completed requests

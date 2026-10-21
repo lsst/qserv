@@ -38,7 +38,11 @@
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/proto/Protocol.h"
 #include "replica/requests/DirectorIndexRequest.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
@@ -308,9 +312,14 @@ void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
     for (auto const& itr : _inFlightRequests) {
         auto const& ptr = itr.second;
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
     _inFlightRequests.clear();
@@ -336,7 +345,7 @@ void DirectorIndexJob::_onRequestFinish(shared_ptr<DirectorIndexRequest> const& 
     replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
-    if (request->extendedState() == Request::SUCCESS) {
+    if (request->extendedState() == RequestI::SUCCESS) {
         // This request has data that will be loaded into the table.
         _completedRequests.push_back(request);
         _cv.notify_one();
