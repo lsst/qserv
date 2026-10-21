@@ -22,8 +22,10 @@
 #define LSST_QSERV_REPLICA_SQLCREATETABLEJOB_H
 
 // System headers
+#include <cstddef>
 #include <functional>
 #include <list>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
@@ -31,6 +33,12 @@
 // Qserv headers
 #include "replica/jobs/SqlJob.h"
 #include "replica/util/Common.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class SqlRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -46,46 +54,44 @@ public:
     typedef std::shared_ptr<SqlCreateTableJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SqlCreateTableJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
      * @param database the name of a database where a new table will be created
      * @param table the name of a table to be created
      * @param engine the name of the MySQL engine for the new table
      * @param partitionByColumn (optional, if not empty) the name of a column which will be used
-     *   as a key to configure MySQL partitions for the new table.
-     *   This variation of table schema will be used for the super-transaction-based
-     *   ingest into the table.
+     *  as a key to configure MySQL partitions for the new table. This variation of table schema will
+     *  be used for the super-transaction-based ingest into the table.
      * @param columns column definitions (name,type) of the table
      * @param charsetName (optional, if not empty) the name of a character set for the new table
      * @param collationName (optional, if not empty) the name of a collation for the new table
      * @param allWorkers engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
+     *  is set to 'false' then only 'ENABLED' workers which are not in the 'READ-ONLY' state will
+     *  be involved into the operation.
      * @param controller is needed launching requests and accessing the Config
      * @param parentJobId an identifier of the parent job
      * @param onFinish a callback function to be called upon a completion of the job
      * @param priority defines the job priority
      * @return pointer to the created object
      */
-    static Ptr create(std::string const& database, std::string const& table, std::string const& engine,
-                      std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
-                      std::string const& charsetName, std::string const& collationName, bool allWorkers,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
+    static std::shared_ptr<SqlCreateTableJob> create(
+            std::string const& database, std::string const& table, std::string const& engine,
+            std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
+            std::string const& charsetName, std::string const& collationName, bool allWorkers,
+            std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+            CallbackType const& onFinish, int priority);
 
     SqlCreateTableJob() = delete;
     SqlCreateTableJob(SqlCreateTableJob const&) = delete;
     SqlCreateTableJob& operator=(SqlCreateTableJob const&) = delete;
 
-    ~SqlCreateTableJob() final = default;
+    virtual ~SqlCreateTableJob() final = default;
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
@@ -94,18 +100,20 @@ public:
     std::list<SqlColDef> const& columns() const { return _columns; }
     std::string const& charsetName() const { return _charsetName; }
     std::string const& collationName() const { return _collationName; }
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    void notify(replica::Lock const& lock) final;
-    std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
-                                              size_t maxRequestsPerWorker) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual std::list<std::shared_ptr<SqlRequest>> launchRequests(replica::Lock const& lock,
+                                                                  std::string const& worker,
+                                                                  std::size_t maxRequestsPerWorker) final;
 
 private:
     SqlCreateTableJob(std::string const& database, std::string const& table, std::string const& engine,
                       std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
                       std::string const& charsetName, std::string const& collationName, bool allWorkers,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
     // Input parameters
@@ -116,7 +124,7 @@ private:
     std::list<SqlColDef> const _columns;
     std::string const _charsetName;
     std::string const _collationName;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.
     /// The registry prevents duplicate requests because exactly one

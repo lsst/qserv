@@ -39,10 +39,14 @@
 // Qserv headers
 #include "replica/config/ConfigDatabase.h"
 #include "replica/jobs/Job.h"
-#include "replica/requests/DirectorIndexRequest.h"
 #include "replica/util/Common.h"
 
 // Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class DirectorIndexRequest;
+}  // namespace lsst::qserv::replica
+
 namespace lsst::qserv::replica::database::mysql {
 class ConnectionPool;
 }  // namespace lsst::qserv::replica::database::mysql
@@ -67,39 +71,31 @@ public:
     typedef std::shared_ptr<DirectorIndexJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<DirectorIndexJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
-     * @param databaseName the name of a database for which the "director" index
-     *   is built.
+     * @param databaseName the name of a database for which the "director" index is built.
      * @param directorTableName the name of the director table
-     * @param hasTransactions  if 'true' then the database's "director" tables
-     *   are expected to be partitioned, and the job will extract data (including
-     *   column "qserv_trans_id") from a specific MySQL partition.
-     * @param transactionId an identifier of a super-transaction which would
-     *   limit a scope of the data extraction requests. Note this request will
-     *   be considered only if 'hasTransactions=true'.
-     * @param allWorkers engage all known workers regardless of their status.
-     *   If the flag is set to 'false' then only 'ENABLED' workers which are not
-     *   in the 'READ-ONLY' state will be involved into the operation.
+     * @param hasTransactions  if 'true' then the database's "director" tables are expected to be partitioned,
+     *  and the job will extract data (including column "qserv_trans_id") from a specific MySQL partition.
+     * @param transactionId an identifier of a super-transaction which would limit a scope of the data
+     * extraction requests. Note this request will be considered only if 'hasTransactions=true'.
+     * @param allWorkers engage all known workers regardless of their status. If the flag is set to 'false'
+     * then only 'ENABLED' workers which are not in the 'READ-ONLY' state will be involved into the operation.
      * @param controller is needed launching requests and accessing the Config
      * @param parentJobId an identifier of the parent job
      * @param onFinish a function to be called upon a completion of the job
      * @param priority the priority level of the job
      */
-    static Ptr create(std::string const& databaseName, std::string const& directorTableName,
-                      bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
+    static std::shared_ptr<DirectorIndexJob> create(
+            std::string const& databaseName, std::string const& directorTableName, bool hasTransactions,
+            TransactionId transactionId, bool allWorkers, std::shared_ptr<Controller> const& controller,
+            std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     DirectorIndexJob() = delete;
     DirectorIndexJob(DirectorIndexJob const&) = delete;
@@ -107,15 +103,12 @@ public:
 
     virtual ~DirectorIndexJob() = default;
 
-    // Trivial get methods
-
     std::string const& database() const { return _database.name; }
     std::string const& directorTable() const { return _directorTableName; }
     bool hasTransactions() const { return _hasTransactions; }
     TransactionId transactionId() const { return _transactionId; }
     bool allWorkers() const { return _allWorkers; }
 
-    /// @see Job::progress
     virtual Job::Progress progress() const override;
 
     /**
@@ -135,34 +128,32 @@ public:
     /**
      * Return the combined result of the operation
      *
-     * @note The method should be invoked only after the job has
-     *  finished (primary status is set to Job::Status::FINISHED). Otherwise
-     *  exception std::logic_error will be thrown
-     * @return the data structure to be filled upon the completion of the job.
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown
+     * @return The data structure to be filled upon the completion of the job.
      * @throws std::logic_error if the job didn't finish at a time when
      *   the method was called
      */
     Result const& getResultData() const;
 
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
     void notify(replica::Lock const& lock) final;
 
 private:
     DirectorIndexJob(std::string const& databaseName, std::string const& directorTableName,
                      bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                     Controller::Ptr const& controller, std::string const& parentJobId,
+                     std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                      CallbackType const& onFinish, int priority);
 
     /**
-     * The callback function to be invoked on a completion of requests
-     * targeting workers.
+     * The callback function to be invoked on a completion of requests targeting workers.
      */
-    void _onRequestFinish(DirectorIndexRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<DirectorIndexRequest> const& request);
 
     /**
      * The method runs by the data loading threads to ingest the "director" index
@@ -174,38 +165,31 @@ private:
 
     /**
      * Locate anbd return the next request (if any) in the queue _completedRequests.
-     * The method gets called by the data loading threads when the threads are ready
-     * to process the next request.
      *
-     * The request will be removed from the queue. The counter _numLoadingRequests
-     * will be incremented.
+     * The method gets called by the data loading threads when the threads are ready to process the next
+     * request. The request will be removed from the queue. The counter _numLoadingRequests will be
+     * incremented. If no requests were found in the queue and while there are still ongoing requests the
+     * method will block before any new request will appear in the queue.
      *
-     * If no requests were found in the queue
-     * and while there are still ongoing requests the method will block before any new request will appear in
-     * the queue.
+     * @note The method will unblock when the jobs will finish and if the job is still in the unfinished while
+     *  there are ongoing requests in the queue _inFlightRequests the method will block waiting before any
+     * request from the latter queue will finish
      *
-     * @note The method will unblock when the jobs will finish
-     * and if the job is still in the unfinished while there are ongoing requests in
-     * the queue _inFlightRequests the method will block waiting before any request
-     * from the latter queue will finish
-     *
-     * @return DirectorIndexRequest::Ptr A pointer to the next request or nullptr
-     *  if the job has laready finished.
+     * @return A pointer to the next request or nullptr if the job has laready finished.
      */
-    DirectorIndexRequest::Ptr _nextRequest();
+    std::shared_ptr<DirectorIndexRequest> _nextRequest();
 
     /**
-     * Launch a batch of requests with a total number not to exceed the specified
-     * limit.
+     * Launch a batch of requests with a total number not to exceed the specified limit.
      *
-     * @param lock on the mutex Job::_mtx to be acquired for protecting
-     *   the object's state
-     * @param worker the name of a worker the requests to be sent to
-     * @param maxRequests the maximum number of requests to be launched
-     * @return a collection of requests launched
+     * @param lock A lock on the mutex Job::_mtx to be acquired for protecting the object's state.
+     * @param worker The name of a worker the requests to be sent to.
+     * @param maxRequests The maximum number of requests to be launched.
+     * @return A collection of requests launched.
      */
-    std::list<DirectorIndexRequest::Ptr> _launchRequests(replica::Lock const& lock, std::string const& worker,
-                                                         size_t maxRequests = 1);
+    std::list<std::shared_ptr<DirectorIndexRequest>> _launchRequests(replica::Lock const& lock,
+                                                                     std::string const& worker,
+                                                                     std::size_t maxRequests = 1);
 
 private:
     // Input parameters
@@ -222,15 +206,15 @@ private:
     std::map<std::string, std::queue<unsigned int>> _chunks;
 
     /// A collection of the in-flight requests (request id is the key)
-    std::map<std::string, DirectorIndexRequest::Ptr> _inFlightRequests;
+    std::map<std::string, std::shared_ptr<DirectorIndexRequest>> _inFlightRequests;
 
     /// A collection of the completed requests that have data ready to be loaded
     /// into the "director" table.
-    std::list<DirectorIndexRequest::Ptr> _completedRequests;
+    std::list<std::shared_ptr<DirectorIndexRequest>> _completedRequests;
 
     /// The number of the on-going operations for ingesting request's data into
     /// the destination trable.
-    size_t _numLoadingRequests = 0;
+    std::size_t _numLoadingRequests = 0;
 
     /// This variable is used for to get the loading threads waiting while
     /// the queue _completedRequests is empty.
@@ -240,8 +224,8 @@ private:
     Result _resultData;
 
     // Job progression counters
-    size_t _totalChunks = 0;     ///< The total number of chunks is set when the job is starting.
-    size_t _completeChunks = 0;  ///< Is incremented for each processed (regardless of results) chunk.
+    std::size_t _totalChunks = 0;     ///< The total number of chunks is set when the job is starting.
+    std::size_t _completeChunks = 0;  ///< Is incremented for each processed (regardless of results) chunk.
 };
 
 }  // namespace lsst::qserv::replica
