@@ -25,13 +25,13 @@
 #include <fstream>
 #include <functional>
 #include <memory>
-#include <ostream>
 #include <string>
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
 #include "replica/requests/Request.h"
 #include "replica/util/Common.h"
+#include "replica/util/DirectorIndexRequestInfo.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -40,17 +40,6 @@ class Controller;
 
 // This header declarations
 namespace lsst::qserv::replica {
-
-/**
- *  Structure DirectorIndexRequestInfo represents a result of the requests.
- */
-struct DirectorIndexRequestInfo {
-    std::string error;         ///< A error (if any) that reported by the worker server.
-    std::string fileName;      ///< The file that containes the index data (if success).
-    size_t fileSizeBytes = 0;  ///< The number of bytes that were written into the file.
-};
-
-std::ostream& operator<<(std::ostream& os, DirectorIndexRequestInfo const& info);
 
 /**
  * Class DirectorIndexRequest extracts and returns data to be loaded into

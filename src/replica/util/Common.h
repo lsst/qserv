@@ -138,36 +138,6 @@ public:
 };
 
 /**
- * This class is an abstraction for the index definitions.
- */
-class SqlIndexDef {
-public:
-    SqlIndexDef() = default;
-
-    /**
-     * Parse the definition from then input JSON object.
-     * @param indexSpecJson The JSON object containing the index definitions.
-     * @throw std::invalid_argument If the input JSON object is not valid.
-     */
-    SqlIndexDef(nlohmann::json const& indexSpecJson);
-
-    SqlIndexDef(SqlIndexDef const&) = default;
-    SqlIndexDef& operator=(SqlIndexDef const&) = default;
-    ~SqlIndexDef() = default;
-
-    std::string spec;
-    std::string name;
-    std::string comment;
-    std::list<std::tuple<std::string, unsigned int, bool>> keys;
-};
-
-/// The type for the super-transaction identifiers
-typedef uint32_t TransactionId;
-
-/// The type for event identifiers of the the super-transactions.
-typedef uint32_t TransactionEventId;
-
-/**
  * Class SqlIndexSpec is an abstraction for the index type specification.
  *
  * It's been designed to allow constructing specifications from a string
@@ -176,6 +146,8 @@ typedef uint32_t TransactionEventId;
  */
 class SqlIndexSpec {
 public:
+    enum Type { DEFAULT, UNIQUE, FULLTEXT, SPATIAL };
+
     /**
      * Construct from the Protobuf representation.
      * @throws std::invalid_argument If the input specification is not supported
@@ -194,6 +166,8 @@ public:
     SqlIndexSpec(SqlIndexSpec const&) = default;
     SqlIndexSpec& operator=(SqlIndexSpec const&) = default;
 
+    Type type() const { return _type; }
+
     /// @return The string representation.
     std::string str() const;
 
@@ -202,9 +176,38 @@ public:
 
 private:
     /// The internal representation
-    enum Spec { DEFAULT, UNIQUE, FULLTEXT, SPATIAL };
-    Spec _spec = Spec::DEFAULT;
+    Type _type = Type::DEFAULT;
 };
+
+/**
+ * This class is an abstraction for the index definitions.
+ */
+class SqlIndexDef {
+public:
+    SqlIndexDef() = default;
+
+    /**
+     * Parse the definition from then input JSON object.
+     * @param indexSpecJson The JSON object containing the index definitions.
+     * @throw std::invalid_argument If the input JSON object is not valid.
+     */
+    SqlIndexDef(nlohmann::json const& indexSpecJson);
+
+    SqlIndexDef(SqlIndexDef const&) = default;
+    SqlIndexDef& operator=(SqlIndexDef const&) = default;
+    ~SqlIndexDef() = default;
+
+    SqlIndexSpec spec;
+    std::string name;
+    std::string comment;
+    std::list<std::tuple<std::string, unsigned int, bool>> keys;
+};
+
+/// The type for the super-transaction identifiers
+typedef uint32_t TransactionId;
+
+/// The type for event identifiers of the the super-transactions.
+typedef uint32_t TransactionEventId;
 
 /**
  * An utility function translating a boolean value into a string representation.
