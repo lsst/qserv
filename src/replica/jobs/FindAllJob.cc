@@ -28,8 +28,13 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpFindAllRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/FindAllRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -47,15 +52,15 @@ namespace lsst::qserv::replica {
 
 string FindAllJob::typeName() { return "FindAllJob"; }
 
-FindAllJob::Ptr FindAllJob::create(string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
-                                   Controller::Ptr const& controller, string const& parentJobId,
-                                   CallbackType const& onFinish, int priority) {
-    return FindAllJob::Ptr(new FindAllJob(databaseFamily, saveReplicaInfo, allWorkers, controller,
-                                          parentJobId, onFinish, priority));
+shared_ptr<FindAllJob> FindAllJob::create(string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
+                                          shared_ptr<Controller> const& controller, string const& parentJobId,
+                                          CallbackType const& onFinish, int priority) {
+    return shared_ptr<FindAllJob>(new FindAllJob(databaseFamily, saveReplicaInfo, allWorkers, controller,
+                                                 parentJobId, onFinish, priority));
 }
 
 FindAllJob::FindAllJob(string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
-                       Controller::Ptr const& controller, string const& parentJobId,
+                       shared_ptr<Controller> const& controller, string const& parentJobId,
                        CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "FIND_ALL", priority),
           _databaseFamily(databaseFamily),
@@ -144,6 +149,16 @@ void FindAllJob::startImpl(replica::Lock const& lock) {
         _replicaData.workers[workerName] = false;
         for (auto const& databaseName : databases) {
             _workerDatabaseSuccess[workerName][databaseName] = false;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            _requests.push_back(HttpFindAllRequest::createAndStart(
+                    controller(), workerName, databaseName, saveReplicaInfo(),
+                    [self = shared_from_base<FindAllJob>()](shared_ptr<HttpFindAllRequest> const& request) {
+                        self->_onRequestFinish(request);
+                    },
+                    priority(), keepTracking, id()));
+            _numLaunched++;
+        }
+#else
             _requests.push_back(FindAllRequest::createAndStart(
                     controller(), workerName, databaseName, saveReplicaInfo(),
                     [self = shared_from_base<FindAllJob>()](shared_ptr<FindAllRequest> const& request) {
@@ -152,6 +167,7 @@ void FindAllJob::startImpl(replica::Lock const& lock) {
                     priority(), keepTracking, id()));
             _numLaunched++;
         }
+#endif
     }
 
     // In case if no workers or database are present in the Config at this time.
@@ -168,9 +184,14 @@ void FindAllJob::cancelImpl(replica::Lock const& lock) {
     bool const keepTracking = true;
     for (auto const& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
     _requests.clear();
@@ -184,7 +205,11 @@ void FindAllJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void FindAllJob::_onRequestFinish(shared_ptr<HttpFindAllRequest> const& request) {
+#else
 void FindAllJob::_onRequestFinish(shared_ptr<FindAllRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " state=" << request->state2string());
@@ -195,7 +220,7 @@ void FindAllJob::_onRequestFinish(shared_ptr<FindAllRequest> const& request) {
 
     // Update counters and object state if needed.
     _numFinished++;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         _numSuccess++;
         ReplicaInfoCollection const& infoCollection = request->responseData();
         _replicaData.replicas.push_back(infoCollection);

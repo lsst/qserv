@@ -31,8 +31,16 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/proto/Protocol.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlRequest.h"
+#else
 #include "replica/requests/SqlRequest.h"
+#endif
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkedTable.h"
@@ -122,11 +130,20 @@ json SqlJob::getExtendedErrorReport() const {
     return report;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void SqlJob::stopRequest(replica::Lock const& lock, shared_ptr<HttpSqlRequest> const& request) const {
+#else
 void SqlJob::stopRequest(replica::Lock const& lock, shared_ptr<SqlRequest> const& request) const {
+#endif
     auto const noCallBackOnFinish = nullptr;
     bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    HttpStopRequest::createAndStart(controller(), request->workerName(), request->id(), noCallBackOnFinish,
+                                    priority(), keepTracking, id());
+#else
     StopRequest::createAndStart(controller(), request->workerName(), request->id(), noCallBackOnFinish,
                                 priority(), keepTracking, id());
+#endif
 }
 
 void SqlJob::startImpl(replica::Lock const& lock) {
@@ -142,7 +159,11 @@ void SqlJob::startImpl(replica::Lock const& lock) {
 
     for (auto const& workerName : workerNames) {
         _resultData.resultSets[workerName] = list<SqlResultSet>();
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        list<shared_ptr<HttpSqlRequest>> requests;
+#else
         list<shared_ptr<SqlRequest>> requests;
+#endif
         try {
             requests = launchRequests(lock, workerName, maxRequestsPerWorker);
         } catch (std::exception const& ex) {
@@ -174,7 +195,11 @@ void SqlJob::cancelImpl(replica::Lock const& lock) {
     _requests.clear();
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void SqlJob::onRequestFinish(shared_ptr<HttpSqlRequest> const& request) {
+#else
 void SqlJob::onRequestFinish(shared_ptr<SqlRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->workerName());
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
@@ -186,7 +211,11 @@ void SqlJob::onRequestFinish(shared_ptr<SqlRequest> const& request) {
 
     // Try submitting a replacement request for the same worker. If none
     // would be launched then evaluate for the completion condition of the job.
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
     list<shared_ptr<SqlRequest>> requests;
+#endif
     try {
         requests = launchRequests(lock, request->workerName());
     } catch (std::exception const& ex) {
