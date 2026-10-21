@@ -28,7 +28,11 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlGrantAccessRequest.h"
+#else
 #include "replica/requests/SqlGrantAccessRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -70,18 +74,35 @@ list<pair<string, string>> SqlGrantAccessJob::extendedPersistentState() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlGrantAccessJob::launchRequests(replica::Lock const& lock,
+                                                                   string const& worker,
+                                                                   size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlGrantAccessJob::launchRequests(replica::Lock const& lock,
                                                                string const& worker,
                                                                size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already launched earlier
     list<shared_ptr<SqlRequest>> requests;
+#endif
+    // Launch exactly one request per worker unless it was already launched earlier
     if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlGrantAccessRequest::createAndStart(
+                controller(), worker, database(), user(),
+                [self = shared_from_base<SqlGrantAccessJob>()](
+                        shared_ptr<HttpSqlGrantAccessRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlGrantAccessRequest::createAndStart(
                 controller(), worker, database(), user(),
                 [self = shared_from_base<SqlGrantAccessJob>()](
                         shared_ptr<SqlGrantAccessRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
         _workers.insert(worker);
     }
     return requests;

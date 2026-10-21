@@ -30,8 +30,13 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpDeleteReplicaRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/DeleteRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ErrorReporting.h"
@@ -211,9 +216,14 @@ void DeleteReplicaJob::cancelImpl(replica::Lock const& lock) {
     bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), workerName(), ptr->id(), noCallbackOnFinish, priority(),
                                         keepTracking, id());
+#endif
         }
     }
     _requests.clear();
@@ -229,18 +239,35 @@ void DeleteReplicaJob::_beginDeleteReplica(replica::Lock const& lock) {
     // only because some catalogs may not have a full coverage
     bool const keepTracking = true;
     for (auto&& replica : _replicas) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        _requests.push_back(HttpDeleteReplicaRequest::createAndStart(
+                controller(), workerName(), replica.database(), chunk(),
+                [self = shared_from_base<DeleteReplicaJob>()](shared_ptr<HttpDeleteReplicaRequest> ptr) {
+                    self->_onRequestFinish(ptr);
+                },
+                priority(), keepTracking, id()));
+#else
         _requests.push_back(DeleteRequest::createAndStart(
                 controller(), workerName(), replica.database(), chunk(),
                 [self = shared_from_base<DeleteReplicaJob>()](shared_ptr<DeleteRequest> ptr) {
                     self->_onRequestFinish(ptr);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void DeleteReplicaJob::_onRequestFinish(shared_ptr<HttpDeleteReplicaRequest> const& request) {
+#else
 void DeleteReplicaJob::_onRequestFinish(shared_ptr<DeleteRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+         context() << __func__ << "(HttpDeleteReplicaRequest)"
+#else
          context() << __func__ << "(DeleteRequest)"
+#endif
                    << "  database=" << request->database() << "  worker=" << workerName()
                    << "  chunk=" << chunk());
 
@@ -249,7 +276,7 @@ void DeleteReplicaJob::_onRequestFinish(shared_ptr<DeleteRequest> const& request
     if (state() == State::FINISHED) return;
 
     ++_numRequestsFinished;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         ++_numRequestsSuccess;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk()][request->database()][workerName()] = request->responseData();

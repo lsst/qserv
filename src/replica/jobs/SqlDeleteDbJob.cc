@@ -28,7 +28,11 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlDeleteDbRequest.h"
+#else
 #include "replica/requests/SqlDeleteDbRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -67,18 +71,35 @@ list<pair<string, string>> SqlDeleteDbJob::extendedPersistentState() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlDeleteDbJob::launchRequests(replica::Lock const& lock,
+                                                                string const& worker,
+                                                                size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlDeleteDbJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                             size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already launched earlier
     list<shared_ptr<SqlRequest>> requests;
+#endif
+    // Launch exactly one request per worker unless it was already launched earlier
     if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlDeleteDbRequest::createAndStart(
+                controller(), worker, database(),
+                [self = shared_from_base<SqlDeleteDbJob>()](
+                        shared_ptr<HttpSqlDeleteDbRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlDeleteDbRequest::createAndStart(
                 controller(), worker, database(),
                 [self = shared_from_base<SqlDeleteDbJob>()](shared_ptr<SqlDeleteDbRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#endif
         _workers.insert(worker);
     }
     return requests;
