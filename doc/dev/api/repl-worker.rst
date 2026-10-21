@@ -1061,7 +1061,7 @@ These are the request-specific attributes:
     "params" : {
         "sql_request_type" : "GRANT_ACCESS",
         "user" : <string>,
-        "host" : <string>
+        "hosts" : [<string>, ...]
     }
 
 Where:
@@ -1070,8 +1070,8 @@ Where:
   The name of the user to which access should be granted (e.g., ``qsmaster``).
   The parameter is used for the :ref:`qserv-api-repl-worker-sql-grant-access` operation only.
 
-``host`` : *string*
-  The host from which the user can connect to the database (e.g., ``%`` for any host, ``localhost`` and/or ``127.0.0.1``
+``hosts`` : *array* of *string*
+  The list of hosts from which the user can connect to the database (e.g., ``%`` for any host, ``localhost`` and/or ``127.0.0.1``
   for local connections only, etc.).
   The parameter is used for the :ref:`qserv-api-repl-worker-sql-grant-access` operation only.
 

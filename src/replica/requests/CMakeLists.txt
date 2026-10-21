@@ -6,9 +6,36 @@ target_sources(replica_requests PRIVATE
     EchoRequest.cc
     FindAllRequest.cc
     FindRequest.cc
+    http/HttpCreateReplicaRequest.cc
+    http/HttpDeleteReplicaRequest.cc
+    http/HttpEchoRequest.cc
+    http/HttpFindAllRequest.cc
+    http/HttpFindRequest.cc
     http/HttpMessenger.cc
     http/HttpMessengerConnector.cc
     http/HttpMessengerRequest.cc
+    http/HttpRequest.cc
+    http/HttpSqlAlterTablesRequest.cc
+    http/HttpSqlCreateDbRequest.cc
+    http/HttpSqlCreateIndexesRequest.cc
+    http/HttpSqlCreateTableRequest.cc
+    http/HttpSqlCreateTablesRequest.cc
+    http/HttpSqlDeleteDbRequest.cc
+    http/HttpSqlDeleteTablePartitionRequest.cc
+    http/HttpSqlDeleteTableRequest.cc
+    http/HttpSqlDisableDbRequest.cc
+    http/HttpSqlDropIndexesRequest.cc
+    http/HttpSqlEnableDbRequest.cc
+    http/HttpSqlGetIndexesRequest.cc
+    http/HttpSqlGrantAccessRequest.cc
+    http/HttpSqlQueryRequest.cc
+    http/HttpSqlRemoveTablePartitionsRequest.cc
+    http/HttpSqlRequest.cc
+    http/HttpSqlRowStatsRequest.cc
+    http/HttpStatusRequest.cc
+    http/HttpStopRequest.cc
+    http/HttpSvcMgtRequest.cc
+    http/HttpSvcMgtRequestBase.cc
     Messenger.cc
     MessengerConnector.cc
     ReplicationRequest.cc

@@ -128,7 +128,7 @@ WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& se
             break;
         case protocol::SqlRequestType::GRANT_ACCESS:
             _user = params.requiredString("user");
-            _host = params.requiredString("host");
+            _hosts = params.requiredStringVec("hosts");
             break;
         case protocol::SqlRequestType::TABLE_ROW_STATS:
             _tables = _getTables(params, _batchMode);
@@ -138,7 +138,7 @@ WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& se
     }
 }
 
-json WorkerSqlHttpRequest::getResult() const { return {{"result_sets", _resultSets}}; }
+json WorkerSqlHttpRequest::getResult() const { return _resultSets; }
 
 bool WorkerSqlHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
@@ -171,9 +171,8 @@ bool WorkerSqlHttpRequest::execute() {
                 // If this is the very first iteration of the loop then use
                 // the default result set created earlier. Otherwise create
                 // a new one.
-                if (exchange(first, false) == false) {
-                    resultSet = _currentResultSet(lock, true);
-                }
+                bool const create = exchange(first, false) == false;
+                json& resultSet = _currentResultSet(lock, create);
                 resultSet["scope"] = table;
                 try {
                     h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
@@ -189,25 +188,28 @@ bool WorkerSqlHttpRequest::execute() {
                     });
                 } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
                     ++numFailures;
-                    resultSet["status_ext"] = protocol::StatusExt::NO_SUCH_TABLE;
-                    resultSet["status_ext_str"] = protocol::toString(protocol::StatusExt::NO_SUCH_TABLE);
-                    resultSet["error"] = string(ex.what());
+                    resultSet["result_set"]["status_ext"] = protocol::StatusExt::NO_SUCH_TABLE;
+                    resultSet["result_set"]["status_ext_str"] =
+                            protocol::toString(protocol::StatusExt::NO_SUCH_TABLE);
+                    resultSet["result_set"]["error"] = string(ex.what());
                 } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
                     ++numFailures;
-                    resultSet["status_ext"] = protocol::StatusExt::NOT_PARTITIONED_TABLE;
-                    resultSet["status_ext_str"] =
+                    resultSet["result_set"]["status_ext"] = protocol::StatusExt::NOT_PARTITIONED_TABLE;
+                    resultSet["result_set"]["status_ext_str"] =
                             protocol::toString(protocol::StatusExt::NOT_PARTITIONED_TABLE);
-                    resultSet["error"] = string(ex.what());
+                    resultSet["result_set"]["error"] = string(ex.what());
                 } catch (database::mysql::ER_DUP_KEYNAME_ const& ex) {
                     ++numFailures;
-                    resultSet["status_ext"] = protocol::StatusExt::DUPLICATE_KEY;
-                    resultSet["status_ext_str"] = protocol::toString(protocol::StatusExt::DUPLICATE_KEY);
-                    resultSet["error"] = string(ex.what());
+                    resultSet["result_set"]["status_ext"] = protocol::StatusExt::DUPLICATE_KEY;
+                    resultSet["result_set"]["status_ext_str"] =
+                            protocol::toString(protocol::StatusExt::DUPLICATE_KEY);
+                    resultSet["result_set"]["error"] = string(ex.what());
                 } catch (database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
                     ++numFailures;
-                    resultSet["status_ext"] = protocol::StatusExt::CANT_DROP_KEY;
-                    resultSet["status_ext_str"] = protocol::toString(protocol::StatusExt::CANT_DROP_KEY);
-                    resultSet["error"] = string(ex.what());
+                    resultSet["result_set"]["status_ext"] = protocol::StatusExt::CANT_DROP_KEY;
+                    resultSet["result_set"]["status_ext_str"] =
+                            protocol::toString(protocol::StatusExt::CANT_DROP_KEY);
+                    resultSet["result_set"]["error"] = string(ex.what());
                 }
             }
             if (numFailures > 0) {
@@ -216,6 +218,10 @@ bool WorkerSqlHttpRequest::execute() {
                 setStatus(lock, protocol::Status::SUCCESS);
             }
         } else {
+            // The scope of the result set is determined by the first table in the list (if any).
+            // The attribute makes no sence for non-table requests.
+            resultSet["scope"] = _tables.empty() ? "" : _tables.front();
+
             // TODO: the algorithm will only report a result set of the last query
             // from the multi-query collections. The implementations of the corresponding
             // requests should take this into account.
@@ -283,8 +289,10 @@ vector<Query> WorkerSqlHttpRequest::_queries(shared_ptr<Connection> const& conn)
             break;
         }
         case protocol::SqlRequestType::GRANT_ACCESS: {
-            string const query = g.grant("ALL", _databaseName, _user, _host);
-            queries.emplace_back(Query(query));
+            for (auto const& host : _hosts) {
+                string const query = g.grant("ALL", _databaseName, _user, host);
+                queries.emplace_back(Query(query));
+            }
             break;
         }
         default:
@@ -377,19 +385,17 @@ void WorkerSqlHttpRequest::_extractResultSet(replica::Lock const& lock, shared_p
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
 
     json& resultSet = _currentResultSet(lock);
-
-    // This will explicitly reset the default failure mode as it was
-    // initialized by the constructor of the result set class.
-    resultSet["status_ext"] = protocol::StatusExt::NONE;
-    resultSet["status_ext_str"] = protocol::toString(protocol::StatusExt::NONE);
+    resultSet["result_set"]["status_ext"] = protocol::StatusExt::NONE;
+    resultSet["result_set"]["status_ext_str"] = protocol::toString(protocol::StatusExt::NONE);
+    resultSet["result_set"]["error"] = "";
 
     // Now carry over the actual rest set (if any)
-    resultSet["char_set_name"] = conn->charSetName();
-    resultSet["has_result"] = conn->hasResult() ? 1 : 0;
+    resultSet["result_set"]["char_set_name"] = conn->charSetName();
+    resultSet["result_set"]["has_result"] = conn->hasResult() ? 1 : 0;
     if (conn->hasResult()) {
-        resultSet["fields"] = conn->fieldsToJson();
-        resultSet["rows"] = json::array();
-        json& rowsJson = resultSet["rows"];
+        resultSet["result_set"]["fields"] = conn->fieldsToJson();
+        resultSet["result_set"]["rows"] = json::array();
+        json& rowsJson = resultSet["result_set"]["rows"];
         size_t numRowsProcessed = 0;
         Row row;
         while (conn->next(row)) {
@@ -413,9 +419,9 @@ void WorkerSqlHttpRequest::_reportFailure(replica::Lock const& lock, protocol::S
     // depending on a kind of the request - if it's a simple or the "batch"
     // request.
     json& resultSet = _currentResultSet(lock);
-    resultSet["status_ext"] = statusExt;
-    resultSet["status_ext_str"] = protocol::toString(statusExt);
-    resultSet["error"] = error;
+    resultSet["result_set"]["status_ext"] = statusExt;
+    resultSet["result_set"]["status_ext_str"] = protocol::toString(statusExt);
+    resultSet["result_set"]["error"] = error;
     if (_batchMode) {
         setStatus(lock, protocol::Status::FAILED, protocol::StatusExt::MULTIPLE);
     } else {
@@ -426,7 +432,10 @@ void WorkerSqlHttpRequest::_reportFailure(replica::Lock const& lock, protocol::S
 }
 
 json& WorkerSqlHttpRequest::_currentResultSet(replica::Lock const& lock, bool create) {
-    if (create) _resultSets.push_back(json::object());
+    if (create) {
+        json resultSet = json::object({{"scope", string()}, {"result_set", json::object()}});
+        _resultSets.push_back(resultSet);
+    }
     if (_resultSets.size() != 0) return _resultSets.back();
     throw logic_error(CONTEXT + " the operation is not allowed in this state");
 }
