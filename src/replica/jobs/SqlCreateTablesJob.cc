@@ -34,33 +34,30 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTablesJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlCreateTablesJob::typeName() { return "SqlCreateTablesJob"; }
 
-SqlCreateTablesJob::Ptr SqlCreateTablesJob::create(string const& database, string const& table,
-                                                   string const& engine, string const& partitionByColumn,
-                                                   list<SqlColDef> const& columns, string const& charsetName,
-                                                   string const& collationName, bool allWorkers,
-                                                   Controller::Ptr const& controller,
-                                                   string const& parentJobId, CallbackType const& onFinish,
-                                                   int priority) {
-    return Ptr(new SqlCreateTablesJob(database, table, engine, partitionByColumn, columns, charsetName,
-                                      collationName, allWorkers, controller, parentJobId, onFinish,
-                                      priority));
+shared_ptr<SqlCreateTablesJob> SqlCreateTablesJob::create(
+        string const& database, string const& table, string const& engine, string const& partitionByColumn,
+        list<SqlColDef> const& columns, string const& charsetName, string const& collationName,
+        bool allWorkers, shared_ptr<Controller> const& controller, string const& parentJobId,
+        CallbackType const& onFinish, int priority) {
+    return shared_ptr<SqlCreateTablesJob>(
+            new SqlCreateTablesJob(database, table, engine, partitionByColumn, columns, charsetName,
+                                   collationName, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 SqlCreateTablesJob::SqlCreateTablesJob(string const& database, string const& table, string const& engine,
                                        string const& partitionByColumn, list<SqlColDef> const& columns,
                                        string const& charsetName, string const& collationName,
-                                       bool allWorkers, Controller::Ptr const& controller,
+                                       bool allWorkers, shared_ptr<Controller> const& controller,
                                        string const& parentJobId, CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_CREATE_TABLES", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_CREATE_TABLES", priority),
           _database(database),
           _table(table),
           _engine(engine),
@@ -83,9 +80,10 @@ list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                         size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+list<shared_ptr<SqlRequest>> SqlCreateTablesJob::launchRequests(replica::Lock const& lock,
+                                                                string const& worker,
+                                                                size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -97,12 +95,13 @@ list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(replica::Lock const& lo
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
         bool const keepTracking = true;
         requests.push_back(SqlCreateTablesRequest::createAndStart(
                 controller(), worker, database(), tables, engine(), partitionByColumn(), columns(),
                 charsetName(), collationName(),
-                [self = shared_from_base<SqlCreateTablesJob>()](SqlCreateTablesRequest::Ptr const& request) {
+                [self = shared_from_base<SqlCreateTablesJob>()](
+                        shared_ptr<SqlCreateTablesRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
