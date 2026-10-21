@@ -33,11 +33,13 @@
 #include "css/DbInterfaceMySql.h"
 #include "http/Exceptions.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/SqlAlterTablesJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/requests/SqlResultSet.h"
+#include "replica/services/ServiceProvider.h"
 
 using namespace std;
 using json = nlohmann::json;

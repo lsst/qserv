@@ -27,6 +27,10 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#include "replica/jobs/CreateReplicaJob.h"
+#include "replica/jobs/DeleteReplicaJob.h"
+#include "replica/services/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -34,27 +38,27 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MoveReplicaJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
 
-MoveReplicaJob::Ptr MoveReplicaJob::create(string const& databaseFamily, unsigned int chunk,
-                                           string const& sourceWorker, string const& destinationWorker,
-                                           bool purge, Controller::Ptr const& controller,
-                                           string const& parentJobId, CallbackType const& onFinish,
-                                           int priority) {
-    return MoveReplicaJob::Ptr(new MoveReplicaJob(databaseFamily, chunk, sourceWorker, destinationWorker,
-                                                  purge, controller, parentJobId, onFinish, priority));
+shared_ptr<MoveReplicaJob> MoveReplicaJob::create(string const& databaseFamily, unsigned int chunk,
+                                                  string const& sourceWorker, string const& destinationWorker,
+                                                  bool purge, shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId, CallbackType const& onFinish,
+                                                  int priority) {
+    return shared_ptr<MoveReplicaJob>(new MoveReplicaJob(databaseFamily, chunk, sourceWorker,
+                                                         destinationWorker, purge, controller, parentJobId,
+                                                         onFinish, priority));
 }
 
 MoveReplicaJob::MoveReplicaJob(string const& databaseFamily, unsigned int chunk, string const& sourceWorker,
-                               string const& destinationWorker, bool purge, Controller::Ptr const& controller,
-                               string const& parentJobId, CallbackType const& onFinish, int priority)
+                               string const& destinationWorker, bool purge,
+                               shared_ptr<Controller> const& controller, string const& parentJobId,
+                               CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "MOVE_REPLICA", priority),
           _databaseFamily(databaseFamily),
           _chunk(chunk),
@@ -65,12 +69,9 @@ MoveReplicaJob::MoveReplicaJob(string const& databaseFamily, unsigned int chunk,
 
 MoveReplicaJobResult const& MoveReplicaJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("MoveReplicaJob::" + string(__func__) +
-                      "  the method can't be called while"
-                      " the job hasn't finished");
+                      "  the method can't be called while the job hasn't finished");
 }
 
 list<pair<string, string>> MoveReplicaJob::extendedPersistentState() const {
@@ -86,7 +87,7 @@ list<pair<string, string>> MoveReplicaJob::extendedPersistentState() const {
 list<pair<string, string>> MoveReplicaJob::persistentLogData() const {
     list<pair<string, string>> result;
 
-    auto&& replicaData = getReplicaData();
+    auto const& replicaData = getReplicaData();
 
     // Per-worker counters for the following categories:
     //
@@ -97,21 +98,19 @@ list<pair<string, string>> MoveReplicaJob::persistentLogData() const {
     //   deleted-chunks:
     //     the total number of chunks deleted from the workers as a result
     //     of the operation
-
     map<string, map<string, size_t>> workerCategoryCounter;
 
-    for (auto&& info : replicaData.createdReplicas) {
+    for (auto const& info : replicaData.createdReplicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
-    for (auto&& info : replicaData.deletedReplicas) {
+    for (auto const& info : replicaData.deletedReplicas) {
         workerCategoryCounter[info.worker()]["deleted-chunks"]++;
     }
-    for (auto&& workerItr : workerCategoryCounter) {
-        auto&& worker = workerItr.first;
-        string val = "worker=" + worker;
-
-        for (auto&& categoryItr : workerItr.second) {
-            auto&& category = categoryItr.first;
+    for (auto const& workerItr : workerCategoryCounter) {
+        auto const& workerName = workerItr.first;
+        string val = "worker=" + workerName;
+        for (auto const& categoryItr : workerItr.second) {
+            auto const& category = categoryItr.first;
             size_t const counter = categoryItr.second;
             val += " " + category + "=" + to_string(counter);
         }
@@ -124,9 +123,7 @@ void MoveReplicaJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if configuration parameters are valid
-
-    auto const& config = controller()->serviceProvider()->config();
-
+    auto const config = controller()->serviceProvider()->config();
     if (not(config->isKnownDatabaseFamily(databaseFamily()) and config->isKnownWorker(sourceWorker()) and
             config->isKnownWorker(destinationWorker()) and (sourceWorker() != destinationWorker()))) {
         LOGS(_log, LOG_LVL_ERROR,
@@ -139,27 +136,23 @@ void MoveReplicaJob::startImpl(replica::Lock const& lock) {
         return;
     }
 
-    // As the first step, create a new replica at the destination.
-    // The current one will be (if requested) purged after a successful
-    // completion of the first step.
-
-    auto self = shared_from_base<MoveReplicaJob>();
-
+    // As the first step, create a new replica at the destination. The current one will
+    // be (if requested) purged after a successful completion of the first step.
     _createReplicaJob = CreateReplicaJob::create(
             databaseFamily(), chunk(), sourceWorker(), destinationWorker(), controller(), id(),
-            [self](CreateReplicaJob::Ptr const& job) { self->_onCreateJobFinish(); },
-            priority()  // inherit from the current job
-    );
+            [self = shared_from_base<MoveReplicaJob>()](shared_ptr<CreateReplicaJob> const& job) {
+                self->_onCreateJobFinish();
+            },
+            priority());
     _createReplicaJob->start();
 }
 
 void MoveReplicaJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    if (_createReplicaJob and (_createReplicaJob->state() != Job::State::FINISHED)) {
+    if (_createReplicaJob && _createReplicaJob->state() != Job::State::FINISHED) {
         _createReplicaJob->cancel();
     }
-    if (_deleteReplicaJob and (_deleteReplicaJob->state() != Job::State::FINISHED)) {
+    if (_deleteReplicaJob && _deleteReplicaJob->state() != Job::State::FINISHED) {
         _deleteReplicaJob->cancel();
     }
 }
@@ -173,27 +166,23 @@ void MoveReplicaJob::_onCreateJobFinish() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     if (_createReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
         // Extract stats
-
         _replicaData.createdReplicas = _createReplicaJob->getReplicaData().replicas;
         _replicaData.createdChunks = _createReplicaJob->getReplicaData().chunks;
 
         // Initiate the second stage (which is optional) - deleting the replica
         // at the source
-
         if (_purge) {
-            auto self = shared_from_base<MoveReplicaJob>();
             _deleteReplicaJob = DeleteReplicaJob::create(
                     databaseFamily(), chunk(), sourceWorker(), controller(), id(),
-                    [self](DeleteReplicaJob::Ptr const& job) { self->_onDeleteJobFinish(); },
-                    priority()  // inherit from the current job
-            );
+                    [self = shared_from_base<MoveReplicaJob>()](shared_ptr<DeleteReplicaJob> const& job) {
+                        self->_onDeleteJobFinish();
+                    },
+                    priority());
             _deleteReplicaJob->start();
         } else {
             // Otherwise, we're done
@@ -202,7 +191,6 @@ void MoveReplicaJob::_onCreateJobFinish() {
 
     } else {
         // Carry over a state of the child job
-
         finish(lock, _createReplicaJob->extendedState());
     }
 }
@@ -211,13 +199,10 @@ void MoveReplicaJob::_onDeleteJobFinish() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Extract stats
-
     if (_deleteReplicaJob->extendedState() == Job::ExtendedState::SUCCESS) {
         _replicaData.deletedReplicas = _deleteReplicaJob->getReplicaData().replicas;
         _replicaData.deletedChunks = _deleteReplicaJob->getReplicaData().chunks;

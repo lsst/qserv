@@ -31,7 +31,9 @@
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/services/DatabaseServices.h"
+#include "replica/services/ServiceProvider.h"
 
 using namespace std;
 using json = nlohmann::json;
