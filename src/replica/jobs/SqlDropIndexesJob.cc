@@ -23,7 +23,11 @@
 #include "replica/jobs/SqlDropIndexesJob.h"
 
 // Qserv headers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlDropIndexesRequest.h"
+#else
 #include "replica/requests/SqlDropIndexesRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -74,10 +78,17 @@ list<pair<string, string>> SqlDropIndexesJob::extendedPersistentState() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlDropIndexesJob::launchRequests(replica::Lock const& lock,
+                                                                   string const& worker,
+                                                                   size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlDropIndexesJob::launchRequests(replica::Lock const& lock,
                                                                string const& worker,
                                                                size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -92,11 +103,21 @@ list<shared_ptr<SqlRequest>> SqlDropIndexesJob::launchRequests(replica::Lock con
     // the requests for the current worker.
     for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlDropIndexesRequest::createAndStart(
+                controller(), worker, database(), tables, indexName(),
+                [self = shared_from_base<SqlDropIndexesJob>()](
+                        shared_ptr<HttpSqlDropIndexesRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlDropIndexesRequest::createAndStart(
                 controller(), worker, database(), tables, indexName(),
                 [self = shared_from_base<SqlDropIndexesJob>()](
                         shared_ptr<SqlDropIndexesRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

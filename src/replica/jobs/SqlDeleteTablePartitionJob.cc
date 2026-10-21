@@ -30,7 +30,11 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlDeleteTablePartitionRequest.h"
+#else
 #include "replica/requests/SqlDeleteTablePartitionRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -93,10 +97,17 @@ list<pair<string, string>> SqlDeleteTablePartitionJob::extendedPersistentState()
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlDeleteTablePartitionJob::launchRequests(replica::Lock const& lock,
+                                                                            string const& worker,
+                                                                            size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlDeleteTablePartitionJob::launchRequests(replica::Lock const& lock,
                                                                         string const& worker,
                                                                         size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -110,6 +121,15 @@ list<shared_ptr<SqlRequest>> SqlDeleteTablePartitionJob::launchRequests(replica:
     // the requests for the current worker.
     for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlDeleteTablePartitionRequest::createAndStart(
+                controller(), worker, database(), tables, transactionId(),
+                [self = shared_from_base<SqlDeleteTablePartitionJob>()](
+                        shared_ptr<HttpSqlDeleteTablePartitionRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlDeleteTablePartitionRequest::createAndStart(
                 controller(), worker, database(), tables, transactionId(),
                 [self = shared_from_base<SqlDeleteTablePartitionJob>()](
@@ -117,6 +137,7 @@ list<shared_ptr<SqlRequest>> SqlDeleteTablePartitionJob::launchRequests(replica:
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

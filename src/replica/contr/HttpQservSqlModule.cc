@@ -27,7 +27,11 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlQueryRequest.h"
+#else
 #include "replica/requests/SqlQueryRequest.h"
+#endif
 
 using namespace std;
 using json = nlohmann::json;
@@ -68,8 +72,13 @@ json HttpQservSqlModule::_execute() {
     debug(__func__, "user=" + user);
     debug(__func__, "maxRows=" + to_string(maxRows));
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    auto const request =
+            HttpSqlQueryRequest::createAndStart(controller(), worker, query, user, password, maxRows);
+#else
     auto const request =
             SqlQueryRequest::createAndStart(controller(), worker, query, user, password, maxRows);
+#endif
     request->wait();
 
     json result;

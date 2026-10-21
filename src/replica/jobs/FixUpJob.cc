@@ -30,8 +30,13 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/FindAllJob.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpCreateReplicaRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/ReplicationRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -140,9 +145,15 @@ void FixUpJob::cancelImpl(replica::Lock const& lock) {
     bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
+        }
     }
     _destinationWorker2tasks.clear();
     _requests.clear();
@@ -225,7 +236,11 @@ void FixUpJob::_onPrecursorJobFinish() {
     }
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void FixUpJob::_onRequestFinish(shared_ptr<HttpCreateReplicaRequest> const& request) {
+#else
 void FixUpJob::_onRequestFinish(shared_ptr<ReplicationRequest> const& request) {
+#endif
     string const database = request->database();
     string const workerName = request->workerName();
     unsigned int const chunk = request->chunk();
@@ -239,7 +254,7 @@ void FixUpJob::_onRequestFinish(shared_ptr<ReplicationRequest> const& request) {
     if (state() == State::FINISHED) return;
 
     _numFinished++;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         _numSuccess++;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk][database][workerName] = request->responseData();
@@ -267,12 +282,21 @@ size_t FixUpJob::_launchNext(replica::Lock const& lock, string const& destinatio
         // Launch the replication request and register it for further
         // tracking (or cancellation, should the one be requested)
         ReplicationTask const& task = tasks.front();
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        _requests.push_back(HttpCreateReplicaRequest::createAndStart(
+                controller(), task.destinationWorker, task.sourceWorker, task.database, task.chunk,
+                [self = shared_from_base<FixUpJob>()](shared_ptr<HttpCreateReplicaRequest> ptr) {
+                    self->_onRequestFinish(ptr);
+                },
+                priority(), keepTracking, id()));
+#else
         _requests.push_back(ReplicationRequest::createAndStart(
                 controller(), task.destinationWorker, task.sourceWorker, task.database, task.chunk,
                 [self = shared_from_base<FixUpJob>()](shared_ptr<ReplicationRequest> ptr) {
                     self->_onRequestFinish(ptr);
                 },
                 priority(), keepTracking, id()));
+#endif
         tasks.pop();
         numLaunched++;
     }
