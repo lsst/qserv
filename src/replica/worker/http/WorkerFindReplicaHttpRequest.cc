@@ -77,7 +77,7 @@ WorkerFindReplicaHttpRequest::WorkerFindReplicaHttpRequest(shared_ptr<ServicePro
           _chunkNumber(params.requiredUInt32("chunk")),
           _computeCheckSum(params.requiredBool("compute_cs")) {}
 
-json WorkerFindReplicaHttpRequest::getResult() const { return {{"replica_info", _replicaInfo.toJson()}}; }
+json WorkerFindReplicaHttpRequest::getResult() const { return _replicaInfo.toJson(); }
 
 bool WorkerFindReplicaHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, _CONTEXT << " database: " << _databaseName << " chunk: " << _chunkNumber);

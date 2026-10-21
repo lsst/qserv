@@ -79,7 +79,7 @@ WorkerDeleteReplicaHttpRequest::WorkerDeleteReplicaHttpRequest(
                                util::TimeUtils::now(), ReplicaInfo::FileInfoCollection{});
 }
 
-json WorkerDeleteReplicaHttpRequest::getResult() const { return {{"replica_info", _replicaInfo.toJson()}}; }
+json WorkerDeleteReplicaHttpRequest::getResult() const { return _replicaInfo.toJson(); }
 
 bool WorkerDeleteReplicaHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, _CONTEXT << " db: " << _databaseName << " chunk: " << _chunkNumber);

@@ -216,6 +216,10 @@ json WorkerHttpRequest::toJson(bool includeResultIfFinished) const {
     json req = _hdr.toJson();
     req["params"] = _params.toJson();
 
+    // Sanitize the request parameters for inclusion in the JSON output.
+    if (req["params"].count("user") != 0) req["params"]["user"] = "******";
+    if (req["params"].count("password") != 0) req["params"]["password"] = "******";
+
     return {{"req", req},
             {"resp", json::object({{"type", _type},
                                    {"expiration_timeout_sec", _expirationTimeoutSec},
