@@ -27,8 +27,13 @@
 
 // Qserv headers
 #include "replica/contr/Controller.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpFindRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/FindRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -195,6 +200,17 @@ void VerifyJob::startImpl(replica::Lock const& lock) {
     }
     bool const keepTracking = true;
     for (ReplicaInfo const& replica : replicas) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        auto request = HttpFindRequest::createAndStart(
+                controller(), replica.worker(), replica.database(), replica.chunk(),
+                [self = shared_from_base<VerifyJob>()](shared_ptr<HttpFindRequest> request) {
+                    self->_onRequestFinish(request);
+                },
+                priority(), computeCheckSum(), keepTracking, id());
+        _replicas[request->id()] = replica;
+        _requests[request->id()] = request;
+    }
+#else
         auto request = FindRequest::createAndStart(
                 controller(), replica.worker(), replica.database(), replica.chunk(),
                 [self = shared_from_base<VerifyJob>()](shared_ptr<FindRequest> request) {
@@ -204,6 +220,7 @@ void VerifyJob::startImpl(replica::Lock const& lock) {
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }
+#endif
 }
 
 void VerifyJob::cancelImpl(replica::Lock const& lock) {
@@ -217,9 +234,14 @@ void VerifyJob::cancelImpl(replica::Lock const& lock) {
     for (auto&& entry : _requests) {
         auto const& request = entry.second;
         request->cancel();
-        if (request->state() != Request::State::FINISHED) {
+        if (request->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), request->workerName(), request->id(),
+                                            noCallbackOnFinish, priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), request->workerName(), request->id(),
                                         noCallbackOnFinish, priority(), keepTracking, id());
+#endif
         }
     }
     _replicas.clear();
@@ -231,7 +253,11 @@ void VerifyJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<VerifyJob>(lock, _onFinish);
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void VerifyJob::_onRequestFinish(shared_ptr<HttpFindRequest> const& request) {
+#else
 void VerifyJob::_onRequestFinish(shared_ptr<FindRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " chunk=" << request->chunk());
@@ -245,7 +271,7 @@ void VerifyJob::_onRequestFinish(shared_ptr<FindRequest> const& request) {
     ReplicaDiff selfReplicaDiff;           // against the previous state of the current replica
     vector<ReplicaDiff> otherReplicaDiff;  // against other known replicas
 
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         // TODO:
         // - check if the replica still exists. It's fine if it's gone
         //   because some jobs may choose either to purge extra replicas
@@ -309,12 +335,21 @@ void VerifyJob::_onRequestFinish(shared_ptr<FindRequest> const& request) {
     }
     bool const keepTracking = true;
     for (ReplicaInfo const& replica : replicas) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        auto request = HttpFindRequest::createAndStart(
+                controller(), replica.worker(), replica.database(), replica.chunk(),
+                [self = shared_from_base<VerifyJob>()](shared_ptr<HttpFindRequest> request) {
+                    self->_onRequestFinish(request);
+                },
+                priority(), computeCheckSum(), keepTracking, id());
+#else
         auto request = FindRequest::createAndStart(
                 controller(), replica.worker(), replica.database(), replica.chunk(),
                 [self = shared_from_base<VerifyJob>()](shared_ptr<FindRequest> request) {
                     self->_onRequestFinish(request);
                 },
                 priority(), computeCheckSum(), keepTracking, id());
+#endif
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }

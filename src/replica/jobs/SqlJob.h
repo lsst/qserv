@@ -40,7 +40,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpSqlRequest;
+#else
 class SqlRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -132,7 +136,11 @@ protected:
      * The callback function to be invoked on a completion of requests
      * targeting workers.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void onRequestFinish(std::shared_ptr<HttpSqlRequest> const& request);
+#else
     void onRequestFinish(std::shared_ptr<SqlRequest> const& request);
+#endif
 
     /**
      * This method lets a request type-specific subclass to launch requests
@@ -144,14 +152,24 @@ protected:
      * @param maxRequestsPerWorker The maximum number of requests to be launched per each worker.
      * @return A collection of requests launched.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    virtual std::list<std::shared_ptr<HttpSqlRequest>> launchRequests(
+            replica::Lock const& lock, std::string const& workerName,
+            std::size_t maxRequestsPerWorker = 1) = 0;
+#else
     virtual std::list<std::shared_ptr<SqlRequest>> launchRequests(replica::Lock const& lock,
                                                                   std::string const& workerName,
                                                                   std::size_t maxRequestsPerWorker = 1) = 0;
+#endif
 
     /**
      * Stop the specified request if it's still running.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void stopRequest(replica::Lock const& lock, std::shared_ptr<HttpSqlRequest> const& request) const;
+#else
     void stopRequest(replica::Lock const& lock, std::shared_ptr<SqlRequest> const& request) const;
+#endif
 
     /**
      * This method lets a request type-specific subclass a chance to process
@@ -266,7 +284,11 @@ private:
     bool const _ignoreDuplicateKey;
 
     /// A collection of requests implementing the operation
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::vector<std::shared_ptr<HttpSqlRequest>> _requests;
+#else
     std::vector<std::shared_ptr<SqlRequest>> _requests;
+#endif
 
     /// This counter is used for tracking a condition for completing the job
     /// before computing its final state.

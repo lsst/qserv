@@ -31,7 +31,11 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSvcMgtRequest.h"
+#else
 #include "replica/requests/ServiceManagementRequest.h"
+#endif
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -169,8 +173,11 @@ private:
      * The callback function to be invoked on a completion of the Replication worker probes.
      * @param request  A pointer to a request.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpSvcStatusRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<ServiceStatusRequest> const& request);
-
+#endif
     /**
      * The callback function to be invoked on a completion of the Qserv worker probes.
      * @param request  A pointer to a request.
@@ -184,7 +191,11 @@ private:
     CallbackType _onFinish;
 
     /// Requests sent to the Replication workers registered by their identifiers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::map<std::string, std::shared_ptr<HttpSvcStatusRequest>> _requests;
+#else
     std::map<std::string, std::shared_ptr<ServiceStatusRequest>> _requests;
+#endif
 
     /// Requests sent to the Qserv workers registered by their identifiers
     std::map<std::string, std::shared_ptr<TestEchoQservMgtRequest>> _qservRequests;

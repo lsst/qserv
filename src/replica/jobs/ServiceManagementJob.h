@@ -31,7 +31,11 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSvcMgtRequest.h"
+#else
 #include "replica/requests/ServiceManagementRequest.h"
+#endif
 #include "replica/util/ServiceStateInfo.h"
 
 // Forward declarations
@@ -110,12 +114,20 @@ protected:
      * @param worker  the name of a worker to which the request will be sent
      * @return a newly created & submitted object
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    virtual std::shared_ptr<HttpSvcMgtRequestBase> submitRequest(std::string const& worker) = 0;
+#else
     virtual std::shared_ptr<ServiceManagementRequestBase> submitRequest(std::string const& worker) = 0;
+#endif
 
     /**
      * The callback function to be invoked on a completion of requests targeting workers.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void onRequestFinish(std::shared_ptr<HttpSvcMgtRequestBase> const& request);
+#else
     void onRequestFinish(std::shared_ptr<ServiceManagementRequestBase> const& request);
+#endif
 
 private:
     // Input parameters
@@ -124,7 +136,11 @@ private:
     unsigned int _requestExpirationIvalSec;
 
     /// A collection of requests implementing the operation
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpSvcMgtRequestBase>> _requests;
+#else
     std::list<std::shared_ptr<ServiceManagementRequestBase>> _requests;
+#endif
 
     /// This counter is used for tracking a condition for completing the job
     /// before computing its final state.
@@ -176,6 +192,15 @@ protected:
         notifyDefaultImpl<ServiceManagementJob<REQUEST>>(lock, _onFinish);
     }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    virtual std::shared_ptr<HttpSvcMgtRequestBase> submitRequest(std::string const& worker) final {
+        return REQUEST::createAndStart(
+                controller(), worker,
+                [self = shared_from_base<ServiceManagementJob<REQUEST>>()](
+                        std::shared_ptr<REQUEST> const& ptr) { self->onRequestFinish(ptr); },
+                priority(), id(), requestExpirationIvalSec());
+    }
+#else
     virtual std::shared_ptr<ServiceManagementRequestBase> submitRequest(std::string const& worker) final {
         return REQUEST::createAndStart(
                 controller(), worker,
@@ -183,6 +208,7 @@ protected:
                         std::shared_ptr<REQUEST> const& ptr) { self->onRequestFinish(ptr); },
                 priority(), id(), requestExpirationIvalSec());
     }
+#endif
 
 private:
     ServiceManagementJob(bool allWorkers, unsigned int requestExpirationIvalSec,
@@ -197,12 +223,21 @@ private:
     CallbackType _onFinish;  ///< @note is reset when the job finishes
 };
 
-typedef ServiceManagementJob<ServiceStatusRequest> ServiceStatusJob;
-typedef ServiceManagementJob<ServiceRequestsRequest> ServiceRequestsJob;
-typedef ServiceManagementJob<ServiceSuspendRequest> ServiceSuspendJob;
-typedef ServiceManagementJob<ServiceResumeRequest> ServiceResumeJob;
-typedef ServiceManagementJob<ServiceDrainRequest> ServiceDrainJob;
-typedef ServiceManagementJob<ServiceReconfigRequest> ServiceReconfigJob;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+using ServiceStatusJob = ServiceManagementJob<HttpSvcStatusRequest>;
+using ServiceRequestsJob = ServiceManagementJob<HttpSvcRequestsRequest>;
+using ServiceSuspendJob = ServiceManagementJob<HttpSvcSuspendRequest>;
+using ServiceResumeJob = ServiceManagementJob<HttpSvcResumeRequest>;
+using ServiceDrainJob = ServiceManagementJob<HttpSvcDrainRequest>;
+using ServiceReconfigJob = ServiceManagementJob<HttpSvcReconfigRequest>;
+#else
+using ServiceStatusJob = ServiceManagementJob<ServiceStatusRequest>;
+using ServiceRequestsJob = ServiceManagementJob<ServiceRequestsRequest>;
+using ServiceSuspendJob = ServiceManagementJob<ServiceSuspendRequest>;
+using ServiceResumeJob = ServiceManagementJob<ServiceResumeRequest>;
+using ServiceDrainJob = ServiceManagementJob<ServiceDrainRequest>;
+using ServiceReconfigJob = ServiceManagementJob<ServiceReconfigRequest>;
+#endif
 
 }  // namespace lsst::qserv::replica
 

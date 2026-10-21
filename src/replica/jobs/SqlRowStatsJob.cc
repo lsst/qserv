@@ -29,7 +29,11 @@
 #include "replica/contr/Controller.h"
 #include "replica/jobs/SqlJobResult.h"
 #include "replica/proto/Protocol.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlRowStatsRequest.h"
+#else
 #include "replica/requests/SqlRowStatsRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkedTable.h"
@@ -103,10 +107,16 @@ list<pair<string, string>> SqlRowStatsJob::extendedPersistentState() const {
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
-
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const& lock,
+                                                                string const& worker,
+                                                                size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                             size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -136,12 +146,22 @@ list<shared_ptr<SqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const&
     // the requests for the current worker.
     for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlRowStatsRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlRowStatsJob>()](
+                        shared_ptr<HttpSqlRowStatsRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlRowStatsRequest::createAndStart(
                 controller(), worker, database(), tables,
                 [self = shared_from_base<SqlRowStatsJob>()](shared_ptr<SqlRowStatsRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

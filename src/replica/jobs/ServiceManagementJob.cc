@@ -82,7 +82,11 @@ void ServiceManagementBaseJob::cancelImpl(replica::Lock const& lock) {
     _numFinished = 0;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void ServiceManagementBaseJob::onRequestFinish(std::shared_ptr<HttpSvcMgtRequestBase> const& request) {
+#else
 void ServiceManagementBaseJob::onRequestFinish(std::shared_ptr<ServiceManagementRequestBase> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  worker=" << request->workerName() << " id=" << request->id()
                    << " type=" << request->type() << " state=" << request->state2string());
@@ -102,7 +106,11 @@ void ServiceManagementBaseJob::onRequestFinish(std::shared_ptr<ServiceManagement
     if (_requests.size() == _numFinished) {
         size_t const numSucceeded =
                 count_if(_requests.begin(), _requests.end(),
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+                         [](std::shared_ptr<HttpSvcMgtRequestBase> const& ptr) {
+#else
                          [](std::shared_ptr<ServiceManagementRequestBase> const& ptr) {
+#endif
                              return ptr->extendedState() == RequestI::ExtendedState::SUCCESS;
                          });
         finish(lock, numSucceeded == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);

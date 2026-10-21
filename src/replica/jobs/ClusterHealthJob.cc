@@ -142,10 +142,17 @@ void ClusterHealthJob::startImpl(replica::Lock const& lock) {
     auto workers = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                 : controller()->serviceProvider()->config()->workers();
     for (auto const& worker : workers) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        auto const replicationRequest = HttpSvcStatusRequest::createAndStart(
+                controller(), worker,
+                [self](shared_ptr<HttpSvcStatusRequest> const& request) { self->_onRequestFinish(request); },
+                priority(), id(), timeoutSec());
+#else
         auto const replicationRequest = ServiceStatusRequest::createAndStart(
                 controller(), worker,
                 [self](shared_ptr<ServiceStatusRequest> const& request) { self->_onRequestFinish(request); },
                 priority(), id(), timeoutSec());
+#endif
         _requests[replicationRequest->id()] = replicationRequest;
         ++_numStarted;
 
@@ -182,7 +189,11 @@ void ClusterHealthJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<ClusterHealthJob>(lock, _onFinish);
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void ClusterHealthJob::_onRequestFinish(shared_ptr<HttpSvcStatusRequest> const& request) {
+#else
 void ClusterHealthJob::_onRequestFinish(shared_ptr<ServiceStatusRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[replication] worker=" << request->workerName());
 
     if (state() == State::FINISHED) return;

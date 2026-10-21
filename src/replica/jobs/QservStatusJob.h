@@ -33,7 +33,6 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/requests/ServiceManagementRequest.h"
 #include "replica/util/Common.h"
 #include "wbase/TaskState.h"
 

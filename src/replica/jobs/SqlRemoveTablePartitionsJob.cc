@@ -23,7 +23,11 @@
 #include "replica/jobs/SqlRemoveTablePartitionsJob.h"
 
 // Qserv headers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlRemoveTablePartitionsRequest.h"
+#else
 #include "replica/requests/SqlRemoveTablePartitionsRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -70,10 +74,17 @@ list<pair<string, string>> SqlRemoveTablePartitionsJob::extendedPersistentState(
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock const& lock,
+                                                                             string const& worker,
+                                                                             size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock const& lock,
                                                                          string const& worker,
                                                                          size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -87,6 +98,15 @@ list<shared_ptr<SqlRequest>> SqlRemoveTablePartitionsJob::launchRequests(replica
     // the requests for the current worker.
     bool const keepTracking = true;
     for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlRemoveTablePartitionsRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlRemoveTablePartitionsJob>()](
+                        shared_ptr<HttpSqlRemoveTablePartitionsRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlRemoveTablePartitionsRequest::createAndStart(
                 controller(), worker, database(), tables,
                 [self = shared_from_base<SqlRemoveTablePartitionsJob>()](
@@ -94,6 +114,7 @@ list<shared_ptr<SqlRequest>> SqlRemoveTablePartitionsJob::launchRequests(replica
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }
