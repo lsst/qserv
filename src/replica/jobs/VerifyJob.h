@@ -23,11 +23,21 @@
 
 // System headers
 #include <functional>
+#include <map>
+#include <memory>
+#include <ostream>
 #include <string>
+#include <vector>
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/requests/FindRequest.h"
+#include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class FindRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -54,11 +64,8 @@ public:
     /**
      * The normal constructor
      *
-     * @param replica1
-     *   a reference to the the 'older' replica object
-     *
-     * @param replica2
-     *   `a reference to the the 'newer' replica object
+     * @param replica1 a reference to the the 'older' replica object
+     * @param replica2 a reference to the the 'newer' replica object
      */
     ReplicaDiff(ReplicaInfo const& replica1, ReplicaInfo const& replica2);
 
@@ -74,18 +81,13 @@ public:
     ReplicaInfo const& replica2() const { return _replica2; }
 
     /**
-     * @return
-     *   'true' if the object encapsulates two snapshots referring
-     *   to the same replica.
+     * @return 'true' if the object encapsulates two snapshots referring to the same replica.
      */
     bool isSelf() const;
 
     /**
-     * The comparison operator
-     *
-     * @return
-     *   'true' in case if there are differences between replicas. Specific aspects
-     *   of the difference can be explored by directly comparing the replica objects.
+     * @return 'true' in case if there are differences between replicas. Specific aspects
+     *  of the difference can be explored by directly comparing the replica objects.
      */
     bool operator()() const { return _notEqual; }
 
@@ -116,7 +118,6 @@ private:
     mutable std::string _flags;  ///< computed and cached first time requested
 };
 
-/// Overloaded streaming operator for type ReplicaDiff
 std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
 
 /**
@@ -130,117 +131,82 @@ std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
  *
  * Any differences will get reported to a subscriber via a specific callback
  * function. The new status of a replica will be also recorded within the database.
+ *
+ * @note Notifications are sent using a pool of the Boost ASIO threads of the Controller.
  */
 class VerifyJob : public Job {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<VerifyJob> Ptr;
+    /// The function type for notifications on the completion of the request
+    typedef std::function<void(std::shared_ptr<VerifyJob>)> CallbackType;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr, ReplicaDiff const&, std::vector<ReplicaDiff> const&)> CallbackTypeOnDiff;
+    typedef std::function<void(std::shared_ptr<VerifyJob>, ReplicaDiff const&,
+                               std::vector<ReplicaDiff> const&)>
+            CallbackTypeOnDiff;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
-     * @param maxReplicas
-     *   maximum number of replicas to process simultaneously
-     *   (must be greater than 0).
-     *
-     * @param computeCheckSum
-     *   compute check/control sum on each file if set to 'true'
-     *
-     @ @param onReplicaDifference
-     *   callback function to be called when two replicas won't match
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   an identifier of a parent job
-     *
-     * @param onFinish
-     *   a callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   the priority level of the job
-     *
-     * @return
-     *   pointer to the created object
-     *
-     * @throws std::invalid_argument
-     *   if maxReplicas is 0
+     * @param maxReplicas maximum number of replicas to process simultaneously
+     *  (must be greater than 0).
+     * @param computeCheckSum compute check/control sum on each file if set to 'true'
+     * @param onReplicaDifference callback function to be called when two replicas won't match
+     * @param controller for launching requests
+     * @param parentJobId an identifier of a parent job
+     * @param onFinish a callback function to be called upon a completion of the job
+     * @param priority the priority level of the job
+     * @return pointer to the created object
+     * @throws std::invalid_argument if maxReplicas is 0
      */
-    static Ptr create(size_t maxReplicas, bool computeCheckSum, CallbackTypeOnDiff const& onReplicaDifference,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
+    static std::shared_ptr<VerifyJob> create(std::size_t maxReplicas, bool computeCheckSum,
+                                             CallbackTypeOnDiff const& onReplicaDifference,
+                                             std::shared_ptr<Controller> const& controller,
+                                             std::string const& parentJobId, CallbackType const& onFinish,
+                                             int priority);
 
     VerifyJob() = delete;
     VerifyJob(VerifyJob const&) = delete;
     VerifyJob& operator=(VerifyJob const&) = delete;
 
-    ~VerifyJob() final = default;
+    virtual ~VerifyJob() final = default;
 
-    /// @return maximum number of replicas to be allowed processed simultaneously
-    size_t maxReplicas() const { return _maxReplicas; }
-
-    /// @return true if file check/control sums need to be recomputed
+    std::size_t maxReplicas() const { return _maxReplicas; }
     bool computeCheckSum() const { return _computeCheckSum; }
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see VerifyJob::create()
-    VerifyJob(size_t maxReplicas, bool computeCheckSum, CallbackTypeOnDiff const& onReplicaDifference,
-              Controller::Ptr const& controller, std::string const& parentJobId, CallbackType const& onFinish,
-              int priority);
+    VerifyJob(std::size_t maxReplicas, bool computeCheckSum, CallbackTypeOnDiff const& onReplicaDifference,
+              std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+              CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
-     *
-     * @param request
-     *   a pointer to a request
+     * @param request a pointer to a request
      */
-    void _onRequestFinish(FindRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<FindRequest> const& request);
 
     /**
      * Find the next replicas to be inspected.
      *
-     * @param lock
-     *   the lock on Job::_mtx must be acquired by a caller of the method
-     *
-     * @param replicas
-     *   a collection of replicas returned from the database
-     *
-     * @param numReplicas
-     *   a desired number of replicas to be pulled from the database
-     *   for processing.
+     * @param lock the lock on Job::_mtx must be acquired by a caller of the method
+     * @param replicas a collection of replicas returned from the database
+     * @param numReplicas a desired number of replicas to be pulled from the database for processing.
      */
-    void _nextReplicas(replica::Lock const& lock, std::vector<ReplicaInfo>& replicas, size_t numReplicas);
+    void _nextReplicas(replica::Lock const& lock, std::vector<ReplicaInfo>& replicas,
+                       std::size_t numReplicas);
 
     // Input parameters
 
-    size_t const _maxReplicas;
+    std::size_t const _maxReplicas;
     bool const _computeCheckSum;
 
     /// Client-defined function to be called upon the completion of the job
@@ -255,7 +221,7 @@ private:
     std::map<std::string, ReplicaInfo> _replicas;
 
     /// The current (last) batch of requests registered by their IDs
-    std::map<std::string, FindRequest::Ptr> _requests;
+    std::map<std::string, std::shared_ptr<FindRequest>> _requests;
 };
 
 }  // namespace lsst::qserv::replica
