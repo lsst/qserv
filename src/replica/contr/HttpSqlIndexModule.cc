@@ -33,10 +33,12 @@
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/SqlCreateIndexesJob.h"
 #include "replica/jobs/SqlDropIndexesJob.h"
 #include "replica/jobs/SqlGetIndexesJob.h"
 #include "replica/requests/SqlResultSet.h"
+#include "replica/services/ServiceProvider.h"
 
 using namespace std;
 using namespace nlohmann;

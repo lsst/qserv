@@ -31,8 +31,13 @@
 // Qserv headers
 #include "replica/jobs/Job.h"
 #include "replica/qserv/AddReplicaQservMgtRequest.h"
-#include "replica/requests/ReplicationRequest.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class ReplicationRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -64,119 +69,71 @@ public:
     typedef std::shared_ptr<CreateReplicaJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<CreateReplicaJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Create the job.
      *
-     * @param databaseFamily
-     *   the name of a database family involved into the operation
-     *
-     * @param chunk
-     *   the chunk whose replica will be created at the destination worker
-     *
-     * @param sourceWorker
-     *   the name of a source worker where the input replica is residing
-     *
-     * @param destinationWorker
-     *   the name of a destination worker where the output replica will be placed
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   optional identifier of a parent job
-     *
-     * @param onFinish
-     *   a callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   the priority level of the job
+     * @param databaseFamily The name of a database family involved into the operation
+     * @param chunk The chunk whose replica will be created at the destination worker
+     * @param sourceWorker The name of a source worker where the input replica is residing
+     * @param destinationWorker The name of a destination worker where the output replica will be placed
+     * @param controller For launching requests
+     * @param parentJobId Optional identifier of a parent job
+     * @param onFinish A callback function to be called upon a completion of the job
+     * @param priority The priority level of the job
      */
-    static Ptr create(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
-                      std::string const& destinationWorker, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
+    static std::shared_ptr<CreateReplicaJob> create(std::string const& databaseFamily, unsigned int chunk,
+                                                    std::string const& sourceWorker,
+                                                    std::string const& destinationWorker,
+                                                    std::shared_ptr<Controller> const& controller,
+                                                    std::string const& parentJobId,
+                                                    CallbackType const& onFinish, int priority);
 
     CreateReplicaJob() = delete;
     CreateReplicaJob(CreateReplicaJob const&) = delete;
     CreateReplicaJob& operator=(CreateReplicaJob const&) = delete;
 
-    ~CreateReplicaJob() final = default;
+    virtual ~CreateReplicaJob() final = default;
 
-    /// @return the name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
-
-    /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
-
-    /// @return the name of a source worker where the input replica is residing
     std::string const& sourceWorker() const { return _sourceWorker; }
-
-    /// @return the name of a destination worker where the output replica will be placed
     std::string const& destinationWorker() const { return _destinationWorker; }
 
     /**
      * Return the result of the operation.
      *
-     * @note
-     *  The method should be invoked only after the job has finished (primary
-     *  status is set to Job::Status::FINISHED). Otherwise exception
-     * std::logic_error will be thrown
-     *
-     * @note
-     *  The result will be extracted from requests which have successfully
-     *  finished. Please, verify the primary and extended status of the object
-     *  to ensure that all requests have finished.
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown.
+     * @note The result will be extracted from requests which have successfully finished. Please, verify
+     *  the primary and extended status of the object to ensure that all requests have finished.
+     * @return The data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finished at a time when the method was called
      */
     CreateReplicaJobResult const& getReplicaData() const;
 
-    /**
-     * Implement the corresponding method of the base class.
-     *
-     * @see Job::extendedPersistentState()
-     */
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see CreateReplicaJob::create()
     CreateReplicaJob(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
-                     std::string const& destinationWorker, Controller::Ptr const& controller,
+                     std::string const& destinationWorker, std::shared_ptr<Controller> const& controller,
                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
-     * The callback function to be invoked on a completion of each replica
-     * creation request.
-     *
-     * @param request
-     *   a pointer to a request
+     * The callback function to be invoked on a completion of each replica creation request.
+     * @param request a pointer to a request
      */
-    void _onRequestFinish(ReplicationRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<ReplicationRequest> const& request);
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -185,7 +142,7 @@ private:
      * @param databases  The names of databases involved into the operation.
      * @param worker  The name of a worker to be notified.
      * @param onFinish  An (optional) callback function to be called upon completion
-     *   of the operation.
+     *  of the operation.
      */
     void _qservAddReplica(replica::Lock const& lock, unsigned int chunk,
                           std::vector<std::string> const& databases, std::string const& worker,
@@ -200,10 +157,10 @@ private:
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A collection of the replication requests implementing the operation
-    std::vector<ReplicationRequest::Ptr> _requests;
+    std::vector<std::shared_ptr<ReplicationRequest>> _requests;
 
-    size_t _numRequestsFinished = 0;  // gets incremented for each completed request
-    size_t _numRequestsSuccess = 0;   // gets incremented for each successfully completed request
+    std::size_t _numRequestsFinished = 0;  ///< gets incremented for each completed request
+    std::size_t _numRequestsSuccess = 0;   ///< gets incremented for each successfully completed request
 
     /// The result of the operation (gets updated as requests are finishing)
     CreateReplicaJobResult _replicaData;

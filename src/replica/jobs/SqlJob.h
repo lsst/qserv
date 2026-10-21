@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -33,10 +34,14 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
 #include "replica/jobs/SqlJobResult.h"
-#include "replica/requests/SqlRequest.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class SqlRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -54,29 +59,23 @@ public:
     SqlJob(SqlJob const&) = delete;
     SqlJob& operator=(SqlJob const&) = delete;
 
-    ~SqlJob() override = default;
+    virtual ~SqlJob() override = default;
 
-    // Trivial get methods
-
-    uint64_t maxRows() const { return _maxRows; }
+    std::uint64_t maxRows() const { return _maxRows; }
 
     bool allWorkers() const { return _allWorkers; }
     bool ignoreNonPartitioned() const { return _ignoreNonPartitioned; }
     bool ignoreDuplicateKey() const { return _ignoreDuplicateKey; }
 
-    /// @see Job::progress
     virtual Job::Progress progress() const override;
 
     /**
      * Return the combined result of the operation
      *
-     * @note
-     *  The method should be invoked only after the job has finished (primary
-     *  status is set to Job::Status::FINISHED). Otherwise exception
-     *  std::logic_error will be thrown.
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown.
      * @return The data structure to be filled upon the completion of the job.
-     * @throw std::logic_error If the job didn't finished at a time when
-     *   the method was called.
+     * @throw std::logic_error If the job didn't finished at a time when the method was called.
      */
     SqlJobResult const& getResultData() const;
 
@@ -97,36 +96,34 @@ public:
      *       }
      *     }
      *   }
-     * @code
+     * @endcode
      * @return A JSON object representing the summary report.
-     * @throw std::logic_error If the job didn't finished at a time when
-     *   the method was called.
+     * @throw std::logic_error If the job didn't finished at a time when the method was called.
      */
     nlohmann::json getExtendedErrorReport() const;
 
 protected:
     /**
-     * @param maxRows An optional limit for the maximum number of rows to be returned
-     *   with the request. Leaving the default value of the parameter to 0 will result
-     *   in not imposing any explicit restrictions on a size of the result set. Note
-     *   that other, resource-defined restrictions will still apply. The later
-     *   includes the maximum size of the Google Protobuf objects, the amount of
-     *   available memory, etc.
+     * @param maxRows An optional limit for the maximum number of rows to be returned with
+     *  the request. Leaving the default value of the parameter to 0 will result in not imposing
+     *  any explicit restrictions on a size of the result set. Note that other, resource-defined
+     *  restrictions will still apply. The later includes the maximum size of the Google Protobuf
+     *  objects, the amount of available memory, etc.
      * @param allWorkers A flag for engaging all known workers regardless of their status.
-     *   If the flag is set to 'false' then only 'ENABLED' workers which are not
-     *   in the 'READ-ONLY' sub-state will be involved into the operation.
+     *  If the flag is set to 'false' then only 'ENABLED' workers which are not in the 'READ-ONLY'
+     *  sub-state will be involved into the operation.
      * @param controller Is needed launching requests and accessing the Config.
      * @param parentJobId An optional identifier of a parent job.
      * @param jobName The name of a job in the persistent state of the Replication system.
      * @param priority The priority level of the job.
      * @param ignoreNonPartitioned The optional flag which if 'true' then don't report as
-     *   errors tables for which protocol::StatusExt::NOT_PARTITIONED_TABLE was reported.
-     *   The flag can be useful for tables in which the partitions may have already been removed.
+     *  errors tables for which protocol::StatusExt::NOT_PARTITIONED_TABLE was reported.
+     *  The flag can be useful for tables in which the partitions may have already been removed.
      * @param ignoreDuplicateKey The optional flag which if 'true' then don't report as
-     *   errors tables for which protocol::StatusExt::DUPLICATE_KEY was reported.
-     *   The flag can be useful for tables in which the index may already exist.
+     *  errors tables for which protocol::StatusExt::DUPLICATE_KEY was reported.
+     *  The flag can be useful for tables in which the index may already exist.
      */
-    SqlJob(uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
+    SqlJob(std::uint64_t maxRows, bool allWorkers, std::shared_ptr<Controller> const& controller,
            std::string const& parentJobId, std::string const& jobName, int priority,
            bool ignoreNonPartitioned = false, bool ignoreDuplicateKey = false);
 
@@ -137,7 +134,7 @@ protected:
      * The callback function to be invoked on a completion of requests
      * targeting workers.
      */
-    void onRequestFinish(SqlRequest::Ptr const& request);
+    void onRequestFinish(std::shared_ptr<SqlRequest> const& request);
 
     /**
      * This method lets a request type-specific subclass to launch requests
@@ -149,22 +146,22 @@ protected:
      * @param maxRequestsPerWorker The maximum number of requests to be launched per each worker.
      * @return A collection of requests launched.
      */
-    virtual std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock,
-                                                      std::string const& workerName,
-                                                      size_t maxRequestsPerWorker = 1) = 0;
+    virtual std::list<std::shared_ptr<SqlRequest>> launchRequests(replica::Lock const& lock,
+                                                                  std::string const& workerName,
+                                                                  std::size_t maxRequestsPerWorker = 1) = 0;
 
     /**
      * Stop the specified request if it's still running.
      */
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) const;
+    void stopRequest(replica::Lock const& lock, std::shared_ptr<SqlRequest> const& request) const;
 
     /**
      * This method lets a request type-specific subclass a chance to process
      * results of the job before transitioning to the finished state.
      *
      * @note The default implementation of the method won't do any processing.
-     *   Class-specific implementations may change the extended state if any
-     *   problems with the results will be encountered.
+     *  Class-specific implementations may change the extended state if any
+     *  problems with the results will be encountered.
      *
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      * @param extendedState  A specific state to be set upon the completion.
@@ -184,19 +181,19 @@ protected:
      * @param databaseName The name of the table's database.
      * @param tableName The base name of a table.
      * @param allTables The optional flag (applies to the partitioned tables only)
-     *   indicating if all or a subset of tables (as determined by the next
-     *   parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
-     *   then the next parameter 'overlapTablesOnly' will be ignored.
+     *  indicating if all or a subset of tables (as determined by the next
+     *  parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
+     *  then the next parameter 'overlapTablesOnly' will be ignored.
      * @param overlapTablesOnly The optional flag (applies to the partitioned tables only)
-     *   indicating which kind of the partitioned tables to be reported.
-     *   If the flag is set to 'true' then overlap tables will be reported.
-     *   If the flag is set to 'false' then the chunk tables will be reported.
-     *   Note, this parameter is only taken into consideration if the previous
-     *   parameter 'allTables' was set to 'false'.
+     *  indicating which kind of the partitioned tables to be reported.
+     *  If the flag is set to 'true' then overlap tables will be reported.
+     *  If the flag is set to 'false' then the chunk tables will be reported.
+     *  Note, this parameter is only taken into consideration if the previous
+     *  parameter 'allTables' was set to 'false'.
      * @param includeProtoTable The optional flag (applies to the partitioned tables only)
-     *   telling the method to include the name of the prototype table into the report.
-     *   Note, this parameter is only taken into consideration if a value of
-     *   the parameter 'allTables' was set to 'false'.
+     *  telling the method to include the name of the prototype table into the report.
+     *  Note, this parameter is only taken into consideration if a value of
+     *  the parameter 'allTables' was set to 'false'.
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
@@ -214,20 +211,18 @@ protected:
      * @param workerName The unique identifier of a worker hosting the tables.
      * @param transactionId The unique identifier of the transaction.
      * @param tableName The base name of a table.
-     * @param allTables The optional flag (applies to the partitioned tables only)
-     *   indicating if all or a subset of tables (as determined by the next
-     *   parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
-     *   then the next parameter 'overlapTablesOnly' will be ignored.
-     * @param overlapTablesOnly The optional flag (applies to the partitioned tables only)
-     *   indicating which kind of the partitioned tables to be reported.
-     *   If the flag is set to 'true' then overlap tables will be reported.
-     *   If the flag is set to 'false' then the chunk tables will be reported.
-     *   Note, this parameter is only taken into consideration if the previous
-     *   parameter 'allTables' was set to 'false'.
-     * @param includeProtoTable The optional flag (applies to the partitioned tables only)
-     *   telling the method to include the name of the prototype table into the report.
-     *   Note, this parameter is only taken into consideration if a value of
-     *   the parameter 'allTables' was set to 'false'.
+     * @param allTables The optional flag (applies to the partitioned tables only) indicating if all
+     *  or a subset of tables (as determined by the next parameter 'overlapTablesOnly') shall be
+     *  reported. if the flag is set to 'true' then the next parameter 'overlapTablesOnly'
+     *  will be ignored.
+     * @param overlapTablesOnly The optional flag (applies to the partitioned tables only) indicating
+     *  which kind of the partitioned tables to be reported. If the flag is set to 'true' then overlap
+     *  tables will be reported. If the flag is set to 'false' then the chunk tables will be reported.
+     *  Note, this parameter is only taken into consideration if the previous parameter 'allTables'
+     *  was set to 'false'.
+     * @param includeProtoTable The optional flag (applies to the partitioned tables only) telling
+     *  the method to include the name of the prototype table into the report. Note, this parameter
+     *  is only taken into consideration if a value of the parameter 'allTables' was set to 'false'.
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
@@ -237,21 +232,19 @@ protected:
                                           bool includeProtoTable = false) const;
 
     /**
-     * The algorithm will distribute tables between the specified number of
-     * bins. The resulting collection will be empty if the input collection
-     * of tables is empty or if the number of bins is 0, and the result will
-     * not have empty bins.
+     * The algorithm will distribute tables between the specified number of bins. The resulting
+     * collection will be empty if the input collection of tables is empty or if the number of
+     * bins is 0, and the result will not have empty bins.
      *
      * @param allTables All known tables.
      * @param numBins The total number of bins for distributing tables,
      * @return Tables distributed between the bins.
      */
     static std::vector<std::vector<std::string>> distributeTables(std::vector<std::string> const& allTables,
-                                                                  size_t numBins);
+                                                                  std::size_t numBins);
 
     /**
-     * @brief Get a copy of the result data object in its current state, even if it's
-     *   not complete.
+     * Get a copy of the result data object in its current state, even if it's not complete.
      * @param lock A lock on Job::_mtx must be acquired by a caller of the method.
      * @return SqlJobResult The current state of the result.
      */
@@ -259,8 +252,8 @@ protected:
 
 private:
     /**
-     * Verify if the database and the table are known to the Config,
-     * and obtain the partitioning status of the table.
+     * Verify if the database and the table are known to the Config, and obtain the partitioning
+     * status of the table.
      *
      * @return A value of 'true' if this is the partitioned table.
      * @throw std::invalid_argument If the database or a table isn't valid.
@@ -268,17 +261,18 @@ private:
     bool _isPartitioned(std::string const& databaseName, std::string const& tableName) const;
 
     // Input parameters
-    uint64_t const _maxRows;
+
+    std::uint64_t const _maxRows;
     bool const _allWorkers;
     bool const _ignoreNonPartitioned;
     bool const _ignoreDuplicateKey;
 
     /// A collection of requests implementing the operation
-    std::vector<SqlRequest::Ptr> _requests;
+    std::vector<std::shared_ptr<SqlRequest>> _requests;
 
     /// This counter is used for tracking a condition for completing the job
     /// before computing its final state.
-    size_t _numFinished = 0;
+    std::size_t _numFinished = 0;
 
     /// The result of the operation (gets updated as requests are finishing)
     SqlJobResult _resultData;
