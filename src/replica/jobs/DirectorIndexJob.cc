@@ -37,8 +37,16 @@
 #include "replica/ingest/TransactionContrib.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/proto/Protocol.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpDirectorIndexRequest.h"
+#else
 #include "replica/requests/DirectorIndexRequest.h"
+#endif
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
@@ -308,9 +316,14 @@ void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
     for (auto const& itr : _inFlightRequests) {
         auto const& ptr = itr.second;
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
     _inFlightRequests.clear();
@@ -321,7 +334,11 @@ void DirectorIndexJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<DirectorIndexJob>(lock, _onFinish);
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void DirectorIndexJob::_onRequestFinish(shared_ptr<HttpDirectorIndexRequest> const& request) {
+#else
 void DirectorIndexJob::_onRequestFinish(shared_ptr<DirectorIndexRequest> const& request) {
+#endif
     // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
     // in executing requests or processing data of the requests would result in
     // the job termination. The only exception from this rule is a scenario
@@ -336,7 +353,7 @@ void DirectorIndexJob::_onRequestFinish(shared_ptr<DirectorIndexRequest> const& 
     replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
-    if (request->extendedState() == Request::SUCCESS) {
+    if (request->extendedState() == RequestI::SUCCESS) {
         // This request has data that will be loaded into the table.
         _completedRequests.push_back(request);
         _cv.notify_one();
@@ -446,7 +463,11 @@ void DirectorIndexJob::_loadDataIntoTable() {
     }
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+shared_ptr<HttpDirectorIndexRequest> DirectorIndexJob::_nextRequest() {
+#else
 shared_ptr<DirectorIndexRequest> DirectorIndexJob::_nextRequest() {
+#endif
     string const context_ = context() + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
@@ -461,7 +482,11 @@ shared_ptr<DirectorIndexRequest> DirectorIndexJob::_nextRequest() {
     chrono::milliseconds const jobStatusCheckIvalMsec{1s};
 
     // Pull the next request from the queue or wait.
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    shared_ptr<HttpDirectorIndexRequest> request;
+#else
     shared_ptr<DirectorIndexRequest> request;
+#endif
     while (request == nullptr) {
         if (state() == State::FINISHED) return nullptr;
         unique_lock<mutex> lock(_mtx);
@@ -515,24 +540,44 @@ shared_ptr<DirectorIndexRequest> DirectorIndexJob::_nextRequest() {
     return request;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpDirectorIndexRequest>> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
+                                                                             string const& workerName,
+                                                                             size_t maxRequests) {
+#else
 list<shared_ptr<DirectorIndexRequest>> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
                                                                          string const& workerName,
                                                                          size_t maxRequests) {
+#endif
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
     // queue.
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    list<shared_ptr<HttpDirectorIndexRequest>> requests;
+#else
     list<shared_ptr<DirectorIndexRequest>> requests;
+#endif
     auto const self = shared_from_base<DirectorIndexJob>();
     bool const keepTracking = true;
     while (_chunks[workerName].size() > 0 && requests.size() < maxRequests) {
         auto const chunk = _chunks[workerName].front();
         _chunks[workerName].pop();
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpDirectorIndexRequest::createAndStart(
+                controller(), workerName, database(), directorTable(), chunk, hasTransactions(),
+                transactionId(),
+                [self](shared_ptr<HttpDirectorIndexRequest> const& request) {
+                    self->_onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(DirectorIndexRequest::createAndStart(
                 controller(), workerName, database(), directorTable(), chunk, hasTransactions(),
                 transactionId(),
                 [self](shared_ptr<DirectorIndexRequest> const& request) { self->_onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }
