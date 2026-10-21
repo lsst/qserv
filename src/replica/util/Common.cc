@@ -65,10 +65,6 @@ ChunkOverlapSelector str2overlapSelector(string const& str) {
                            "' doesn't match any selector.");
 }
 
-////////////////////////////////////////////
-//                Generators              //
-////////////////////////////////////////////
-
 replica::Mutex Generators::_mtx;
 
 string Generators::uniqueId() {
@@ -76,10 +72,6 @@ string Generators::uniqueId() {
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }
-
-///////////////////////////////////////////
-//                SqlColDef              //
-///////////////////////////////////////////
 
 list<SqlColDef> parseSqlColumns(json const& columnsJsonArray) {
     if (!columnsJsonArray.is_array()) {
@@ -93,47 +85,22 @@ list<SqlColDef> parseSqlColumns(json const& columnsJsonArray) {
     return columns;
 }
 
-///////////////////////////////////////////
-//                SqlIndexDef            //
-///////////////////////////////////////////
-
-SqlIndexDef::SqlIndexDef(json const& indexSpecJson) {
-    if (!indexSpecJson.is_object()) {
-        throw invalid_argument("lsst::qserv::replica::" + string(__func__) +
-                               "  indexSpecJson is not an object");
-    }
-    spec = indexSpecJson.value("spec", "DEFAULT");
-    name = indexSpecJson.at("name");
-    comment = indexSpecJson.value("comment", "");
-    auto const keysJsonArray = indexSpecJson.at("keys");
-    if (!keysJsonArray.is_array()) {
-        throw invalid_argument("lsst::qserv::replica::" + string(__func__) + "  keys is not an array");
-    }
-    for (auto const& key : keysJsonArray) {
-        keys.emplace_back(key.at("name"), key.at("length"), key.at("ascending"));
-    }
-}
-
-///////////////////////////////////////////
-//                SqlIndexSpec           //
-///////////////////////////////////////////
-
 SqlIndexSpec::SqlIndexSpec(ProtocolRequestSql::IndexSpec spec) {
     switch (spec) {
         case ProtocolRequestSql::DEFAULT: {
-            _spec = SqlIndexSpec::DEFAULT;
+            _type = SqlIndexSpec::DEFAULT;
             break;
         }
         case ProtocolRequestSql::UNIQUE: {
-            _spec = SqlIndexSpec::UNIQUE;
+            _type = SqlIndexSpec::UNIQUE;
             break;
         }
         case ProtocolRequestSql::FULLTEXT: {
-            _spec = SqlIndexSpec::FULLTEXT;
+            _type = SqlIndexSpec::FULLTEXT;
             break;
         }
         case ProtocolRequestSql::SPATIAL: {
-            _spec = SqlIndexSpec::SPATIAL;
+            _type = SqlIndexSpec::SPATIAL;
             break;
         }
         default:
@@ -145,13 +112,13 @@ SqlIndexSpec::SqlIndexSpec(ProtocolRequestSql::IndexSpec spec) {
 
 SqlIndexSpec::SqlIndexSpec(string const& str) {
     if (str == "DEFAULT") {
-        _spec = SqlIndexSpec::DEFAULT;
+        _type = Type::DEFAULT;
     } else if (str == "UNIQUE") {
-        _spec = SqlIndexSpec::UNIQUE;
+        _type = Type::UNIQUE;
     } else if (str == "FULLTEXT") {
-        _spec = SqlIndexSpec::FULLTEXT;
+        _type = Type::FULLTEXT;
     } else if (str == "SPATIAL") {
-        _spec = SqlIndexSpec::SPATIAL;
+        _type = Type::SPATIAL;
     } else {
         throw invalid_argument("SqlIndexSpec::" + string(__func__) + "  unsupported index specification: '" +
                                str + "'");
@@ -159,32 +126,50 @@ SqlIndexSpec::SqlIndexSpec(string const& str) {
 }
 
 string SqlIndexSpec::str() const {
-    switch (_spec) {
-        case SqlIndexSpec::DEFAULT:
+    switch (_type) {
+        case Type::DEFAULT:
             return "DEFAULT";
-        case SqlIndexSpec::UNIQUE:
+        case Type::UNIQUE:
             return "UNIQUE";
-        case SqlIndexSpec::FULLTEXT:
+        case Type::FULLTEXT:
             return "FULLTEXT";
-        case SqlIndexSpec::SPATIAL:
+        case Type::SPATIAL:
             return "SPATIAL";
     }
     throw runtime_error("SqlIndexSpec::" + string(__func__) + "  unsupported index specification");
 }
 
 ProtocolRequestSql::IndexSpec SqlIndexSpec::protocol() const {
-    switch (_spec) {
-        case SqlIndexSpec::DEFAULT:
+    switch (_type) {
+        case Type::DEFAULT:
             return ProtocolRequestSql::DEFAULT;
-        case SqlIndexSpec::UNIQUE:
+        case Type::UNIQUE:
             return ProtocolRequestSql::UNIQUE;
-        case SqlIndexSpec::FULLTEXT:
+        case Type::FULLTEXT:
             return ProtocolRequestSql::FULLTEXT;
-        case SqlIndexSpec::SPATIAL:
+        case Type::SPATIAL:
             return ProtocolRequestSql::SPATIAL;
     }
     throw runtime_error("SqlIndexSpec::" + string(__func__) + "  unsupported index specification: '" + str() +
                         "'");
+}
+
+SqlIndexDef::SqlIndexDef(json const& indexSpecJson) {
+    if (!indexSpecJson.is_object()) {
+        throw invalid_argument("lsst::qserv::replica::" + string(__func__) +
+                               "  indexSpecJson is not an object");
+    }
+    spec = SqlIndexSpec(indexSpecJson.value("spec", "DEFAULT"));
+    name = indexSpecJson.at("name");
+    comment = indexSpecJson.value("comment", "");
+    auto const keysJsonArray = indexSpecJson.at("keys");
+    if (!keysJsonArray.is_array()) {
+        throw invalid_argument("lsst::qserv::replica::" + string(__func__) + "  keys is not an array");
+    }
+    for (auto const& key : keysJsonArray) {
+        keys.emplace_back(key.at("name").get<string>(), key.at("length").get<unsigned int>(),
+                          key.at("ascending").get<int>() != 0);
+    }
 }
 
 string tableNameBuilder(string const& databaseName, string const& tableName, string const& suffix) {

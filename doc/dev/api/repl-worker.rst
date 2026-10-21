@@ -964,13 +964,21 @@ These are the request-specific attributes:
 
     "params" : {
         "sql_request_type" : "QUERY",
-        "query" : <string>
+        "query" : <string>,
+        "user" : <string>,
+        "password" : <string>
     }
 
 Where:
 
 ``query`` : *string*
   The SQL query to be executed.
+
+``user`` : *string*
+  The user name for the database connection.
+
+``password`` : *string*
+  The password for the database connection.
 
 .. _qserv-api-repl-worker-sql-create-database:
 
@@ -1061,7 +1069,7 @@ These are the request-specific attributes:
     "params" : {
         "sql_request_type" : "GRANT_ACCESS",
         "user" : <string>,
-        "host" : <string>
+        "hosts" : [<string>, ...]
     }
 
 Where:
@@ -1070,8 +1078,8 @@ Where:
   The name of the user to which access should be granted (e.g., ``qsmaster``).
   The parameter is used for the :ref:`qserv-api-repl-worker-sql-grant-access` operation only.
 
-``host`` : *string*
-  The host from which the user can connect to the database (e.g., ``%`` for any host, ``localhost`` and/or ``127.0.0.1``
+``hosts`` : *array* of *string*
+  The list of hosts from which the user can connect to the database (e.g., ``%`` for any host, ``localhost`` and/or ``127.0.0.1``
   for local connections only, etc.).
   The parameter is used for the :ref:`qserv-api-repl-worker-sql-grant-access` operation only.
 
@@ -1572,15 +1580,15 @@ The request-specific schema of the response object is presented below:
 
     "type" : "INDEX",
     "result" : {
-        "url" : <string>,
-        "total_bytes" : <uint64_t>
+        "file_resource" : <string>,
+        "file_size_bytes" : <uint64_t>
     }
 
 Where:
 
-``url`` : *string*
-  The URL of the temporary file containing the CSV-formatted data pulled from the chunk table.
-``total_bytes`` : *uint64_t*
+``file_resource`` : *string*
+  The resource corresponding to the temporary file containing the CSV-formatted data pulled from the chunk table.
+``file_size_bytes`` : *uint64_t*
   The total number of bytes in the temporary file containing the data pulled from the chunk table.
 
 
@@ -1644,8 +1652,8 @@ Once the request finishes processing at the worker node, the response will have 
                 "finish_time" : 1780532950047
             },
             "result" : {
-                "size_bytes" : 57817898,
-                "url" : "http://sdfqserv002.sdf.slac.stanford.edu:25805/worker/director-index-data/dp1-Source/70781-12345678951.csv"
+                "file_resource" : "/worker/director-index/dp1-Source/70781-12345678951.csv",
+                "file_size_bytes" : 57817898
             }
         }
     }
