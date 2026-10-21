@@ -37,7 +37,11 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpSqlRequest;
+#else
 class SqlRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -97,9 +101,15 @@ public:
 
 protected:
     virtual void notify(replica::Lock const& lock) final;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    virtual std::list<std::shared_ptr<HttpSqlRequest>> launchRequests(replica::Lock const& lock,
+                                                                      std::string const& worker,
+                                                                      std::size_t maxRequestsPerWorker) final;
+#else
     virtual std::list<std::shared_ptr<SqlRequest>> launchRequests(replica::Lock const& lock,
                                                                   std::string const& worker,
                                                                   std::size_t maxRequestsPerWorker) final;
+#endif
 
 private:
     SqlAlterTablesJob(std::string const& database, std::string const& table, std::string const& alterSpec,

@@ -26,7 +26,11 @@
 #include <vector>
 
 // Qserv headers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlDeleteTableRequest.h"
+#else
 #include "replica/requests/SqlDeleteTableRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -67,10 +71,17 @@ list<pair<string, string>> SqlDeleteTableJob::extendedPersistentState() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlDeleteTableJob::launchRequests(replica::Lock const& lock,
+                                                                   string const& worker,
+                                                                   size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlDeleteTableJob::launchRequests(replica::Lock const& lock,
                                                                string const& worker,
                                                                size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -84,11 +95,21 @@ list<shared_ptr<SqlRequest>> SqlDeleteTableJob::launchRequests(replica::Lock con
     // the requests for the current worker.
     for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlDeleteTableRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlDeleteTableJob>()](
+                        shared_ptr<HttpSqlDeleteTableRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlDeleteTableRequest::createAndStart(
                 controller(), worker, database(), tables,
                 [self = shared_from_base<SqlDeleteTableJob>()](
                         shared_ptr<SqlDeleteTableRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

@@ -23,7 +23,11 @@
 #include "replica/jobs/SqlAlterTablesJob.h"
 
 // Qserv headers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlAlterTablesRequest.h"
+#else
 #include "replica/requests/SqlAlterTablesRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -69,10 +73,17 @@ list<pair<string, string>> SqlAlterTablesJob::extendedPersistentState() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlAlterTablesJob::launchRequests(replica::Lock const& lock,
+                                                                   string const& worker,
+                                                                   size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlAlterTablesJob::launchRequests(replica::Lock const& lock,
                                                                string const& worker,
                                                                size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -87,11 +98,21 @@ list<shared_ptr<SqlRequest>> SqlAlterTablesJob::launchRequests(replica::Lock con
     // the requests for the current worker.
     for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlAlterTablesRequest::createAndStart(
+                controller(), worker, database(), tables, alterSpec(),
+                [self = shared_from_base<SqlAlterTablesJob>()](
+                        shared_ptr<HttpSqlAlterTablesRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlAlterTablesRequest::createAndStart(
                 controller(), worker, database(), tables, alterSpec(),
                 [self = shared_from_base<SqlAlterTablesJob>()](
                         shared_ptr<SqlAlterTablesRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

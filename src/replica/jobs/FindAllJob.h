@@ -34,7 +34,12 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class Controller;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+class HttpFindAllRequest;
+#else
 class FindAllRequest;
+#endif
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -119,15 +124,16 @@ public:
      * @param priority Priority level of the job.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
+    static std::shared_ptr<FindAllJob> create(std::string const& databaseFamily, bool saveReplicaInfo,
+                                              bool allWorkers, std::shared_ptr<Controller> const& controller,
+                                              std::string const& parentJobId, CallbackType const& onFinish,
+                                              int priority);
 
     FindAllJob() = delete;
     FindAllJob(FindAllJob const&) = delete;
     FindAllJob& operator=(FindAllJob const&) = delete;
 
-    ~FindAllJob() final = default;
+    virtual ~FindAllJob() final = default;
 
     /// @return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -152,24 +158,28 @@ public:
      */
     FindAllJobResult const& getReplicaData() const;
 
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     FindAllJob(std::string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
-               Controller::Ptr const& controller, std::string const& parentJobId,
+               std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
      * @param request A pointer to a request.
      */
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void _onRequestFinish(std::shared_ptr<HttpFindAllRequest> const& request);
+#else
     void _onRequestFinish(std::shared_ptr<FindAllRequest> const& request);
+#endif
 
     // Input parameters
 
@@ -179,15 +189,19 @@ private:
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpFindAllRequest>> _requests;
+#else
     std::list<std::shared_ptr<FindAllRequest>> _requests;
+#endif
 
     /// Per-worker and per database flags indicating if the corresponding replica
     /// retrieval request succeeded for all databases in the family.
     std::map<std::string, std::map<std::string, bool>> _workerDatabaseSuccess;
 
-    size_t _numLaunched = 0;  ///< the total number of requests launched
-    size_t _numFinished = 0;  ///< the total number of finished requests
-    size_t _numSuccess = 0;   ///< the number of successfully completed requests
+    std::size_t _numLaunched = 0;  ///< the total number of requests launched
+    std::size_t _numFinished = 0;  ///< the total number of finished requests
+    std::size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     FindAllJobResult _replicaData;

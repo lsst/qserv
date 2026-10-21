@@ -26,6 +26,9 @@ target_sources(replica_contr PRIVATE
     ReplicationTask.cc
     Task.cc
 )
+target_compile_definitions(replica_contr PRIVATE
+    QSERV_REPLICA_PROTOCOL_HTTP=1
+)
 target_link_libraries(replica_contr PUBLIC
     log
     sphgeom

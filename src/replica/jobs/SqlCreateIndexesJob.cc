@@ -23,7 +23,11 @@
 #include "replica/jobs/SqlCreateIndexesJob.h"
 
 // Qserv headers
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlCreateIndexesRequest.h"
+#else
 #include "replica/requests/SqlCreateIndexesRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -85,10 +89,17 @@ list<pair<string, string>> SqlCreateIndexesJob::extendedPersistentState() const 
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlCreateIndexesJob::launchRequests(replica::Lock const& lock,
+                                                                     string const& worker,
+                                                                     size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlCreateIndexesJob::launchRequests(replica::Lock const& lock,
                                                                  string const& worker,
                                                                  size_t maxRequestsPerWorker) {
     list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -103,6 +114,16 @@ list<shared_ptr<SqlRequest>> SqlCreateIndexesJob::launchRequests(replica::Lock c
     // the requests for the current worker.
     for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlCreateIndexesRequest::createAndStart(
+                controller(), worker, database(), tables, indexSpec(), indexName(), indexComment(),
+                indexColumns(),
+                [self = shared_from_base<SqlCreateIndexesJob>()](
+                        shared_ptr<HttpSqlCreateIndexesRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlCreateIndexesRequest::createAndStart(
                 controller(), worker, database(), tables, indexSpec(), indexName(), indexComment(),
                 indexColumns(),
@@ -111,6 +132,7 @@ list<shared_ptr<SqlRequest>> SqlCreateIndexesJob::launchRequests(replica::Lock c
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

@@ -28,7 +28,11 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlCreateTableRequest.h"
+#else
 #include "replica/requests/SqlCreateTableRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -83,19 +87,37 @@ list<pair<string, string>> SqlCreateTableJob::extendedPersistentState() const {
     return result;
 }
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlCreateTableJob::launchRequests(replica::Lock const& lock,
+                                                                   string const& worker,
+                                                                   size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
 list<shared_ptr<SqlRequest>> SqlCreateTableJob::launchRequests(replica::Lock const& lock,
                                                                string const& worker,
                                                                size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already launched earlier
     list<shared_ptr<SqlRequest>> requests;
+#endif
+    // Launch exactly one request per worker unless it was already launched earlier
     if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
         bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlCreateTableRequest::createAndStart(
+                controller(), worker, database(), table(), engine(), partitionByColumn(), columns(),
+                charsetName(), collationName(),
+                [self = shared_from_base<SqlCreateTableJob>()](
+                        shared_ptr<HttpSqlCreateTableRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(SqlCreateTableRequest::createAndStart(
                 controller(), worker, database(), table(), engine(), partitionByColumn(), columns(),
                 charsetName(), collationName(),
                 [self = shared_from_base<SqlCreateTableJob>()](
                         shared_ptr<SqlCreateTableRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
         _workers.insert(worker);
     }
     return requests;
