@@ -6,6 +6,7 @@ target_sources(replica_util PRIVATE
     ChunkedTable.cc
     Common.cc
     Csv.cc
+    DirectorIndexRequestInfo.cc
     FileUtils.cc
     HttpSvc.cc
     Mutex.cc
