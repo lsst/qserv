@@ -36,6 +36,9 @@
 // System headers
 #include <iostream>
 
+// Third-party headers
+#include <boost/algorithm/string/predicate.hpp>
+
 // Qserv headers
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
@@ -92,7 +95,7 @@ std::shared_ptr<FuncExpr> FuncExpr::clone() const {
 
 // determine if this object is the same as or a less complete description of the passed in object.
 bool FuncExpr::isSubsetOf(FuncExpr const& rhs) const {
-    if (_name != rhs._name) {
+    if (!boost::iequals(_name, rhs._name)) {
         return false;
     }
     return query::isSubsetOf(params, rhs.params);
