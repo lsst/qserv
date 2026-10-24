@@ -51,14 +51,16 @@ namespace lsst::qserv::replica {
 string RebalanceJob::typeName() { return "RebalanceJob"; }
 
 shared_ptr<RebalanceJob> RebalanceJob::create(string const& databaseFamily, bool estimateOnly,
-                                       shared_ptr<Controller> const& controller, string const& parentJobId,
-                                       CallbackType const& onFinish, int priority) {
+                                              shared_ptr<Controller> const& controller,
+                                              string const& parentJobId, CallbackType const& onFinish,
+                                              int priority) {
     return shared_ptr<RebalanceJob>(
             new RebalanceJob(databaseFamily, estimateOnly, controller, parentJobId, onFinish, priority));
 }
 
-RebalanceJob::RebalanceJob(string const& databaseFamily, bool estimateOnly, shared_ptr<Controller> const& controller,
-                           string const& parentJobId, CallbackType const& onFinish, int priority)
+RebalanceJob::RebalanceJob(string const& databaseFamily, bool estimateOnly,
+                           shared_ptr<Controller> const& controller, string const& parentJobId,
+                           CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "REBALANCE", priority),
           _databaseFamily(databaseFamily),
           _estimateOnly(estimateOnly),
@@ -130,7 +132,10 @@ void RebalanceJob::startImpl(replica::Lock const& lock) {
     bool const allWorkers = false;     // only consider enabled workers
     _findAllJob = FindAllJob::create(
             databaseFamily(), saveReplicInfo, allWorkers, controller(), id(),
-            [self = shared_from_base<RebalanceJob>()](shared_ptr<FindAllJob> const& job) { self->_onPrecursorJobFinish(); }, priority());
+            [self = shared_from_base<RebalanceJob>()](shared_ptr<FindAllJob> const& job) {
+                self->_onPrecursorJobFinish();
+            },
+            priority());
     _findAllJob->start();
 }
 
@@ -425,9 +430,8 @@ void RebalanceJob::_onPrecursorJobFinish() {
             string const& sourceWorkerName = sourceWorkerEntry.first;
             string const& destinationWorkerName = sourceWorkerEntry.second;
             auto job = MoveReplicaJob::create(
-                    databaseFamily(), chunk, sourceWorkerName, destinationWorkerName, purge,
-                    controller(), id(), [self](shared_ptr<MoveReplicaJob> job) { self->_onJobFinish(job); },
-                    priority());
+                    databaseFamily(), chunk, sourceWorkerName, destinationWorkerName, purge, controller(),
+                    id(), [self](shared_ptr<MoveReplicaJob> job) { self->_onJobFinish(job); }, priority());
             _jobs.push_back(job);
         }
     }

@@ -45,16 +45,18 @@ namespace lsst::qserv::replica {
 string QservStatusJob::typeName() { return "QservStatusJob"; }
 
 shared_ptr<QservStatusJob> QservStatusJob::create(unsigned int timeoutSec, bool allWorkers,
-                                           std::shared_ptr<Controller> const& controller, string const& parentJobId,
-                                           wbase::TaskSelector const& taskSelector,
-                                           CallbackType const& onFinish, int priority) {
+                                                  std::shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId,
+                                                  wbase::TaskSelector const& taskSelector,
+                                                  CallbackType const& onFinish, int priority) {
     return shared_ptr<QservStatusJob>(new QservStatusJob(timeoutSec, allWorkers, controller, parentJobId,
-                                                  taskSelector, onFinish, priority));
+                                                         taskSelector, onFinish, priority));
 }
 
-QservStatusJob::QservStatusJob(unsigned int timeoutSec, bool allWorkers, std::shared_ptr<Controller> const& controller,
-                               string const& parentJobId, wbase::TaskSelector const& taskSelector,
-                               CallbackType const& onFinish, int priority)
+QservStatusJob::QservStatusJob(unsigned int timeoutSec, bool allWorkers,
+                               std::shared_ptr<Controller> const& controller, string const& parentJobId,
+                               wbase::TaskSelector const& taskSelector, CallbackType const& onFinish,
+                               int priority)
         : Job(controller, parentJobId, "QSERV_STATUS", priority),
           _timeoutSec(timeoutSec == 0 ? controller->serviceProvider()->config()->get<unsigned int>(
                                                 "controller", "request-timeout-sec")
@@ -100,9 +102,10 @@ void QservStatusJob::startImpl(replica::Lock const& lock) {
         _qservStatus.workers[workerName] = false;
         _qservStatus.info[workerName] = json::object();
         auto const request = controller()->qservMgtServices()->status(
-                workerName, id(),
-                taskSelector(),
-                [self](std::shared_ptr<GetStatusQservMgtRequest> const& request) { self->_onRequestFinish(request); },
+                workerName, id(), taskSelector(),
+                [self](std::shared_ptr<GetStatusQservMgtRequest> const& request) {
+                    self->_onRequestFinish(request);
+                },
                 timeoutSec());
         _requests[request->id()] = request;
         ++_numStarted;

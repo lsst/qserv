@@ -152,8 +152,10 @@ public:
      * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
-    static std::shared_ptr<RebalanceJob> create(std::string const& databaseFamily, bool estimateOnly, std::shared_ptr<Controller> const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static std::shared_ptr<RebalanceJob> create(std::string const& databaseFamily, bool estimateOnly,
+                                                std::shared_ptr<Controller> const& controller,
+                                                std::string const& parentJobId, CallbackType const& onFinish,
+                                                int priority);
 
     RebalanceJob() = delete;
     RebalanceJob(RebalanceJob const&) = delete;
@@ -185,8 +187,9 @@ protected:
     virtual void notify(replica::Lock const& lock) final;
 
 private:
-    RebalanceJob(std::string const& databaseFamily, bool estimateOnly, std::shared_ptr<Controller> const& controller,
-                 std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    RebalanceJob(std::string const& databaseFamily, bool estimateOnly,
+                 std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+                 CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the precursor job

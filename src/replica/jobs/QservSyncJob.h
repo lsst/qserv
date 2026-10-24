@@ -38,7 +38,7 @@
 namespace lsst::qserv::replica {
 class Controller;
 class SetReplicasQservMgtRequest;
-} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -98,9 +98,12 @@ public:
      *  with other job types.
      * @return a pointer to the created object
      */
-    static std::shared_ptr<QservSyncJob> create(std::string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
-                      std::shared_ptr<Controller> const& controller, std::string const& parentJobId = std::string(),
-                      CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
+    static std::shared_ptr<QservSyncJob> create(std::string const& databaseFamily,
+                                                unsigned int requestExpirationIvalSec, bool force,
+                                                std::shared_ptr<Controller> const& controller,
+                                                std::string const& parentJobId = std::string(),
+                                                CallbackType const& onFinish = nullptr,
+                                                int priority = PRIORITY_NORMAL);
 
     QservSyncJob() = delete;
     QservSyncJob(QservSyncJob const&) = delete;

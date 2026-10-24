@@ -94,9 +94,12 @@ public:
      * @param priority The priority level of the job
      * @return A pointer to the created object
      */
-    static std::shared_ptr<MoveReplicaJob> create(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
-                      std::string const& destinationWorker, bool purge, std::shared_ptr<Controller> const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static std::shared_ptr<MoveReplicaJob> create(std::string const& databaseFamily, unsigned int chunk,
+                                                  std::string const& sourceWorker,
+                                                  std::string const& destinationWorker, bool purge,
+                                                  std::shared_ptr<Controller> const& controller,
+                                                  std::string const& parentJobId,
+                                                  CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -133,8 +136,9 @@ protected:
 
 private:
     MoveReplicaJob(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
-                   std::string const& destinationWorker, bool purge, std::shared_ptr<Controller> const& controller,
-                   std::string const& parentJobId, CallbackType const& onFinish, int priority);
+                   std::string const& destinationWorker, bool purge,
+                   std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+                   CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the replica creation job.

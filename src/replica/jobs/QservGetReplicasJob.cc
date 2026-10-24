@@ -46,11 +46,12 @@ namespace lsst::qserv::replica {
 string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
 
 shared_ptr<QservGetReplicasJob> QservGetReplicasJob::create(string const& databaseFamily, bool inUseOnly,
-                                                     bool allWorkers, shared_ptr<Controller> const& controller,
-                                                     string const& parentJobId, CallbackType const& onFinish,
-                                                     int priority) {
-    return shared_ptr<QservGetReplicasJob>(new QservGetReplicasJob(databaseFamily, inUseOnly, allWorkers, controller,
-                                                            parentJobId, onFinish, priority));
+                                                            bool allWorkers,
+                                                            shared_ptr<Controller> const& controller,
+                                                            string const& parentJobId,
+                                                            CallbackType const& onFinish, int priority) {
+    return shared_ptr<QservGetReplicasJob>(new QservGetReplicasJob(
+            databaseFamily, inUseOnly, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 QservGetReplicasJob::QservGetReplicasJob(string const& databaseFamily, bool inUseOnly, bool allWorkers,
@@ -109,11 +110,13 @@ void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
         _replicaData.workers[workerName] = false;
         auto const request = controller()->qservMgtServices()->getReplicas(
                 databaseFamily(), workerName, inUseOnly(), id(),
-                [self](shared_ptr<GetReplicasQservMgtRequest> const& request) { self->_onRequestFinish(request); });
+                [self](shared_ptr<GetReplicasQservMgtRequest> const& request) {
+                    self->_onRequestFinish(request);
+                });
         if (!request) {
             LOGS(_log, LOG_LVL_ERROR,
-                 context() << __func__
-                           << "  failed to submit GetReplicasQservMgtRequest to Qserv worker: " << workerName);
+                 context() << __func__ << "  failed to submit GetReplicasQservMgtRequest to Qserv worker: "
+                           << workerName);
 
             finish(lock, ExtendedState::FAILED);
             return;

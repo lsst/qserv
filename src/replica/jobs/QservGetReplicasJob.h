@@ -92,9 +92,12 @@ public:
      * @param priority The optional priority level of the job
      * @return A pointer to the created object
      */
-    static std::shared_ptr<QservGetReplicasJob> create(std::string const& databaseFamily, bool inUseOnly, bool allWorkers,
-                      std::shared_ptr<Controller> const& controller, std::string const& parentJobId = std::string(),
-                      CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
+    static std::shared_ptr<QservGetReplicasJob> create(std::string const& databaseFamily, bool inUseOnly,
+                                                       bool allWorkers,
+                                                       std::shared_ptr<Controller> const& controller,
+                                                       std::string const& parentJobId = std::string(),
+                                                       CallbackType const& onFinish = nullptr,
+                                                       int priority = PRIORITY_NORMAL);
 
     // Default construction and copy semantics are prohibited
 

@@ -46,17 +46,19 @@ namespace lsst::qserv::replica {
 string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
 
 shared_ptr<MoveReplicaJob> MoveReplicaJob::create(string const& databaseFamily, unsigned int chunk,
-                                           string const& sourceWorker, string const& destinationWorker,
-                                           bool purge, shared_ptr<Controller> const& controller,
-                                           string const& parentJobId, CallbackType const& onFinish,
-                                           int priority) {
-    return shared_ptr<MoveReplicaJob>(new MoveReplicaJob(databaseFamily, chunk, sourceWorker, destinationWorker,
-                                                  purge, controller, parentJobId, onFinish, priority));
+                                                  string const& sourceWorker, string const& destinationWorker,
+                                                  bool purge, shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId, CallbackType const& onFinish,
+                                                  int priority) {
+    return shared_ptr<MoveReplicaJob>(new MoveReplicaJob(databaseFamily, chunk, sourceWorker,
+                                                         destinationWorker, purge, controller, parentJobId,
+                                                         onFinish, priority));
 }
 
 MoveReplicaJob::MoveReplicaJob(string const& databaseFamily, unsigned int chunk, string const& sourceWorker,
-                               string const& destinationWorker, bool purge, shared_ptr<Controller> const& controller,
-                               string const& parentJobId, CallbackType const& onFinish, int priority)
+                               string const& destinationWorker, bool purge,
+                               shared_ptr<Controller> const& controller, string const& parentJobId,
+                               CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "MOVE_REPLICA", priority),
           _databaseFamily(databaseFamily),
           _chunk(chunk),
@@ -138,9 +140,10 @@ void MoveReplicaJob::startImpl(replica::Lock const& lock) {
     // be (if requested) purged after a successful completion of the first step.
     _createReplicaJob = CreateReplicaJob::create(
             databaseFamily(), chunk(), sourceWorker(), destinationWorker(), controller(), id(),
-            [self = shared_from_base<MoveReplicaJob>()](shared_ptr<CreateReplicaJob> const& job) { self->_onCreateJobFinish(); },
-            priority()
-    );
+            [self = shared_from_base<MoveReplicaJob>()](shared_ptr<CreateReplicaJob> const& job) {
+                self->_onCreateJobFinish();
+            },
+            priority());
     _createReplicaJob->start();
 }
 
@@ -176,9 +179,10 @@ void MoveReplicaJob::_onCreateJobFinish() {
         if (_purge) {
             _deleteReplicaJob = DeleteReplicaJob::create(
                     databaseFamily(), chunk(), sourceWorker(), controller(), id(),
-                    [self = shared_from_base<MoveReplicaJob>()](shared_ptr<DeleteReplicaJob> const& job) { self->_onDeleteJobFinish(); },
-                    priority()
-            );
+                    [self = shared_from_base<MoveReplicaJob>()](shared_ptr<DeleteReplicaJob> const& job) {
+                        self->_onDeleteJobFinish();
+                    },
+                    priority());
             _deleteReplicaJob->start();
         } else {
             // Otherwise, we're done

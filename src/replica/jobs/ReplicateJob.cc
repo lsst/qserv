@@ -50,8 +50,9 @@ namespace lsst::qserv::replica {
 string ReplicateJob::typeName() { return "ReplicateJob"; }
 
 shared_ptr<ReplicateJob> ReplicateJob::create(string const& databaseFamily, unsigned int numReplicas,
-                                       shared_ptr<Controller> const& controller, string const& parentJobId,
-                                       CallbackType const& onFinish, int priority) {
+                                              shared_ptr<Controller> const& controller,
+                                              string const& parentJobId, CallbackType const& onFinish,
+                                              int priority) {
     return shared_ptr<ReplicateJob>(
             new ReplicateJob(databaseFamily, numReplicas, controller, parentJobId, onFinish, priority));
 }
@@ -107,7 +108,7 @@ list<pair<string, string>> ReplicateJob::persistentLogData() const {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
     for (auto const& workerItr : workerCategoryCounter) {
-        auto const & workerName = workerItr.first;
+        auto const& workerName = workerItr.first;
         string val = "worker=" + workerName;
         for (auto const& categoryItr : workerItr.second) {
             auto const& category = categoryItr.first;
@@ -128,7 +129,10 @@ void ReplicateJob::startImpl(replica::Lock const& lock) {
     bool const allWorkers = false;     // only consider enabled workers
     _findAllJob = FindAllJob::create(
             databaseFamily(), saveReplicInfo, allWorkers, controller(), id(),
-            [self = shared_from_base<ReplicateJob>()](shared_ptr<FindAllJob> job) { self->_onPrecursorJobFinish(); }, priority());
+            [self = shared_from_base<ReplicateJob>()](shared_ptr<FindAllJob> job) {
+                self->_onPrecursorJobFinish();
+            },
+            priority());
     _findAllJob->start();
 }
 

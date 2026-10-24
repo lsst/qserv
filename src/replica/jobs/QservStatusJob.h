@@ -95,10 +95,11 @@ public:
      * @param priority (optional) priority level of the job
      * @return a pointer to the created object
      */
-    static std::shared_ptr<QservStatusJob>  create(unsigned int timeoutSec, bool allWorkers, std::shared_ptr<Controller> const& controller,
-                      std::string const& parentJobId = std::string(),
-                      wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
-                      CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
+    static std::shared_ptr<QservStatusJob> create(
+            unsigned int timeoutSec, bool allWorkers, std::shared_ptr<Controller> const& controller,
+            std::string const& parentJobId = std::string(),
+            wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
 
     QservStatusJob() = delete;
     QservStatusJob(QservStatusJob const&) = delete;

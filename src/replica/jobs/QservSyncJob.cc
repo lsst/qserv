@@ -48,12 +48,13 @@ namespace lsst::qserv::replica {
 
 string QservSyncJob::typeName() { return "QservSyncJob"; }
 
-shared_ptr<QservSyncJob> QservSyncJob::create(string const& databaseFamily, unsigned int requestExpirationIvalSec,
-                                       bool force, shared_ptr<Controller> const& controller,
-                                       string const& parentJobId, CallbackType const& onFinish,
-                                       int priority) {
-    return shared_ptr<QservSyncJob>(new QservSyncJob(databaseFamily, requestExpirationIvalSec, force, controller,
-                                              parentJobId, onFinish, priority));
+shared_ptr<QservSyncJob> QservSyncJob::create(string const& databaseFamily,
+                                              unsigned int requestExpirationIvalSec, bool force,
+                                              shared_ptr<Controller> const& controller,
+                                              string const& parentJobId, CallbackType const& onFinish,
+                                              int priority) {
+    return shared_ptr<QservSyncJob>(new QservSyncJob(databaseFamily, requestExpirationIvalSec, force,
+                                                     controller, parentJobId, onFinish, priority));
 }
 
 QservSyncJob::QservSyncJob(string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
@@ -153,7 +154,9 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
     for (auto const& workerName : controller()->serviceProvider()->config()->workers()) {
         _requests.push_back(qservMgtServices->setReplicas(
                 workerName, *(worker2newReplicas[workerName]), databases, force(), id(), /* jobId */
-                [self](shared_ptr<SetReplicasQservMgtRequest> const& request) { self->_onRequestFinish(request); },
+                [self](shared_ptr<SetReplicasQservMgtRequest> const& request) {
+                    self->_onRequestFinish(request);
+                },
                 _requestExpirationIvalSec));
         _numLaunched++;
     }
