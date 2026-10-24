@@ -22,16 +22,22 @@
 #define LSST_QSERV_REPLICA_ABORTTRANSACTIONJOB_H
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <list>
 #include <memory>
 #include <string>
+#include <utility>
 
 // Qserv headers
-#include "replica/contr/Controller.h"
-#include "replica/jobs/SqlDeleteTablePartitionJob.h"
+#include "replica/jobs/Job.h"
 #include "replica/jobs/SqlJobResult.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class SqlDeleteTablePartitionJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -43,7 +49,8 @@ namespace lsst::qserv::replica {
  * is designed to work for all types of tables (regular or partitioned) across
  * a select (sub-)set of workers. Result sets are collected into an object
  * of class SqlJobResult.
- * @note: only unpublished tables will be affected by the job.
+ *
+ * @note Only unpublished tables will be affected by the job.
  */
 class AbortTransactionJob : public Job {
 public:
@@ -51,90 +58,82 @@ public:
     typedef std::shared_ptr<AbortTransactionJob> Ptr;
 
     /// The function type for notifications on the completion of the job
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<AbortTransactionJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
      *
-     * @param transactionId an identifier of a super-transaction corresponding
-     *   to a MySQL partition to be dropped. The transaction must exist, and
-     *   it should be in the ABORTED state.
-     * @param allWorkers engage all known workers regardless of their status.
-     *   If the flag is set to 'false' then only 'ENABLED' workers which are
-     *   not in the 'READ-ONLY' state will be involved into the operation.
+     * @param transactionId an identifier of a super-transaction corresponding to a MySQL partition
+     *  to be dropped. The transaction must exist, and it should be in the ABORTED state.
+     * @param allWorkers engage all known workers regardless of their status. If the flag is set to 'false'
+     *  then only 'ENABLED' workers which are not in the 'READ-ONLY' state will be involved into the
+     * operation.
      * @param controller is needed launching requests and accessing the Config
      * @param parentJobId an identifier of the parent job
-     * @param onFinish a callback function to be called upon a completion
-     *   of the job
+     * @param onFinish A callback function to be called upon a completion of the job
      * @param priority the the priority level of the job
-     * @return pointer to the created object
+     * @return A pointer to the created object
      */
-    static Ptr create(TransactionId transactionId, bool allWorkers, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static std::shared_ptr<AbortTransactionJob> create(TransactionId transactionId, bool allWorkers,
+                                                       std::shared_ptr<Controller> const& controller,
+                                                       std::string const& parentJobId,
+                                                       CallbackType const& onFinish, int priority);
 
     AbortTransactionJob() = delete;
     AbortTransactionJob(AbortTransactionJob const&) = delete;
     AbortTransactionJob& operator=(AbortTransactionJob const&) = delete;
 
-    ~AbortTransactionJob() final = default;
-
-    // Trivial get methods
+    virtual ~AbortTransactionJob() final = default;
 
     TransactionId transactionId() const { return _transactionId; }
-
     bool allWorkers() const { return _allWorkers; }
 
-    /// @see Job::progress
     virtual Job::Progress progress() const override;
 
     /**
      * Return the combined result of the operation
      *
-     * @note
-     *  The method should be invoked only after the job has finished (primary
-     *  status is set to Job::Status::FINISHED). Otherwise exception
-     *  std::logic_error will be thrown
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown.
      * @return the data structure to be filled upon the completion of the job.
-     * @throws std::logic_error if the job didn't finished at a time when the method
-     *   was called
+     * @throws std::logic_error if the job didn't finished at a time when the method was called
      */
     SqlJobResult const& getResultData() const;
 
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    AbortTransactionJob(TransactionId transactionId, bool allWorkers, Controller::Ptr const& controller,
-                        std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    AbortTransactionJob(TransactionId transactionId, bool allWorkers,
+                        std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+                        CallbackType const& onFinish, int priority);
 
-    void _onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job);
+    void _onChildJobFinish(std::shared_ptr<SqlDeleteTablePartitionJob> const& job);
 
     // Input parameters
 
     TransactionId const _transactionId;
     bool const _allWorkers;
 
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// A collection of the child jobs which are either in flight, or finished
-    std::list<SqlDeleteTablePartitionJob::Ptr> _jobs;
+    std::list<std::shared_ptr<SqlDeleteTablePartitionJob>> _jobs;
 
     // Counters for the child jobs are used for tracking a condition for completing
     // this job and for computing its final state.
 
-    size_t _numFinished = 0;
-    size_t _numSuccess = 0;
+    std::size_t _numFinished = 0;
+    std::size_t _numSuccess = 0;
 
     /// The result of the operation (gets updated as jobs are finishing)
     SqlJobResult _resultData;

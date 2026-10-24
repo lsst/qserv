@@ -37,24 +37,26 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateDbJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlCreateDbJob::typeName() { return "SqlCreateDbJob"; }
 
-SqlCreateDbJob::Ptr SqlCreateDbJob::create(string const& database, bool allWorkers,
-                                           Controller::Ptr const& controller, string const& parentJobId,
-                                           CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlCreateDbJob(database, allWorkers, controller, parentJobId, onFinish, priority));
+shared_ptr<SqlCreateDbJob> SqlCreateDbJob::create(string const& database, bool allWorkers,
+                                                  shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId, CallbackType const& onFinish,
+                                                  int priority) {
+    return shared_ptr<SqlCreateDbJob>(
+            new SqlCreateDbJob(database, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
-SqlCreateDbJob::SqlCreateDbJob(string const& database, bool allWorkers, Controller::Ptr const& controller,
-                               string const& parentJobId, CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_CREATE_DATABASE", priority),
+SqlCreateDbJob::SqlCreateDbJob(string const& database, bool allWorkers,
+                               shared_ptr<Controller> const& controller, string const& parentJobId,
+                               CallbackType const& onFinish, int priority)
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_CREATE_DATABASE", priority),
           _database(database),
           _onFinish(onFinish) {}
 
@@ -65,16 +67,15 @@ list<pair<string, string>> SqlCreateDbJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlCreateDbJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                     size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already
-    // launched earlier
-    list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
+list<shared_ptr<SqlRequest>> SqlCreateDbJob::launchRequests(replica::Lock const& lock, string const& worker,
+                                                            size_t maxRequestsPerWorker) {
+    // Launch exactly one request per worker unless it was already launched earlier
+    list<shared_ptr<SqlRequest>> requests;
+    if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
         bool const keepTracking = true;
         requests.push_back(SqlCreateDbRequest::createAndStart(
                 controller(), worker, database(),
-                [self = shared_from_base<SqlCreateDbJob>()](SqlCreateDbRequest::Ptr const& request) {
+                [self = shared_from_base<SqlCreateDbJob>()](shared_ptr<SqlCreateDbRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));

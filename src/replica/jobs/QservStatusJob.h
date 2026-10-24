@@ -23,7 +23,9 @@
 
 // System headers
 #include <functional>
+#include <list>
 #include <map>
+#include <memory>
 #include <string>
 
 // Third party headers
@@ -31,9 +33,15 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/qserv/GetStatusQservMgtRequest.h"
 #include "replica/requests/ServiceManagementRequest.h"
+#include "replica/util/Common.h"
 #include "wbase/TaskState.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class GetStatusQservMgtRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -63,25 +71,23 @@ public:
     typedef std::shared_ptr<QservStatusJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<QservStatusJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
      *
      * @param timeoutSec maximum number of seconds that (all) requests are allowed to wait
-     *   before finish or expire. If the parameter is set to 0 then
-     *   the corresponding default timeout (for requests) from the Config service
-     *   will be assumed. Be aware that the default timeout could be quite lengthy.
-     *   So, if the job is being launched for worker monitoring purposes
-     *   from the time-constrained environment then it's better to be set to same
-     *   reasonably small value.
+     *  before finish or expire. If the parameter is set to 0 then the corresponding default
+     *  timeout (for requests) from the Config service will be assumed. Be aware that the default
+     *  timeout could be quite lengthy. So, if the job is being launched for worker monitoring
+     *  purposes from the time-constrained environment then it's better to be set to same
+     *  reasonably small value.
      * @param allWorkers if 'true' then send probes to all workers, otherwise
-     *   the enabled workers will be considered only
+     *  the enabled workers will be considered only
      * @param controller for launching requests
      * @param parentJobId (optional) identifier of a parent job
      * @param taskSelector (optional) task selection criterias
@@ -89,7 +95,7 @@ public:
      * @param priority (optional) priority level of the job
      * @return a pointer to the created object
      */
-    static Ptr create(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+    static std::shared_ptr<QservStatusJob>  create(unsigned int timeoutSec, bool allWorkers, std::shared_ptr<Controller> const& controller,
                       std::string const& parentJobId = std::string(),
                       wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
                       CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
@@ -100,15 +106,12 @@ public:
 
     virtual ~QservStatusJob() final = default;
 
-    /// @return an actual value for the maximum number of seconds that (all) requests
-    ///   are allowed to wait before finish or expire after a possible adjustment of
-    ///   the parameter's value from the Config
+    /// @return The actual value for the maximum number of seconds that (all) requests
+    ///  are allowed to wait before finish or expire after a possible adjustment of
+    ///  the parameter's value from the Config
     unsigned int timeoutSec() const { return _timeoutSec; }
 
-    /// @return 'true' if the job probes all known workers
     bool allWorkers() const { return _allWorkers; }
-
-    /// @return the selection criterias for tasks
     wbase::TaskSelector const& taskSelector() const { return _taskSelector; }
 
     /**
@@ -117,11 +120,8 @@ public:
      */
     QservStatus const& qservStatus() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
     virtual void startImpl(replica::Lock const& lock) final;
@@ -129,17 +129,15 @@ protected:
     virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see QservStatusJob::create()
-    QservStatusJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+    QservStatusJob(unsigned int timeoutSec, bool allWorkers, std::shared_ptr<Controller> const& controller,
                    std::string const& parentJobId, wbase::TaskSelector const& taskSelector,
                    CallbackType const& onFinish, int priority);
 
     /**
-     * The callback function to be invoked on a completion of the Qserv
-     * worker requests.
+     * The callback function to be invoked on a completion of the Qserv worker requests.
      * @param request a pointer to a request
      */
-    void _onRequestFinish(GetStatusQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<GetStatusQservMgtRequest> const& request);
 
     // Input parameters
 
@@ -149,7 +147,7 @@ private:
     CallbackType _onFinish;
 
     /// Requests sent to the Qserv workers registered by their identifiers
-    std::map<std::string, GetStatusQservMgtRequest::Ptr> _requests;
+    std::map<std::string, std::shared_ptr<GetStatusQservMgtRequest>> _requests;
 
     QservStatus _qservStatus;  ///< Result to be returned
     size_t _numStarted = 0;    ///< The number of started requests

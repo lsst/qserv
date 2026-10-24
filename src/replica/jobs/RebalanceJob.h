@@ -22,16 +22,23 @@
 #define LSST_QSERV_REPLICA_REBALANCEJOB_H
 
 // System headers
+#include <cstddef>
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/jobs/FindAllJob.h"
-#include "replica/jobs/MoveReplicaJob.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class FindAllJob;
+class MoveReplicaJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -78,9 +85,9 @@ struct RebalanceJobResult {
 
     // Parameters of the planner
 
-    size_t totalWorkers = 0;     /// not counting workers which failed to report chunks
-    size_t totalGoodChunks = 0;  /// good chunks reported by the precursor job
-    size_t avgChunks = 0;        /// per worker average
+    std::size_t totalWorkers = 0;     ///< not counting workers which failed to report chunks
+    std::size_t totalGoodChunks = 0;  ///< good chunks reported by the precursor job
+    std::size_t avgChunks = 0;        ///< per worker average
 };
 
 /**
@@ -127,95 +134,58 @@ public:
     typedef std::shared_ptr<RebalanceJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<RebalanceJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
      *
-     * @param databaseFamily
-     *   the name of a database family
-     *
-     * @param estimateOnly
-     *   do not perform any changes to chunk disposition. Just produce
-     *   an estimate report.
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   an identifier of a parent job
-     *
-     * @param onFinish
-     *   a callback function to be called upon job completion
-     *
-     * @param priority
-     *   the priority level of the job
-     *
-     * @return
-     *   pointer to the created object
+     * @param databaseFamily The name of a database family.
+     * @param estimateOnly Whether to only estimate without making changes. Do not perform any
+     *  changes to chunk disposition. Just produce an estimate report.
+     * @param controller The controller for launching requests.
+     * @param parentJobId An identifier of a parent job.
+     * @param onFinish A callback function to be called upon job completion.
+     * @param priority The priority level of the job.
+     * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& databaseFamily, bool estimateOnly, Controller::Ptr const& controller,
+    static std::shared_ptr<RebalanceJob> create(std::string const& databaseFamily, bool estimateOnly, std::shared_ptr<Controller> const& controller,
                       std::string const& parentJobId, CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
 
     RebalanceJob() = delete;
     RebalanceJob(RebalanceJob const&) = delete;
     RebalanceJob& operator=(RebalanceJob const&) = delete;
 
-    ~RebalanceJob() final = default;
+    virtual ~RebalanceJob() final = default;
 
-    /// @return the name of a database defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
-
-    /// @return the estimate mode option
     bool estimateOnly() const { return _estimateOnly; }
 
     /**
      * Return the result of the operation.
      *
-     * @note
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception of type std::logic_error will be thrown.
+     *  Verify the primary and extended status of the object to ensure that all requests have finished.
      *
-     * @note
-     *   The result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throw std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return The data structure to be filled upon the completion of the job.
+     * @throw std::logic_error if the job didn't finished at a time when the method was called
      */
     RebalanceJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see RebalanceJob::create()
-    RebalanceJob(std::string const& databaseFamily, bool estimateOnly, Controller::Ptr const& controller,
+    RebalanceJob(std::string const& databaseFamily, bool estimateOnly, std::shared_ptr<Controller> const& controller,
                  std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
@@ -225,51 +195,42 @@ private:
     void _onPrecursorJobFinish();
 
     /**
-     * The callback function to be invoked on a completion of each replica
-     * creation request.
-     *
-     * @param request
-     *   a pointer to a request
+     * The callback function to be invoked on a completion of each replica creation request.
+     * @param request A pointer to a request
      */
-    void _onJobFinish(MoveReplicaJob::Ptr const& job);
+    void _onJobFinish(std::shared_ptr<MoveReplicaJob> const& job);
 
     /**
-     * Submit a batch of the replica movement job
+     * Submit a batch of the replica movement job.
      *
-     * This method implements a load balancing algorithm which tries to
-     * prevent excessive use of resources by controllers and to avoid
-     * "hot spots" or under-utilization at workers.
+     * This method implements a load balancing algorithm which tries to prevent excessive use of
+     * resources by controllers and to avoid "hot spots" or under-utilization at workers.
      *
-     * @param lock
-     *   a lock on Job::_mtx must be acquired before calling this method
-     *
-     * @param numJobs
-     *   desired number of jobs to submit
-     *
-     * @retun
-     *   the actual number of submitted jobs
+     * @param lock A lock on Job::_mtx must be acquired before calling this method
+     * @param numJobs The desired number of jobs to submit
+     * @return the actual number of submitted jobs
      */
-    size_t _launchNextJobs(replica::Lock const& lock, size_t numJobs);
+    std::size_t _launchNextJobs(replica::Lock const& lock, std::size_t numJobs);
 
     // Input parameters
 
     std::string const _databaseFamily;
     bool const _estimateOnly;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
-    FindAllJob::Ptr _findAllJob;
+    std::shared_ptr<FindAllJob> _findAllJob;
 
     /// Replica creation jobs which are ready to be launched
-    std::list<MoveReplicaJob::Ptr> _jobs;
+    std::list<std::shared_ptr<MoveReplicaJob>> _jobs;
 
     /// Jobs which are already active
-    std::list<MoveReplicaJob::Ptr> _activeJobs;
+    std::list<std::shared_ptr<MoveReplicaJob>> _activeJobs;
 
-    size_t _numLaunched = 0;  ///< the total number of replica creation jobs launched
-    size_t _numFinished = 0;  ///< the total number of finished jobs
-    size_t _numSuccess = 0;   ///< the number of successfully completed jobs
+    std::size_t _numLaunched = 0;  ///< the total number of replica creation jobs launched
+    std::size_t _numFinished = 0;  ///< the total number of finished jobs
+    std::size_t _numSuccess = 0;   ///< the number of successfully completed jobs
 
     /// The result of the operation (gets updated as requests are finishing)
     RebalanceJobResult _replicaData;

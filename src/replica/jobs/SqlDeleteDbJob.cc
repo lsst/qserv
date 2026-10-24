@@ -37,24 +37,26 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteDbJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlDeleteDbJob::typeName() { return "SqlDeleteDbJob"; }
 
-SqlDeleteDbJob::Ptr SqlDeleteDbJob::create(string const& database, bool allWorkers,
-                                           Controller::Ptr const& controller, string const& parentJobId,
-                                           CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlDeleteDbJob(database, allWorkers, controller, parentJobId, onFinish, priority));
+shared_ptr<SqlDeleteDbJob> SqlDeleteDbJob::create(string const& database, bool allWorkers,
+                                                  shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId, CallbackType const& onFinish,
+                                                  int priority) {
+    return shared_ptr<SqlDeleteDbJob>(
+            new SqlDeleteDbJob(database, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
-SqlDeleteDbJob::SqlDeleteDbJob(string const& database, bool allWorkers, Controller::Ptr const& controller,
-                               string const& parentJobId, CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_DROP_DATABASE", priority),
+SqlDeleteDbJob::SqlDeleteDbJob(string const& database, bool allWorkers,
+                               shared_ptr<Controller> const& controller, string const& parentJobId,
+                               CallbackType const& onFinish, int priority)
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_DROP_DATABASE", priority),
           _database(database),
           _onFinish(onFinish) {}
 
@@ -65,16 +67,15 @@ list<pair<string, string>> SqlDeleteDbJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                     size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already
-    // launched earlier
-    list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
+list<shared_ptr<SqlRequest>> SqlDeleteDbJob::launchRequests(replica::Lock const& lock, string const& worker,
+                                                            size_t maxRequestsPerWorker) {
+    // Launch exactly one request per worker unless it was already launched earlier
+    list<shared_ptr<SqlRequest>> requests;
+    if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
         bool const keepTracking = true;
         requests.push_back(SqlDeleteDbRequest::createAndStart(
                 controller(), worker, database(),
-                [self = shared_from_base<SqlDeleteDbJob>()](SqlDeleteDbRequest::Ptr const& request) {
+                [self = shared_from_base<SqlDeleteDbJob>()](shared_ptr<SqlDeleteDbRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));

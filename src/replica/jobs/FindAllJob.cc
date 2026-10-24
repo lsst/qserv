@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/requests/FindAllRequest.h"
 #include "replica/requests/StopRequest.h"
 #include "replica/services/ServiceProvider.h"

@@ -22,10 +22,11 @@
 #define LSST_QSERV_REPLICA_SQLGETINDEXESJOB_H
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -36,6 +37,12 @@
 
 // Third party headers
 #include "nlohmann/json.hpp"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class SqlRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -99,8 +106,8 @@ public:
 
         static std::string status2string(Status status);
 
-        size_t numReplicasTotal = 0;  ///< the total number of replicas probed by the job
-        size_t numReplicas = 0;       ///< the number of replicas where the index was found
+        std::size_t numReplicasTotal = 0;  ///< the total number of replicas probed by the job
+        std::size_t numReplicas = 0;       ///< the number of replicas where the index was found
     };
     std::list<Index> indexes;  ///< indexes defined on the table
 
@@ -130,72 +137,72 @@ public:
     typedef std::shared_ptr<SqlGetIndexesJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SqlGetIndexesJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
-     * @param overlap The flag (applies to the partitioned tables only)
-     *   indicating which kind of the partitioned tables to be affected by
-     *   the operation. If the flag is set to 'true' then only the overlap tables
-     *   will be involved into the operation. Otherwise, only the chunk tables will
-     *   be affected.
-     * @param allWorkers The flag which if set to 'true' will engage all known
-     *   workers regardless of their status. If the flag is set to 'false' then
-     *   only 'ENABLED' workers which are not in the 'READ-ONLY' state will be
-     *   involved into the operation.
+     * @param overlap The flag (applies to the partitioned tables only) indicating which kind of
+     *  the partitioned tables to be affected by the operation. If the flag is set to 'true' then
+     *  only the overlap tables will be involved into the operation. Otherwise, only the chunk
+     *  tables will be affected.
+     * @param allWorkers The flag which if set to 'true' will engage all known workers regardless of
+     *  their status. If the flag is set to 'false' then only 'ENABLED' workers which are not in
+     *  the 'READ-ONLY' state will be involved into the operation.
      * @param controller This is needed launching requests and accessing the Config.
      * @param parentJobId An identifier of a parent job.
      * @param onFinish A callback function to be called upon a completion of the job.
      * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& database, std::string const& table, bool overlap, bool allWorkers,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority);
+    static std::shared_ptr<SqlGetIndexesJob> create(std::string const& database, std::string const& table,
+                                                    bool overlap, bool allWorkers,
+                                                    std::shared_ptr<Controller> const& controller,
+                                                    std::string const& parentJobId,
+                                                    CallbackType const& onFinish, int priority);
 
     SqlGetIndexesJob() = delete;
     SqlGetIndexesJob(SqlGetIndexesJob const&) = delete;
     SqlGetIndexesJob& operator=(SqlGetIndexesJob const&) = delete;
 
-    ~SqlGetIndexesJob() final = default;
+    virtual ~SqlGetIndexesJob() final = default;
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
     bool overlap() const { return _overlap; }
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /**
      * Return info on the indexes.
      * @note This method is meant to be used only for succesfully completed jobs.
      * @return definitions of indexes
-     * @throw std::logic_error If the method is called wguile the job is still running,
-     *  or if it's failed.
+     * @throw std::logic_error If the method is called while the job is still running, or if it's failed.
      */
     SqlIndexes indexes() const;
 
 protected:
-    void notify(replica::Lock const& lock) final;
-    std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
-                                              size_t maxRequestsPerWorker) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual std::list<std::shared_ptr<SqlRequest>> launchRequests(replica::Lock const& lock,
+                                                                  std::string const& worker,
+                                                                  std::size_t maxRequestsPerWorker) final;
 
 private:
     SqlGetIndexesJob(std::string const& database, std::string const& table, bool overlap, bool allWorkers,
-                     Controller::Ptr const& controller, std::string const& parentJobId,
+                     std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                      CallbackType const& onFinish, int priority);
 
     // Input parameters
     std::string const _database;
     std::string const _table;
     bool const _overlap;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// A collection of tables to be processed by workers. The collection
     /// is also needed to mark those for which request has been sent.

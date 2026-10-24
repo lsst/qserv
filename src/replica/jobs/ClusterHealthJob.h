@@ -22,15 +22,22 @@
 #define LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H
 
 // System headers
+#include <cstddef>
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/qserv/TestEchoQservMgtRequest.h"
 #include "replica/requests/ServiceManagementRequest.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class TestEchoQservMgtRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -65,15 +72,15 @@ public:
 
     /**
      * Update a state of a Replication agent worker and recompute the summary state.
-     * @param worker  The name of a worker.
-     * @param state  The new state of the worker.
+     * @param worker The name of a worker.
+     * @param state The new state of the worker.
      */
     void updateReplicationState(std::string const& worker, bool state);
 
     /**
      * Update a state of a Qserv worker and recompute the summary state.
-     * @param worker  The name of a worker.
-     * @param state  The new state of the worker.
+     * @param worker The name of a worker.
+     * @param state The new state of the worker.
      */
     void updateQservState(std::string const& worker, bool state);
 
@@ -106,81 +113,72 @@ public:
     typedef std::shared_ptr<ClusterHealthJob> Ptr;
 
     /// The function type for notifications on the completion of the request.
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<ClusterHealthJob>)> CallbackType;
 
     /// @return  The unique name distinguishing this class from other types of jobs.
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     * @param timeoutSec  The maximum number of seconds that (all) requests are allowed
-     *   to wait before finish or expire. If the parameter is set to 0 then
-     *   the corresponding timeout (for requests) from the Config service
-     *   will be assumed. ARTTENTION: this timeout could be quite lengthy.
-     * @param allWorkers  The flag that if 'true' then send probes to all workers,
-     *   otherwise the enabled workers will be considered only.
-     * @param controller  The service for launching requests.
-     * @param parentJobId  An identifier of the parent job.
-     * @param onFinish  A callback function to be called upon a completion of the job.
-     * @param priority  The priority of the job.
-     * @return  A pointer to the created object.
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
+     *
+     * @param timeoutSec The maximum number of seconds that (all) requests are allowed to wait before
+     *  finish or expire. If the parameter is set to 0 then the corresponding timeout (for requests) from
+     *  the Config service will be assumed. ATTENTION: this timeout could be quite lengthy.
+     * @param allWorkers The flag that if 'true' then send probes to all workers, otherwise the enabled
+     * workers will be considered only.
+     * @param controller The service for launching requests.
+     * @param parentJobId An identifier of the parent job.
+     * @param onFinish A callback function to be called upon a completion of the job.
+     * @param priority The priority of the job.
+     * @return A pointer to the created object.
      */
-    static Ptr create(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static std::shared_ptr<ClusterHealthJob> create(unsigned int timeoutSec, bool allWorkers,
+                                                    std::shared_ptr<Controller> const& controller,
+                                                    std::string const& parentJobId,
+                                                    CallbackType const& onFinish, int priority);
 
     ClusterHealthJob() = delete;
     ClusterHealthJob(ClusterHealthJob const&) = delete;
     ClusterHealthJob& operator=(ClusterHealthJob const&) = delete;
 
-    ~ClusterHealthJob() final = default;
+    virtual ~ClusterHealthJob() final = default;
 
-    /// @return  The maximum number of seconds that (all) requests are allowed to wait
-    /// before finish or expire.
+    /// @return The maximum number of seconds that (all) requests are allowed to wait before finish or expire.
     unsigned int timeoutSec() const { return _timeoutSec; }
 
-    /// @return  A value of 'true' if the job probes all known workers.
+    /// @return A value of 'true' if the job probes all known workers.
     bool allWorkers() const { return _allWorkers; }
 
     /**
-     * @return  The cluster summary report.
-     * @throw std::logic_error  If the method is called before the job finishes.
+     * @return The cluster summary report.
+     * @throw std::logic_error If the method is called before the job finishes.
      */
     ClusterHealth const& clusterHealth() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see ClusterHealthJob::create()
-    ClusterHealthJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+    ClusterHealthJob(unsigned int timeoutSec, bool allWorkers, std::shared_ptr<Controller> const& controller,
                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the Replication worker probes.
      * @param request  A pointer to a request.
      */
-    void _onRequestFinish(ServiceStatusRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<ServiceStatusRequest> const& request);
 
     /**
      * The callback function to be invoked on a completion of the Qserv worker probes.
      * @param request  A pointer to a request.
      */
-    void _onRequestFinish(TestEchoQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<TestEchoQservMgtRequest> const& request);
 
     // Input parameters
 
@@ -189,19 +187,14 @@ private:
     CallbackType _onFinish;
 
     /// Requests sent to the Replication workers registered by their identifiers
-    std::map<std::string, ServiceStatusRequest::Ptr> _requests;
+    std::map<std::string, std::shared_ptr<ServiceStatusRequest>> _requests;
 
     /// Requests sent to the Qserv workers registered by their identifiers
-    std::map<std::string, TestEchoQservMgtRequest::Ptr> _qservRequests;
+    std::map<std::string, std::shared_ptr<TestEchoQservMgtRequest>> _qservRequests;
 
-    /// Result to be returned
-    ClusterHealth _health;
-
-    /// The number of started requests
-    size_t _numStarted = 0;
-
-    /// The number of finished requests
-    size_t _numFinished = 0;
+    ClusterHealth _health;         ///< Result to be returned
+    std::size_t _numStarted = 0;   ///< The number of started requests
+    std::size_t _numFinished = 0;  ///< The number of finished requests
 };
 
 }  // namespace lsst::qserv::replica

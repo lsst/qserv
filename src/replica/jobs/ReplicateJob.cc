@@ -30,6 +30,9 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#include "replica/jobs/CreateReplicaJob.h"
+#include "replica/jobs/FindAllJob.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ErrorReporting.h"
 
@@ -39,24 +42,22 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ReplicateJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string ReplicateJob::typeName() { return "ReplicateJob"; }
 
-ReplicateJob::Ptr ReplicateJob::create(string const& databaseFamily, unsigned int numReplicas,
-                                       Controller::Ptr const& controller, string const& parentJobId,
+shared_ptr<ReplicateJob> ReplicateJob::create(string const& databaseFamily, unsigned int numReplicas,
+                                       shared_ptr<Controller> const& controller, string const& parentJobId,
                                        CallbackType const& onFinish, int priority) {
-    return ReplicateJob::Ptr(
+    return shared_ptr<ReplicateJob>(
             new ReplicateJob(databaseFamily, numReplicas, controller, parentJobId, onFinish, priority));
 }
 
 ReplicateJob::ReplicateJob(string const& databaseFamily, unsigned int numReplicas,
-                           Controller::Ptr const& controller, string const& parentJobId,
+                           shared_ptr<Controller> const& controller, string const& parentJobId,
                            CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "REPLICATE", priority),
           _databaseFamily(databaseFamily),
@@ -70,9 +71,7 @@ ReplicateJob::ReplicateJob(string const& databaseFamily, unsigned int numReplica
 
 ReplicateJobResult const& ReplicateJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("ReplicateJob::" + string(__func__) +
                       "  the method can't be called while the job hasn't finished");
 }
@@ -86,17 +85,14 @@ list<pair<string, string>> ReplicateJob::extendedPersistentState() const {
 
 list<pair<string, string>> ReplicateJob::persistentLogData() const {
     list<pair<string, string>> result;
-
-    auto&& replicaData = getReplicaData();
+    auto const& replicaData = getReplicaData();
 
     // Report workers failed to respond to the requests
-
-    for (auto&& workerInfo : replicaData.workers) {
-        auto&& worker = workerInfo.first;
-
+    for (auto const& workerInfo : replicaData.workers) {
+        auto const& workerName = workerInfo.first;
         bool const responded = workerInfo.second;
-        if (not responded) {
-            result.emplace_back("failed-worker", worker);
+        if (!responded) {
+            result.emplace_back("failed-worker", workerName);
         }
     }
 
@@ -105,18 +101,16 @@ list<pair<string, string>> ReplicateJob::persistentLogData() const {
     //   created-chunks:
     //     the total number of chunks created on the workers as a result
     //     of the operation
-
     map<string, map<string, size_t>> workerCategoryCounter;
 
-    for (auto&& info : replicaData.replicas) {
+    for (auto const& info : replicaData.replicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
-    for (auto&& workerItr : workerCategoryCounter) {
-        auto&& worker = workerItr.first;
-        string val = "worker=" + worker;
-
-        for (auto&& categoryItr : workerItr.second) {
-            auto&& category = categoryItr.first;
+    for (auto const& workerItr : workerCategoryCounter) {
+        auto const & workerName = workerItr.first;
+        string val = "worker=" + workerName;
+        for (auto const& categoryItr : workerItr.second) {
+            auto const& category = categoryItr.first;
             size_t const counter = categoryItr.second;
             val += " " + category + "=" + to_string(counter);
         }
@@ -129,34 +123,29 @@ void ReplicateJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
-
-    auto self = shared_from_base<ReplicateJob>();
-
     bool const saveReplicInfo = true;  // always save the replica info in a database because
                                        // the algorithm depends on it.
     bool const allWorkers = false;     // only consider enabled workers
     _findAllJob = FindAllJob::create(
             databaseFamily(), saveReplicInfo, allWorkers, controller(), id(),
-            [self](FindAllJob::Ptr job) { self->_onPrecursorJobFinish(); }, priority());
+            [self = shared_from_base<ReplicateJob>()](shared_ptr<FindAllJob> job) { self->_onPrecursorJobFinish(); }, priority());
     _findAllJob->start();
 }
 
 void ReplicateJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // The algorithm will also clear resources taken by various
-    // locally created objects.
-
-    if ((nullptr != _findAllJob) and (_findAllJob->state() != State::FINISHED)) {
+    // The algorithm will also clear resources taken by various locally created objects.
+    if ((nullptr != _findAllJob) && (_findAllJob->state() != State::FINISHED)) {
         _findAllJob->cancel();
     }
     _findAllJob = nullptr;
-
     _jobs.clear();
 
-    for (auto&& ptr : _activeJobs) ptr->cancel();
+    for (auto const& ptr : _activeJobs) {
+        ptr->cancel();
+    }
     _activeJobs.clear();
-
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess = 0;
@@ -171,9 +160,7 @@ void ReplicateJob::_onPrecursorJobFinish() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     //////////////////////////////////////////////////////////////////////
@@ -215,11 +202,9 @@ void ReplicateJob::_onPrecursorJobFinish() {
     // The number of replicas to be created for eligible chunks
     //
     map<unsigned int, int> chunk2numReplicas2create;
-
-    for (auto&& chunk2workers : replicaData.isGood) {
+    for (auto const& chunk2workers : replicaData.isGood) {
         unsigned int const chunk = chunk2workers.first;
         auto const& replicas = chunk2workers.second;
-
         size_t const numReplicas = replicas.size();
         if (numReplicas < _numReplicas) {
             chunk2numReplicas2create[chunk] = _numReplicas - numReplicas;
@@ -233,16 +218,14 @@ void ReplicateJob::_onPrecursorJobFinish() {
     // be issued.
     //
     // NOTE: this map includes chunks in 'good' standing only
-
     map<string, size_t> worker2occupancy;
-
-    for (auto&& chunkEntry : replicaData.isGood) {
-        for (auto&& workerEntry : chunkEntry.second) {
-            auto worker = workerEntry.first;
+    for (auto const& chunkEntry : replicaData.isGood) {
+        for (auto const& workerEntry : chunkEntry.second) {
+            auto const& workerName = workerEntry.first;
             bool const isGood = workerEntry.second;
             if (isGood) {
-                if (not worker2occupancy.count(worker)) worker2occupancy[worker] = 0;
-                worker2occupancy[worker]++;
+                if (worker2occupancy.count(workerName) == 0) worker2occupancy[workerName] = 0;
+                worker2occupancy[workerName]++;
             }
         }
     }
@@ -255,15 +238,12 @@ void ReplicateJob::_onPrecursorJobFinish() {
     // replicas on that node.
     //
     map<string, set<unsigned int>> worker2chunks;
-
     for (auto chunk : replicaData.chunks.chunkNumbers()) {
         auto chunkMap = replicaData.chunks.chunk(chunk);
-
-        for (auto&& database : chunkMap.databaseNames()) {
-            auto databaseMap = chunkMap.database(database);
-
-            for (auto&& worker : databaseMap.workerNames()) {
-                worker2chunks[worker].insert(chunk);
+        for (auto const& databaseName : chunkMap.databaseNames()) {
+            auto databaseMap = chunkMap.database(databaseName);
+            for (auto const& workerName : databaseMap.workerNames()) {
+                worker2chunks[workerName].insert(chunk);
             }
         }
     }
@@ -271,14 +251,13 @@ void ReplicateJob::_onPrecursorJobFinish() {
     // The 'white list of workers which haven't been reported as FAILED
     // by the precursor job. These workers will be considered as destinations
     // for the new replicas.
-
     vector<string> workers;
-    for (auto&& worker : controller()->serviceProvider()->config()->workers()) {
-        if (replicaData.workers.at(worker)) {
-            workers.push_back(worker);
+    for (auto const& workerName : controller()->serviceProvider()->config()->workers()) {
+        if (replicaData.workers.at(workerName)) {
+            workers.push_back(workerName);
         }
     }
-    if (not workers.size()) {
+    if (workers.size() == 0) {
         LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  not workers are available for new replicas");
 
         finish(lock, ExtendedState::FAILED);
@@ -293,29 +272,25 @@ void ReplicateJob::_onPrecursorJobFinish() {
     // by the replication planner in order to spread the load across as many
     // source workers as possible.
     map<string, size_t> sourceWorkerAllocations;
-    for (auto&& worker : controller()->serviceProvider()->config()->workers()) {
-        sourceWorkerAllocations[worker] = 0;
+    for (auto const& workerName : controller()->serviceProvider()->config()->workers()) {
+        sourceWorkerAllocations[workerName] = 0;
     }
 
     auto self = shared_from_base<ReplicateJob>();
-
-    for (auto&& chunk2replicas : chunk2numReplicas2create) {
+    for (auto const& chunk2replicas : chunk2numReplicas2create) {
         unsigned int const chunk = chunk2replicas.first;
         int const numReplicas2create = chunk2replicas.second;
 
-        // Find the least used (as a source) worker which has a 'good'
-        // chunk
-
+        // Find the least used (as a source) worker which has a 'good' chunk
         string sourceWorker;
         size_t minAllocations = numeric_limits<unsigned long long>::max();
-
-        for (auto&& workerEntry : replicaData.isGood.at(chunk)) {
-            string const& worker = workerEntry.first;
+        for (auto const& workerEntry : replicaData.isGood.at(chunk)) {
+            string const& workerName = workerEntry.first;
             bool const isGood = workerEntry.second;
             if (isGood) {
-                size_t const allocations = sourceWorkerAllocations[worker];
+                size_t const allocations = sourceWorkerAllocations[workerName];
                 if (allocations < minAllocations) {
-                    sourceWorker = worker;
+                    sourceWorker = workerName;
                     minAllocations = allocations;
                 }
             }
@@ -327,32 +302,28 @@ void ReplicateJob::_onPrecursorJobFinish() {
             return;
         }
 
-        // Iterate over the number of replicas to be created and create
-        // a new one on each step.
+        // Iterate over the number of replicas to be created and create a new one on each step.
         //
         // NOTE: the worker occupancy map worker2occupancy will get
         // updated on each successful iteration of the loop, so that
         // the corresponding destination worker will also be accounted
         // for when deciding on a placement of other replicas.
-
         for (int i = 0; i < numReplicas2create; ++i) {
             // Find a suitable destination worker based on the worker load
             // and chunk-specific exclusions.
-
             string destinationWorker;
-
             size_t minNumChunks = (size_t)-1;  // this will be decreased within the loop to find
                                                // the absolute minimum among the eligible workers
-            for (const auto& worker : workers) {
+            for (const auto& workerName : workers) {
                 // Skip if this worker already has any replica of the chunk
-                if (worker2chunks[worker].count(chunk)) {
+                if (worker2chunks[workerName].count(chunk)) {
                     continue;
                 }
 
                 // Evaluate the occupancy
-                if (destinationWorker.empty() or worker2occupancy[worker] < minNumChunks) {
-                    destinationWorker = worker;
-                    minNumChunks = worker2occupancy[worker];
+                if (destinationWorker.empty() || worker2occupancy[workerName] < minNumChunks) {
+                    destinationWorker = workerName;
+                    minNumChunks = worker2occupancy[workerName];
                 }
             }
             if (destinationWorker.empty()) {
@@ -366,7 +337,7 @@ void ReplicateJob::_onPrecursorJobFinish() {
 
             auto ptr = CreateReplicaJob::create(
                     databaseFamily(), chunk, sourceWorker, destinationWorker, controller(), id(),
-                    [self](CreateReplicaJob::Ptr const& job) { self->_onCreateJobFinish(job); },
+                    [self](shared_ptr<CreateReplicaJob> const& job) { self->_onCreateJobFinish(job); },
                     priority()  // inherit from the current job
             );
             _jobs.push_back(ptr);
@@ -374,16 +345,13 @@ void ReplicateJob::_onPrecursorJobFinish() {
             // Bump the occupancy of workers on both ends of the operations, so that it
             // will be taken into consideration when deciding on sources and destinations
             // of other replicas.
-
             worker2occupancy[destinationWorker]++;
             sourceWorkerAllocations[sourceWorker]++;
         }
     }
 
-    // ATTENTION: this condition needs to be evaluated to prevent
-    // getting into the 'zombie' state.
-
-    if (not _jobs.size()) {
+    // ATTENTION: this condition needs to be evaluated to prevent getting into the 'zombie' state.
+    if (_jobs.size() == 0) {
         finish(lock, ExtendedState::SUCCESS);
         return;
     }
@@ -392,14 +360,12 @@ void ReplicateJob::_onPrecursorJobFinish() {
     // the batch is determined by the number of source workers in
     // the above prepared plan multiplied by the number of worker-side
     // processing threads.
-
     set<string> destinationWorkers;
-    for (auto&& ptr : _jobs) {
+    for (auto const& ptr : _jobs) {
         destinationWorkers.insert(ptr->destinationWorker());
     }
     size_t const numJobs = destinationWorkers.size() * controller()->serviceProvider()->config()->get<size_t>(
                                                                "controller", "num-requests-per-worker");
-
     size_t const numJobsLaunched = _launchNextJobs(lock, numJobs);
     if (0 != numJobsLaunched) {
         _numLaunched += numJobsLaunched;
@@ -412,7 +378,7 @@ void ReplicateJob::_onPrecursorJobFinish() {
     }
 }
 
-void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
+void ReplicateJob::_onCreateJobFinish(shared_ptr<CreateReplicaJob> const& job) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  chunk=" << job->chunk() << "  databaseFamily=" << job->databaseFamily()
                    << "  sourceWorker=" << job->sourceWorker()
@@ -422,9 +388,7 @@ void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
         _activeJobs.remove(job);
         return;
     }
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
         return;
@@ -432,29 +396,24 @@ void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
 
     // The job needs to be removed from this list so that the next job schedule
     // would operate on the actual state of the active job disposition.
-
     _activeJobs.remove(job);
 
     // Update counters and object state if needed
-
     _numFinished++;
     if (job->extendedState() == Job::ExtendedState::SUCCESS) {
         _numSuccess++;
         auto replicaData = job->getReplicaData();
-        for (auto&& replica : replicaData.replicas) {
+        for (auto const& replica : replicaData.replicas) {
             _replicaData.replicas.push_back(replica);
         }
-        for (auto&& chunkEntry : replicaData.chunks) {
-            auto chunk = chunkEntry.first;
-
-            for (auto&& databaseEntry : chunkEntry.second) {
-                auto database = databaseEntry.first;
-
-                for (auto&& workerEntry : databaseEntry.second) {
-                    auto worker = workerEntry.first;
-                    auto replica = workerEntry.second;
-
-                    _replicaData.chunks[chunk][database][worker] = replica;
+        for (auto const& chunkEntry : replicaData.chunks) {
+            auto const& chunk = chunkEntry.first;
+            for (auto const& databaseEntry : chunkEntry.second) {
+                auto const& databaseName = databaseEntry.first;
+                for (auto const& workerEntry : databaseEntry.second) {
+                    auto const& workerName = workerEntry.first;
+                    auto const& replica = workerEntry.second;
+                    _replicaData.chunks[chunk][databaseName][workerName] = replica;
                 }
             }
         }
@@ -464,14 +423,11 @@ void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     }
 
     // Try to submit one more job
-
     size_t const numJobsLaunched = _launchNextJobs(lock, 1);
     if (numJobsLaunched != 0) {
         _numLaunched += numJobsLaunched;
     } else {
-        // Evaluate the status of on-going operations to see if the job
-        // has finished.
-
+        // Evaluate the status of on-going operations to see if the job has finished.
         if (_numFinished == _numLaunched) {
             finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS : ExtendedState::FAILED);
         }
@@ -483,11 +439,9 @@ size_t ReplicateJob::_launchNextJobs(replica::Lock const& lock, size_t numJobs) 
 
     // Compute the number of jobs which are already active at both ends
     // (destination and source workers).
-
     map<string, size_t> numAtDest;
     map<string, size_t> numAtSrc;
-
-    for (auto&& ptr : _activeJobs) {
+    for (auto const& ptr : _activeJobs) {
         numAtDest[ptr->destinationWorker()]++;
         numAtSrc[ptr->sourceWorker()]++;
     }
@@ -495,7 +449,6 @@ size_t ReplicateJob::_launchNextJobs(replica::Lock const& lock, size_t numJobs) 
     // Try to fulfill the request (to submit the given number of jobs)
     // by evaluating best candidates using an algorithm explained
     // within the loop below.
-
     size_t numJobsLaunched = 0;
     for (size_t i = 0; i < numJobs; ++i) {
         // THE LOAD BALANCING ALGORITHM:
@@ -509,11 +462,9 @@ size_t ReplicateJob::_launchNextJobs(replica::Lock const& lock, size_t numJobs) 
         //     load := numAtDest[destWorker] + numAtSrc[srcWorker]
         //
         //   A part which has the lowest number will be selected.
-
         size_t minLoad = numeric_limits<unsigned long long>::max();
-        CreateReplicaJob::Ptr job;
-
-        for (auto&& ptr : _jobs) {
+        shared_ptr<CreateReplicaJob> job;
+        for (auto const& ptr : _jobs) {
             size_t const load = numAtDest[ptr->destinationWorker()] + numAtSrc[ptr->sourceWorker()];
             if (load <= minLoad) {
                 minLoad = load;

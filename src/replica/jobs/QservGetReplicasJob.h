@@ -29,9 +29,15 @@
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/qserv/GetReplicasQservMgtRequest.h"
-#include "replica/util/ReplicaInfo.h"
+#include "replica/util/Common.h"
 #include "replica/util/SemanticMaps.h"
+#include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class GetReplicasQservMgtRequest;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -68,42 +74,26 @@ public:
     typedef std::shared_ptr<QservGetReplicasJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<QservGetReplicasJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
      *
-     * @param databaseFamily
-     *   name of a database family
-     *
-     * @param inUseOnly
-     *   return replicas which are presently in use
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a job completion
-     *
-     * @param priority
-     *   (optional) priority level of the job
-     *
-     * @return
-     *   pointer to the created object
+     * @param databaseFamily The name of a database family
+     * @param inUseOnly The flag indicating to return replicas which are presently in use.
+     * @param allWorkers The flag indicating whether to engage all known workers regardless of their status.
+     * @param controller The controller for launching requests
+     * @param parentJobId The optional identifier of a parent job
+     * @param onFinish The optional callback function to be called upon a job completion
+     * @param priority The optional priority level of the job
+     * @return A pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily, bool inUseOnly, bool allWorkers,
-                      Controller::Ptr const& controller, std::string const& parentJobId = std::string(),
+    static std::shared_ptr<QservGetReplicasJob> create(std::string const& databaseFamily, bool inUseOnly, bool allWorkers,
+                      std::shared_ptr<Controller> const& controller, std::string const& parentJobId = std::string(),
                       CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
 
     // Default construction and copy semantics are prohibited
@@ -112,7 +102,7 @@ public:
     QservGetReplicasJob(QservGetReplicasJob const&) = delete;
     QservGetReplicasJob& operator=(QservGetReplicasJob const&) = delete;
 
-    ~QservGetReplicasJob() final = default;
+    virtual ~QservGetReplicasJob() final = default;
 
     /// @return the name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -126,64 +116,46 @@ public:
     /**
      * @return the result of the operation (when the job finishes)
      *
-     * @note
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
+     * @note The method should be invoked only after the job has finished (primary status is set
+     *  to Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown. Verify
+     *  the primary and extended status of the object to ensure that all requests have finished.
      *
-     * @note
-     *   The result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
-     *
-     * @throw std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @throw std::logic_error if the job didn't finished at a time when the method was called
      */
     QservGetReplicasJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see QservGetReplicasJob::create()
     QservGetReplicasJob(std::string const& databaseFamily, bool inUseOnly, bool allWorkers,
-                        Controller::Ptr const& controller, std::string const& parentJobId,
+                        std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                         CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
-     *
-     * @param request
-     *   a pointer to a request
+     * @param request a pointer to a request
      */
-    void _onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<GetReplicasQservMgtRequest> const& request);
 
     // Input parameters
 
     std::string const _databaseFamily;
     bool const _inUseOnly;
     bool const _allWorkers;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
-    std::list<GetReplicasQservMgtRequest::Ptr> _requests;
+    std::list<std::shared_ptr<GetReplicasQservMgtRequest>> _requests;
 
-    size_t _numLaunched = 0;  ///< the total number of requests launched
-    size_t _numFinished = 0;  ///< the total number of finished requests
-    size_t _numSuccess = 0;   ///< the number of successfully completed requests
+    std::size_t _numLaunched = 0;  ///< the total number of requests launched
+    std::size_t _numFinished = 0;  ///< the total number of finished requests
+    std::size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     QservGetReplicasJobResult _replicaData;

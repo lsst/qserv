@@ -29,8 +29,10 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/config/ConfigExceptions.h"
-#include "replica/services/DatabaseServices.h"
+#include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
+#include "replica/qserv/SetReplicasQservMgtRequest.h"
+#include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -39,25 +41,23 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservSyncJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string QservSyncJob::typeName() { return "QservSyncJob"; }
 
-QservSyncJob::Ptr QservSyncJob::create(string const& databaseFamily, unsigned int requestExpirationIvalSec,
-                                       bool force, Controller::Ptr const& controller,
+shared_ptr<QservSyncJob> QservSyncJob::create(string const& databaseFamily, unsigned int requestExpirationIvalSec,
+                                       bool force, shared_ptr<Controller> const& controller,
                                        string const& parentJobId, CallbackType const& onFinish,
                                        int priority) {
-    return QservSyncJob::Ptr(new QservSyncJob(databaseFamily, requestExpirationIvalSec, force, controller,
+    return shared_ptr<QservSyncJob>(new QservSyncJob(databaseFamily, requestExpirationIvalSec, force, controller,
                                               parentJobId, onFinish, priority));
 }
 
 QservSyncJob::QservSyncJob(string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
-                           Controller::Ptr const& controller, string const& parentJobId,
+                           shared_ptr<Controller> const& controller, string const& parentJobId,
                            CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "QSERV_SYNC", priority),
           _databaseFamily(databaseFamily),
@@ -81,28 +81,26 @@ list<pair<string, string>> QservSyncJob::extendedPersistentState() const {
 
 list<pair<string, string>> QservSyncJob::persistentLogData() const {
     list<pair<string, string>> result;
-
-    auto&& replicaData = getReplicaData();
-
-    for (auto&& workerInfo : replicaData.workers) {
-        auto&& worker = workerInfo.first;
+    auto const& replicaData = getReplicaData();
+    for (auto const& itr : replicaData.workers) {
+        auto const& workerName = itr.first;
 
         // Report workers failed to respond to the synchronization requests
         // and ignore them in the subsequent replica comparison report.
-        bool const responded = workerInfo.second;
+        bool const responded = itr.second;
         if (!responded) {
-            result.emplace_back("failed-qserv-worker", worker);
+            result.emplace_back("failed-qserv-worker", workerName);
             continue;
         }
 
         // Find and report (if any) differences between the known replica disposition
         // and the one reported by workers.
-        auto&& prevReplicas = replicaData.prevReplicas.at(worker);
-        auto&& newReplicas = replicaData.newReplicas.at(worker);
+        auto const& prevReplicas = replicaData.prevReplicas.at(workerName);
+        auto const& newReplicas = replicaData.newReplicas.at(workerName);
         QservReplicaCollection inPrevReplicasOnly;
         QservReplicaCollection inNewReplicasOnly;
         if (diff2(prevReplicas, newReplicas, inPrevReplicasOnly, inNewReplicasOnly)) {
-            auto const val = "worker=" + worker +
+            auto const val = "worker=" + workerName +
                              " removed-replicas=" + to_string(inPrevReplicasOnly.size()) +
                              " added-replicas=" + to_string(inNewReplicasOnly.size());
             result.emplace_back("worker-stats", val);
@@ -124,39 +122,38 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
     // jobs should any problem with the database operation happened.
 
     map<string, unique_ptr<QservReplicaCollection>> worker2newReplicas;
-    for (auto&& worker : controller()->serviceProvider()->config()->workers()) {
+    for (auto const& workerName : controller()->serviceProvider()->config()->workers()) {
         auto newReplicas = make_unique<QservReplicaCollection>();
-        for (auto&& database : databases) {
+        for (auto const& databaseName : databases) {
             vector<ReplicaInfo> replicas;
             try {
-                databaseServices->findWorkerReplicas(replicas, worker, database);
+                databaseServices->findWorkerReplicas(replicas, workerName, databaseName);
             } catch (ConfigUnknownDatabase const& ex) {
                 LOGS(_log, LOG_LVL_WARN,
-                     context() << __func__ << "  ignoring deleted database: " << database
-                               << " for worker: " << worker);
+                     context() << __func__ << "  ignoring deleted database: " << databaseName
+                               << " for worker: " << workerName);
                 continue;
             } catch (exception const& ex) {
                 LOGS(_log, LOG_LVL_ERROR,
-                     context() << __func__ << "  failed to pull replicas for worker: " << worker
-                               << ", database: " << database << ", ex: " << ex.what());
-
+                     context() << __func__ << "  failed to pull replicas for worker: " << workerName
+                               << ", database: " << databaseName << ", ex: " << ex.what());
                 finish(lock, ExtendedState::FAILED);
                 return;
             }
-            for (auto&& info : replicas) {
+            for (auto const& info : replicas) {
                 newReplicas->push_back(QservReplica{
                         info.chunk(), info.database(), 0 /* useCount (UNUSED) */
                 });
             }
         }
-        worker2newReplicas.emplace(make_pair(worker, move(newReplicas)));
+        worker2newReplicas.emplace(make_pair(workerName, move(newReplicas)));
     }
 
     // Submit requests to the workers
-    for (auto&& worker : controller()->serviceProvider()->config()->workers()) {
+    for (auto const& workerName : controller()->serviceProvider()->config()->workers()) {
         _requests.push_back(qservMgtServices->setReplicas(
-                worker, *(worker2newReplicas[worker]), databases, force(), id(), /* jobId */
-                [self](SetReplicasQservMgtRequest::Ptr const& request) { self->_onRequestFinish(request); },
+                workerName, *(worker2newReplicas[workerName]), databases, force(), id(), /* jobId */
+                [self](shared_ptr<SetReplicasQservMgtRequest> const& request) { self->_onRequestFinish(request); },
                 _requestExpirationIvalSec));
         _numLaunched++;
     }
@@ -169,8 +166,7 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
 
 void QservSyncJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    for (auto&& ptr : _requests) {
+    for (auto const& ptr : _requests) {
         ptr->cancel();
     }
     _requests.clear();
@@ -184,7 +180,7 @@ void QservSyncJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<QservSyncJob>(lock, _onFinish);
 }
 
-void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
+void QservSyncJob::_onRequestFinish(shared_ptr<SetReplicasQservMgtRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  worker=" << request->workerName()
                    << " state=" << request->state2string());

@@ -22,14 +22,23 @@
 #define LSST_QSERV_REPLICA_QSERVSYNCJOB_H
 
 // System headers
+#include <cstddef>
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/qserv/SetReplicasQservMgtRequest.h"
+#include "replica/util/Common.h"
+#include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class SetReplicasQservMgtRequest;
+} // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -65,7 +74,7 @@ struct QservSyncJobResult {
 class QservSyncJob : public Job {
 public:
     typedef std::shared_ptr<QservSyncJob> Ptr;
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<QservSyncJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
@@ -89,20 +98,17 @@ public:
      *  with other job types.
      * @return a pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
-                      Controller::Ptr const& controller, std::string const& parentJobId = std::string(),
+    static std::shared_ptr<QservSyncJob> create(std::string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
+                      std::shared_ptr<Controller> const& controller, std::string const& parentJobId = std::string(),
                       CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
 
     QservSyncJob() = delete;
     QservSyncJob(QservSyncJob const&) = delete;
     QservSyncJob& operator=(QservSyncJob const&) = delete;
 
-    ~QservSyncJob() final = default;
+    virtual ~QservSyncJob() final = default;
 
-    /// @return name of a database family defining a scope of the operation
     std::string const& databaseFamily() const { return _databaseFamily; }
-
-    /// @return flag indicating (if set) the 'force' mode of the operation
     bool force() const { return _force; }
 
     /**
@@ -119,24 +125,24 @@ public:
      */
     QservSyncJobResult const& getReplicaData() const;
 
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     QservSyncJob(std::string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
-                 Controller::Ptr const& controller, std::string const& parentJobId,
+                 std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                  CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
      * @param request a pointer to a request
      */
-    void _onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request);
+    void _onRequestFinish(std::shared_ptr<SetReplicasQservMgtRequest> const& request);
 
     // Input parameters
 
@@ -146,11 +152,11 @@ private:
     CallbackType _onFinish;  ///< is reset when the job finishes
 
     /// A collection of requests implementing the operation
-    std::list<SetReplicasQservMgtRequest::Ptr> _requests;
+    std::list<std::shared_ptr<SetReplicasQservMgtRequest>> _requests;
 
-    size_t _numLaunched = 0;  ///< the total number of requests launched
-    size_t _numFinished = 0;  ///< the total number of finished requests
-    size_t _numSuccess = 0;   ///< the number of successfully completed requests
+    std::size_t _numLaunched = 0;  ///< the total number of requests launched
+    std::size_t _numFinished = 0;  ///< the total number of finished requests
+    std::size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     QservSyncJobResult _replicaData;

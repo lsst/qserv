@@ -27,6 +27,8 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#include "replica/qserv/GetReplicasQservMgtRequest.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -36,25 +38,23 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservGetReplicasJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string QservGetReplicasJob::typeName() { return "QservGetReplicasJob"; }
 
-QservGetReplicasJob::Ptr QservGetReplicasJob::create(string const& databaseFamily, bool inUseOnly,
-                                                     bool allWorkers, Controller::Ptr const& controller,
+shared_ptr<QservGetReplicasJob> QservGetReplicasJob::create(string const& databaseFamily, bool inUseOnly,
+                                                     bool allWorkers, shared_ptr<Controller> const& controller,
                                                      string const& parentJobId, CallbackType const& onFinish,
                                                      int priority) {
-    return QservGetReplicasJob::Ptr(new QservGetReplicasJob(databaseFamily, inUseOnly, allWorkers, controller,
+    return shared_ptr<QservGetReplicasJob>(new QservGetReplicasJob(databaseFamily, inUseOnly, allWorkers, controller,
                                                             parentJobId, onFinish, priority));
 }
 
 QservGetReplicasJob::QservGetReplicasJob(string const& databaseFamily, bool inUseOnly, bool allWorkers,
-                                         Controller::Ptr const& controller, string const& parentJobId,
+                                         shared_ptr<Controller> const& controller, string const& parentJobId,
                                          CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "QSERV_GET_REPLICAS", priority),
           _databaseFamily(databaseFamily),
@@ -64,12 +64,9 @@ QservGetReplicasJob::QservGetReplicasJob(string const& databaseFamily, bool inUs
 
 QservGetReplicasJobResult const& QservGetReplicasJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("QservGetReplicasJob::" + string(__func__) +
-                      "  the method can't be called while "
-                      "the job hasn't finished");
+                      " the method can't be called while the job isn't finished");
 }
 
 list<pair<string, string>> QservGetReplicasJob::extendedPersistentState() const {
@@ -82,27 +79,22 @@ list<pair<string, string>> QservGetReplicasJob::extendedPersistentState() const 
 
 list<pair<string, string>> QservGetReplicasJob::persistentLogData() const {
     list<pair<string, string>> result;
-
-    auto&& replicaData = getReplicaData();
+    auto const& replicaData = getReplicaData();
 
     // Report workers failed to respond to the requests
-
-    for (auto&& workerInfo : replicaData.workers) {
-        auto&& worker = workerInfo.first;
-
+    for (auto const& workerInfo : replicaData.workers) {
+        auto const& workerName = workerInfo.first;
         bool const responded = workerInfo.second;
-        if (not responded) {
-            result.emplace_back("failed-worker", worker);
+        if (!responded) {
+            result.emplace_back("failed-worker", workerName);
         }
     }
 
-    // Per-worker counters for the number of chunks reported by each
-    // worker (for the responding workers only)
-
-    for (auto&& itr : replicaData.replicas) {
-        auto&& worker = itr.first;
-        auto&& qservReplicas = itr.second;
-        string const val = "worker=" + worker + " chunks=" + to_string(qservReplicas.size());
+    // Per-worker counters for the number of chunks reported by each worker (for the responding workers only).
+    for (auto const& itr : replicaData.replicas) {
+        auto const& workerName = itr.first;
+        auto const& qservReplicas = itr.second;
+        string const val = "worker=" + workerName + " chunks=" + to_string(qservReplicas.size());
         result.emplace_back("worker-stats", val);
     }
     return result;
@@ -110,21 +102,18 @@ list<pair<string, string>> QservGetReplicasJob::persistentLogData() const {
 
 void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    auto self = shared_from_base<QservGetReplicasJob>();
-
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                           : controller()->serviceProvider()->config()->workers();
-
-    for (auto&& worker : workerNames) {
-        _replicaData.workers[worker] = false;
+    auto self = shared_from_base<QservGetReplicasJob>();
+    for (auto const& workerName : workerNames) {
+        _replicaData.workers[workerName] = false;
         auto const request = controller()->qservMgtServices()->getReplicas(
-                databaseFamily(), worker, inUseOnly(), id(),
-                [self](GetReplicasQservMgtRequest::Ptr const& request) { self->_onRequestFinish(request); });
-        if (not request) {
+                databaseFamily(), workerName, inUseOnly(), id(),
+                [self](shared_ptr<GetReplicasQservMgtRequest> const& request) { self->_onRequestFinish(request); });
+        if (!request) {
             LOGS(_log, LOG_LVL_ERROR,
                  context() << __func__
-                           << "  failed to submit GetReplicasQservMgtRequest to Qserv worker: " << worker);
+                           << "  failed to submit GetReplicasQservMgtRequest to Qserv worker: " << workerName);
 
             finish(lock, ExtendedState::FAILED);
             return;
@@ -136,17 +125,15 @@ void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
     // In case if no workers or database are present in the Config
     // at this time.
 
-    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
+    if (_numLaunched == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
 void QservGetReplicasJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    for (auto&& ptr : _requests) {
+    for (auto const& ptr : _requests) {
         ptr->cancel();
     }
     _requests.clear();
-
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess = 0;
@@ -157,41 +144,33 @@ void QservGetReplicasJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<QservGetReplicasJob>(lock, _onFinish);
 }
 
-void QservGetReplicasJob::_onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
+void QservGetReplicasJob::_onRequestFinish(shared_ptr<GetReplicasQservMgtRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  databaseFamily=" << request->databaseFamily()
                    << " worker=" << request->workerName() << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Update counters and object state if needed.
-
     _numFinished++;
-
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
         _numSuccess++;
 
-        // Merge results of the request into the summary data collection
-        // of the job.
-
+        // Merge results of the request into the summary data collection of the job.
         _replicaData.replicas[request->workerName()] = request->replicas();
-        for (auto&& replica : request->replicas()) {
+        for (auto const& replica : request->replicas()) {
             _replicaData.useCount.atChunk(replica.chunk)
                     .atDatabase(replica.database)
                     .atWorker(request->workerName()) = replica.useCount;
         }
         _replicaData.workers[request->workerName()] = true;
     }
-
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  databaseFamily=" << request->databaseFamily()
                    << " worker=" << request->workerName() << " _numLaunched=" << _numLaunched
                    << " _numFinished=" << _numFinished << " _numSuccess=" << _numSuccess);
-
     if (_numFinished == _numLaunched) {
         finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS : ExtendedState::FAILED);
     }

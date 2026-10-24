@@ -34,28 +34,30 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDropIndexesJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlDropIndexesJob::typeName() { return "SqlDropIndexesJob"; }
 
-SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(string const& database, string const& table, bool overlap,
-                                                 string const& indexName, bool allWorkers,
-                                                 Controller::Ptr const& controller, string const& parentJobId,
-                                                 CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlDropIndexesJob(database, table, overlap, indexName, allWorkers, controller, parentJobId,
-                                     onFinish, priority));
+shared_ptr<SqlDropIndexesJob> SqlDropIndexesJob::create(string const& database, string const& table,
+                                                        bool overlap, string const& indexName,
+                                                        bool allWorkers,
+                                                        shared_ptr<Controller> const& controller,
+                                                        string const& parentJobId,
+                                                        CallbackType const& onFinish, int priority) {
+    return shared_ptr<SqlDropIndexesJob>(new SqlDropIndexesJob(
+            database, table, overlap, indexName, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 SqlDropIndexesJob::SqlDropIndexesJob(string const& database, string const& table, bool overlap,
                                      string const& indexName, bool allWorkers,
-                                     Controller::Ptr const& controller, string const& parentJobId,
+                                     shared_ptr<Controller> const& controller, string const& parentJobId,
                                      CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_DROP_TABLE_INDEXES", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_DROP_TABLE_INDEXES",
+                 priority),
           _database(database),
           _table(table),
           _overlap(overlap),
@@ -72,9 +74,10 @@ list<pair<string, string>> SqlDropIndexesJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                        size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+list<shared_ptr<SqlRequest>> SqlDropIndexesJob::launchRequests(replica::Lock const& lock,
+                                                               string const& worker,
+                                                               size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -87,13 +90,12 @@ list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(replica::Lock const& loc
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
         requests.push_back(SqlDropIndexesRequest::createAndStart(
                 controller(), worker, database(), tables, indexName(),
-                [self = shared_from_base<SqlDropIndexesJob>()](SqlDropIndexesRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
+                [self = shared_from_base<SqlDropIndexesJob>()](
+                        shared_ptr<SqlDropIndexesRequest> const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
     }
     return requests;

@@ -25,14 +25,20 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 // Qserv headers
 #include "replica/jobs/Job.h"
-#include "replica/jobs/CreateReplicaJob.h"
-#include "replica/jobs/DeleteReplicaJob.h"
 #include "replica/util/ReplicaInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class CreateReplicaJob;
+class DeleteReplicaJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -68,48 +74,28 @@ public:
     typedef std::shared_ptr<MoveReplicaJob> Ptr;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<MoveReplicaJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
     /**
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
+     * Static factory method is needed to prevent issue with the lifespan and memory management
+     * of instances created otherwise (as values or via low-level pointers).
      *
-     * @param databaseFamily
-     *   the name of a database family involved into the operation
-     *
-     * @param chunk
-     *   the chunk whose replicas will be moved between workers
-     *
-     * @param sourceWorker
-     *   the name of a source worker where the input replica is residing
-     *
-     * @param destinationWorker
-     *   the name of a destination worker where the output replica will be placed
-     *
-     * @param purge
-     *   the flag indicating if the input replica should be purged
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   an identifier of a parent job
-     *
-     * @param onFinish
-     *   a callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   the priority level of the job
-     *
-     * @return
-     *   pointer to the created object
+     * @param databaseFamily The name of a database family involved into the operation
+     * @param chunk The chunk number of replicas to be moved between workers
+     * @param sourceWorker The name of a source worker where the input replica is residing
+     * @param destinationWorker The name of a destination worker where the output replica will be placed
+     * @param purge The flag indicating if the input replica should be purged
+     * @param controller For launching requests
+     * @param parentJobId An identifier of a parent job
+     * @param onFinish A callback function to be called upon a completion of the job
+     * @param priority The priority level of the job
+     * @return A pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
-                      std::string const& destinationWorker, bool purge, Controller::Ptr const& controller,
+    static std::shared_ptr<MoveReplicaJob> create(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
+                      std::string const& destinationWorker, bool purge, std::shared_ptr<Controller> const& controller,
                       std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
@@ -118,75 +104,45 @@ public:
     MoveReplicaJob(MoveReplicaJob const&) = delete;
     MoveReplicaJob& operator=(MoveReplicaJob const&) = delete;
 
-    ~MoveReplicaJob() final = default;
+    virtual ~MoveReplicaJob() final = default;
 
-    /// @return the name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
-
-    /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
-
-    /// @return the name of a source worker where the input replica is residing
     std::string const& sourceWorker() const { return _sourceWorker; }
-
-    /// @return the name of a destination worker where the output replica will be placed
     std::string const& destinationWorker() const { return _destinationWorker; }
-
-    /// @return the flag indicating if the input replica should be purged
     bool purge() const { return _purge; }
 
     /**
      * Get a result of the job
      *
-     * @note
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
-     *
-     * @note
-     *   The result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
-     *
-     * @return
-     *   the result of the operation
+     * @note The method should be invoked only after the job has finished (primary status is set to
+     *  Job::Status::FINISHED). Otherwise exception std::logic_error will be thrown. Verify the primary
+     *  and extended status of the object to ensure that all requests have finished.
+     * @throws std::logic_error if the job didn't finished at a time when the method was called
+     * @return The result of the operation
      */
     MoveReplicaJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
-    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
-    void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see MoveReplicaJob::create()
     MoveReplicaJob(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
-                   std::string const& destinationWorker, bool purge, Controller::Ptr const& controller,
+                   std::string const& destinationWorker, bool purge, std::shared_ptr<Controller> const& controller,
                    std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
-     * The callback function to be invoked on a completion of the replica
-     * creation job.
+     * The callback function to be invoked on a completion of the replica creation job.
      */
     void _onCreateJobFinish();
 
     /**
-     * The callback function to be invoked on a completion of the replica
-     * deletion job.
+     * The callback function to be invoked on a completion of the replica deletion job.
      */
     void _onDeleteJobFinish();
 
@@ -197,13 +153,13 @@ private:
     std::string const _sourceWorker;
     std::string const _destinationWorker;
     bool const _purge;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// The chained job implementing the first stage of the move
-    CreateReplicaJob::Ptr _createReplicaJob;
+    std::shared_ptr<CreateReplicaJob> _createReplicaJob;
 
     /// The chained job implementing the second stage of the move
-    DeleteReplicaJob::Ptr _deleteReplicaJob;
+    std::shared_ptr<DeleteReplicaJob> _deleteReplicaJob;
 
     /// The result of the operation (gets updated as requests are finishing)
     MoveReplicaJobResult _replicaData;
