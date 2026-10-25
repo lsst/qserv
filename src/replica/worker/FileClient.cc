@@ -34,18 +34,17 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileClient");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider, string const& workerHost,
-                                     uint16_t workerPort, string const& databaseName, string const& fileName,
-                                     bool readContent) {
+shared_ptr<FileClient> FileClient::instance(shared_ptr<ServiceProvider> const& serviceProvider,
+                                            string const& workerHost, uint16_t workerPort,
+                                            string const& databaseName, string const& fileName,
+                                            bool readContent) {
     try {
-        FileClient::Ptr ptr(
+        shared_ptr<FileClient> ptr(
                 new FileClient(serviceProvider, workerHost, workerPort, databaseName, fileName, readContent));
 
         if (ptr->_openImpl()) return ptr;
@@ -59,7 +58,7 @@ FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider
     return nullptr;
 }
 
-FileClient::FileClient(ServiceProvider::Ptr const& serviceProvider, string const& workerHost,
+FileClient::FileClient(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerHost,
                        uint16_t workerPort, string const& databaseName, string const& fileName,
                        bool readContent)
         : _workerHost(workerHost),
@@ -206,11 +205,11 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _readContent) {
+    if (!_readContent) {
         throw FileClientError(context + "this file was open in 'stat' mode, server: " + workerHostPort() +
                               ", database: " + database() + ", file: " + file());
     }
-    if (not buf or not bufSize) {
+    if (!buf || bufSize == 0) {
         throw invalid_argument(context + "  zero buffer pointer or buffer size passed into the method");
     }
 
@@ -235,7 +234,7 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
                     ", error code: " + to_string(ec.value()) + ", error message: " + ec.message());
         }
     } else {
-        if (not num) _eof = true;
+        if (num == 0) _eof = true;
     }
     return num;
 }

@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
-#include "replica/contr/Controller.h"
 #include "replica/contr/EventLogger.h"
 #include "replica/jobs/Job.h"
 #include "replica/services/ServiceProvider.h"
@@ -43,6 +42,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class Controller;
 struct ControllerEvent;
 }  // namespace lsst::qserv::replica
 
@@ -77,15 +77,12 @@ public:
  */
 class Task : public EventLogger, public std::enable_shared_from_this<Task> {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<Task> Ptr;
-
     /// The function type for notifications on the abnormal termination of the tasks
-    typedef std::function<void(Ptr)> AbnormalTerminationCallbackType;
+    typedef std::function<void(std::shared_ptr<Task>)> AbnormalTerminationCallbackType;
 
     /// The function type for functions used in evaluating user-defined early-termination
     /// conditions for aborting task completion tracking
-    typedef std::function<bool(Ptr)> WaitEvaluatorType;
+    typedef std::function<bool(std::shared_ptr<Task>)> WaitEvaluatorType;
 
     Task(Task const&) = delete;
     Task& operator=(Task const&) = delete;
@@ -93,7 +90,7 @@ public:
     virtual ~Task() = default;
 
     /// @return a reference to a provider of services
-    ServiceProvider::Ptr const& serviceProvider() const { return _controller->serviceProvider(); }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const;
 
     // @return 'true' if the task is running
     bool isRunning() const { return _isRunning.load(); }
@@ -138,7 +135,7 @@ protected:
      * @param waitIntervalSec The number of seconds to wait before calling subclass-specific
      *   method onRun.
      */
-    Task(Controller::Ptr const& controller, std::string const& name,
+    Task(std::shared_ptr<Controller> const& controller, std::string const& name,
          AbnormalTerminationCallbackType const& onTerminated, unsigned int waitIntervalSec);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
@@ -217,13 +214,13 @@ protected:
         info(T::typeName());
 
         // Launch the jobs
-        std::vector<typename T::Ptr> jobs;
+        std::vector<std::shared_ptr<T>> jobs;
         _numFinishedJobs = 0;
         std::string const parentJobId;  // no parent for these jobs
         for (auto&& family : serviceProvider()->config()->databaseFamilies()) {
             auto job = T::create(
                     family, Fargs..., controller(), parentJobId,
-                    [self = shared_from_this()](typename T::Ptr const& job) {
+                    [self = shared_from_this()](std::shared_ptr<T> const& job) {
                         self->_numFinishedJobs++;
                         // FIXME: analyze job status and report it here
                     },
@@ -258,7 +255,7 @@ protected:
      * @param numFinishedJobs The counter of completed jobs.
      */
     template <class T>
-    void track(std::string const& typeName, std::vector<typename T::Ptr> const& jobs,
+    void track(std::string const& typeName, std::vector<std::shared_ptr<T>> const& jobs,
                std::atomic<size_t> const& numFinishedJobs) {
         info(typeName + ": tracking started");
         util::BlockPost blockPost(1000, 1001);  // ~1 second wait time between iterations

@@ -22,37 +22,40 @@
 #define LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
 
 // System headers
+#include <functional>
 #include <map>
 #include <memory>
 #include <vector>
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "replica/qserv/AddReplicaQservMgtRequest.h"
-#include "replica/qserv/GetReplicasQservMgtRequest.h"
-#include "replica/qserv/GetDbStatusQservMgtRequest.h"
-#include "replica/qserv/GetConfigQservCzarMgtRequest.h"
-#include "replica/qserv/GetConfigQservMgtRequest.h"
-#include "replica/qserv/GetQueryProgressQservCzarMgtRequest.h"
-#include "replica/qserv/GetResultFilesQservMgtRequest.h"
-#include "replica/qserv/GetStatusQservCzarMgtRequest.h"
-#include "replica/qserv/GetStatusQservMgtRequest.h"
-#include "replica/qserv/RemoveReplicaQservMgtRequest.h"
-#include "replica/qserv/SetReplicasQservMgtRequest.h"
-#include "replica/qserv/TestEchoQservMgtRequest.h"
 #include "replica/util/Mutex.h"
+#include "replica/util/ReplicaInfo.h"
 #include "wbase/TaskState.h"
 
 // Forward declarations
 class XrdSsiService;
 
+namespace lsst::qserv::replica {
+class AddReplicaQservMgtRequest;
+class GetReplicasQservMgtRequest;
+class GetDbStatusQservMgtRequest;
+class GetConfigQservCzarMgtRequest;
+class GetConfigQservMgtRequest;
+class GetQueryProgressQservCzarMgtRequest;
+class GetResultFilesQservMgtRequest;
+class GetStatusQservCzarMgtRequest;
+class GetStatusQservMgtRequest;
+class QservMgtRequest;
+class RemoveReplicaQservMgtRequest;
+class ServiceProvider;
+class SetReplicasQservMgtRequest;
+class TestEchoQservMgtRequest;
+}  // namespace lsst::qserv::replica
+
 namespace lsst::qserv::wbase {
 class TaskSelector;
 }  // namespace lsst::qserv::wbase
-
-namespace lsst::qserv::replica {
-class ServiceProvider;
-}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -67,8 +70,6 @@ namespace detail {
  */
 class QservMgtRequestWrapper {
 public:
-    typedef std::shared_ptr<QservMgtRequestWrapper> Ptr;
-
     QservMgtRequestWrapper() = default;
     QservMgtRequestWrapper(QservMgtRequestWrapper const&) = delete;
     QservMgtRequestWrapper& operator=(QservMgtRequestWrapper const&) = delete;
@@ -95,12 +96,12 @@ public:
     QservMgtRequestWrapperImpl(QservMgtRequestWrapperImpl const&) = delete;
     QservMgtRequestWrapperImpl& operator=(QservMgtRequestWrapperImpl const&) = delete;
 
-    QservMgtRequestWrapperImpl(typename T::Ptr const& request, typename T::CallbackType const& onFinish)
+    QservMgtRequestWrapperImpl(std::shared_ptr<T> const& request,
+                               std::function<void(std::shared_ptr<T>)> const& onFinish)
             : QservMgtRequestWrapper(), _request(request), _onFinish(onFinish) {}
 
     virtual ~QservMgtRequestWrapperImpl() final = default;
 
-    /// The implementation of the virtual method defined in the base class
     virtual void notify() const final {
         if (nullptr != _onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
@@ -114,12 +115,11 @@ public:
         }
     }
 
-    /// Implement a virtual method of the base class
     virtual std::shared_ptr<QservMgtRequest> request() const final { return _request; }
 
 private:
-    typename T::Ptr _request;
-    mutable typename T::CallbackType _onFinish;
+    std::shared_ptr<T> _request;
+    mutable std::function<void(std::shared_ptr<T>)> _onFinish;
 };
 }  // namespace detail
 
@@ -129,21 +129,19 @@ private:
  */
 class QservMgtServices : public std::enable_shared_from_this<QservMgtServices> {
 public:
-    typedef std::shared_ptr<QservMgtServices> Ptr;
-
     /**
      * The factory method for instantiating a proper service object based
      * on an application configuration.
      * @param serviceProvider Is required for accessing configuration parameters.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider);
+    static std::shared_ptr<QservMgtServices> create(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     QservMgtServices() = delete;
     QservMgtServices(QservMgtServices const&) = delete;
     QservMgtServices& operator=(QservMgtServices const&) = delete;
 
-    ~QservMgtServices() = default;
+    virtual ~QservMgtServices() = default;
 
     /// @return reference to the ServiceProvider object
     std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
@@ -162,10 +160,10 @@ public:
      * @return A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    AddReplicaQservMgtRequest::Ptr addReplica(
+    std::shared_ptr<AddReplicaQservMgtRequest> addReplica(
             unsigned int chunk, std::vector<std::string> const& databases, std::string const& worker,
-            AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr, std::string const& jobId = "",
-            unsigned int requestExpirationIvalSec = 0);
+            std::function<void(std::shared_ptr<AddReplicaQservMgtRequest>)> const& onFinish = nullptr,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Notify Qserv worker on a removal of a replica
@@ -183,9 +181,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    RemoveReplicaQservMgtRequest::Ptr removeReplica(
+    std::shared_ptr<RemoveReplicaQservMgtRequest> removeReplica(
             unsigned int chunk, std::vector<std::string> const& databases, std::string const& worker,
-            bool force, RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
+            bool force,
+            std::function<void(std::shared_ptr<RemoveReplicaQservMgtRequest>)> const& onFinish = nullptr,
             std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -203,9 +202,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetReplicasQservMgtRequest::Ptr getReplicas(
+    std::shared_ptr<GetReplicasQservMgtRequest> getReplicas(
             std::string const& databaseFamily, std::string const& worker, bool inUseOnly = false,
-            std::string const& jobId = "", GetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
+            std::string const& jobId = "",
+            std::function<void(std::shared_ptr<GetReplicasQservMgtRequest>)> const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -224,10 +224,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    SetReplicasQservMgtRequest::Ptr setReplicas(
+    std::shared_ptr<SetReplicasQservMgtRequest> setReplicas(
             std::string const& worker, QservReplicaCollection const& newReplicas,
             std::vector<std::string> const& databases, bool force = false, std::string const& jobId = "",
-            SetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<SetReplicasQservMgtRequest>)> const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -243,10 +243,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    TestEchoQservMgtRequest::Ptr echo(std::string const& worker, std::string const& data,
-                                      std::string const& jobId = "",
-                                      TestEchoQservMgtRequest::CallbackType const& onFinish = nullptr,
-                                      unsigned int requestExpirationIvalSec = 0);
+    std::shared_ptr<TestEchoQservMgtRequest> echo(
+            std::string const& worker, std::string const& data, std::string const& jobId = "",
+            std::function<void(std::shared_ptr<TestEchoQservMgtRequest>)> const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Request detailed status of a Qserv worker
@@ -261,10 +261,11 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetStatusQservMgtRequest::Ptr status(std::string const& worker, std::string const& jobId = "",
-                                         wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
-                                         GetStatusQservMgtRequest::CallbackType const& onFinish = nullptr,
-                                         unsigned int requestExpirationIvalSec = 0);
+    std::shared_ptr<GetStatusQservMgtRequest> status(
+            std::string const& worker, std::string const& jobId = "",
+            wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
+            std::function<void(std::shared_ptr<GetStatusQservMgtRequest>)> const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Request detailed status on the database service of a Qserv worker
@@ -278,9 +279,9 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetDbStatusQservMgtRequest::Ptr databaseStatus(
+    std::shared_ptr<GetDbStatusQservMgtRequest> databaseStatus(
             std::string const& worker, std::string const& jobId = "",
-            GetDbStatusQservMgtRequest::CallbackType const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<GetDbStatusQservMgtRequest>)> const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -295,9 +296,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetConfigQservMgtRequest::Ptr config(std::string const& worker, std::string const& jobId = "",
-                                         GetConfigQservMgtRequest::CallbackType const& onFinish = nullptr,
-                                         unsigned int requestExpirationIvalSec = 0);
+    std::shared_ptr<GetConfigQservMgtRequest> config(
+            std::string const& worker, std::string const& jobId = "",
+            std::function<void(std::shared_ptr<GetConfigQservMgtRequest>)> const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Request info on the partial result files of a Qserv worker
@@ -315,10 +317,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetResultFilesQservMgtRequest::Ptr resultFiles(
+    std::shared_ptr<GetResultFilesQservMgtRequest> resultFiles(
             std::string const& worker, std::string const& jobId = "",
             std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int maxFiles = 0,
-            GetResultFilesQservMgtRequest::CallbackType const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<GetResultFilesQservMgtRequest>)> const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -333,9 +335,9 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetStatusQservCzarMgtRequest::Ptr czarStatus(
+    std::shared_ptr<GetStatusQservCzarMgtRequest> czarStatus(
             std::string const& czarName, std::string const& jobId = "",
-            GetStatusQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<GetStatusQservCzarMgtRequest>)> const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -355,11 +357,12 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetQueryProgressQservCzarMgtRequest::Ptr czarQueryProgress(
+    std::shared_ptr<GetQueryProgressQservCzarMgtRequest> czarQueryProgress(
             std::string const& czarName, std::string const& jobId = "",
             std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int lastSeconds = 0,
             std::string const& queryStatus = std::string(),
-            GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<GetQueryProgressQservCzarMgtRequest>)> const& onFinish =
+                    nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
     /**
@@ -374,9 +377,9 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetConfigQservCzarMgtRequest::Ptr czarConfig(
+    std::shared_ptr<GetConfigQservCzarMgtRequest> czarConfig(
             std::string const& czarName, std::string const& jobId = "",
-            GetConfigQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<GetConfigQservCzarMgtRequest>)> const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
 private:
@@ -394,7 +397,7 @@ private:
      */
     template <typename T>
     void _register(std::string const& func, std::shared_ptr<T> const& request,
-                   typename T::CallbackType const& onFinish) {
+                   std::function<void(std::shared_ptr<T>)> const& onFinish) {
         replica::Lock const lock(_mtx, "QservMgtServices::" + func);
         _registry[request->id()] = std::make_shared<detail::QservMgtRequestWrapperImpl<T>>(request, onFinish);
     }

@@ -29,6 +29,7 @@
 #include "qmeta/types.h"
 #include "replica/config/Config.h"
 #include "replica/config/ConfigWorker.h"
+#include "replica/services/ServiceProvider.h"
 #include "util/common.h"
 
 // LSST headers
@@ -52,11 +53,11 @@ string context(string const& func) { return "REGISTRY " + func + " "; }
 
 namespace lsst::qserv::replica {
 
-Registry::Ptr Registry::create(ServiceProvider::Ptr const& serviceProvider) {
-    return Ptr(new Registry(serviceProvider));
+shared_ptr<Registry> Registry::create(std::shared_ptr<ServiceProvider> const& serviceProvider) {
+    return shared_ptr<Registry>(new Registry(serviceProvider));
 }
 
-Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
+Registry::Registry(std::shared_ptr<ServiceProvider> const& serviceProvider)
         : _serviceProvider(serviceProvider),
           _baseUrl("http://" + serviceProvider->config()->get<string>("registry", "host") + ":" +
                    to_string(serviceProvider->config()->get<uint16_t>("registry", "port"))) {}

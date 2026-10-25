@@ -38,19 +38,18 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessorThread");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessorPtr const& processor) {
+shared_ptr<WorkerProcessorThread> WorkerProcessorThread::create(
+        shared_ptr<WorkerProcessor> const& processor) {
     static unsigned int id = 0;
-    return WorkerProcessorThread::Ptr(new WorkerProcessorThread(processor, id++));
+    return shared_ptr<WorkerProcessorThread>(new WorkerProcessorThread(processor, id++));
 }
 
-WorkerProcessorThread::WorkerProcessorThread(WorkerProcessorPtr const& processor, unsigned int id)
+WorkerProcessorThread::WorkerProcessorThread(shared_ptr<WorkerProcessor> const& processor, unsigned int id)
         : _processor(processor), _id(id), _stop(false) {}
 
 bool WorkerProcessorThread::isRunning() const { return _thread != nullptr; }
@@ -60,7 +59,7 @@ void WorkerProcessorThread::run() {
 
     _thread = make_unique<thread>([self = shared_from_this()]() {
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
-        while (not self->_stop) {
+        while (!self->_stop) {
             // Get the next request to process if any. This operation will block
             // until either the next request is available (returned a valid pointer)
             // or the specified timeout expires. In either case this thread has a chance
@@ -76,7 +75,7 @@ void WorkerProcessorThread::run() {
                                      << "  id: " << request->id());
                 bool finished = false;  // just to report the request completion
                 try {
-                    while (not(finished = request->execute())) {
+                    while (!(finished = request->execute())) {
                         if (self->_stop) {
                             LOGS(_log, LOG_LVL_DEBUG,
                                  self->context() << "rollback processing"
@@ -129,7 +128,7 @@ void WorkerProcessorThread::run() {
 }
 
 void WorkerProcessorThread::stop() {
-    if (not isRunning()) return;
+    if (!isRunning()) return;
     _stop = true;
 }
 

@@ -53,8 +53,6 @@ namespace lsst::qserv::replica {
  */
 class SqlJob : public Job {
 public:
-    typedef std::shared_ptr<SqlJob> Ptr;
-
     SqlJob() = delete;
     SqlJob(SqlJob const&) = delete;
     SqlJob& operator=(SqlJob const&) = delete;
