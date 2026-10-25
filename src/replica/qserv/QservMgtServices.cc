@@ -25,33 +25,46 @@
 // System headers
 #include <stdexcept>
 
+// Qserv headers
+#include "replica/qserv/AddReplicaQservMgtRequest.h"
+#include "replica/qserv/GetReplicasQservMgtRequest.h"
+#include "replica/qserv/GetDbStatusQservMgtRequest.h"
+#include "replica/qserv/GetConfigQservCzarMgtRequest.h"
+#include "replica/qserv/GetConfigQservMgtRequest.h"
+#include "replica/qserv/GetQueryProgressQservCzarMgtRequest.h"
+#include "replica/qserv/GetResultFilesQservMgtRequest.h"
+#include "replica/qserv/GetStatusQservCzarMgtRequest.h"
+#include "replica/qserv/GetStatusQservMgtRequest.h"
+#include "replica/qserv/RemoveReplicaQservMgtRequest.h"
+#include "replica/qserv/SetReplicasQservMgtRequest.h"
+#include "replica/qserv/TestEchoQservMgtRequest.h"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservMgtServices");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-QservMgtServices::Ptr QservMgtServices::create(shared_ptr<ServiceProvider> const& serviceProvider) {
-    return QservMgtServices::Ptr(new QservMgtServices(serviceProvider));
+std::shared_ptr<QservMgtServices> QservMgtServices::create(
+        shared_ptr<ServiceProvider> const& serviceProvider) {
+    return std::shared_ptr<QservMgtServices>(new QservMgtServices(serviceProvider));
 }
 
 QservMgtServices::QservMgtServices(shared_ptr<ServiceProvider> const& serviceProvider)
         : _serviceProvider(serviceProvider) {}
 
-AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
+std::shared_ptr<AddReplicaQservMgtRequest> QservMgtServices::addReplica(
         unsigned int chunk, vector<string> const& databases, string const& worker,
         AddReplicaQservMgtRequest::CallbackType const& onFinish, string const& jobId,
         unsigned int requestExpirationIvalSec) {
     auto const request = AddReplicaQservMgtRequest::create(
             serviceProvider(), worker, chunk, databases,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -59,13 +72,13 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
     return request;
 }
 
-RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
+std::shared_ptr<RemoveReplicaQservMgtRequest> QservMgtServices::removeReplica(
         unsigned int chunk, vector<string> const& databases, string const& worker, bool force,
         RemoveReplicaQservMgtRequest::CallbackType const& onFinish, string const& jobId,
         unsigned int requestExpirationIvalSec) {
     auto const request = RemoveReplicaQservMgtRequest::create(
             serviceProvider(), worker, chunk, databases, force,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -73,12 +86,12 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
     return request;
 }
 
-GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
+std::shared_ptr<GetReplicasQservMgtRequest> QservMgtServices::getReplicas(
         string const& databaseFamily, string const& worker, bool inUseOnly, string const& jobId,
         GetReplicasQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
     auto const request = GetReplicasQservMgtRequest::create(
             serviceProvider(), worker, databaseFamily, inUseOnly,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -86,13 +99,13 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
     return request;
 }
 
-SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
+std::shared_ptr<SetReplicasQservMgtRequest> QservMgtServices::setReplicas(
         string const& worker, QservReplicaCollection const& newReplicas, vector<string> const& databases,
         bool force, string const& jobId, SetReplicasQservMgtRequest::CallbackType const& onFinish,
         unsigned int requestExpirationIvalSec) {
     auto const request = SetReplicasQservMgtRequest::create(
             serviceProvider(), worker, newReplicas, databases, force,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -100,27 +113,25 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
     return request;
 }
 
-TestEchoQservMgtRequest::Ptr QservMgtServices::echo(string const& worker, string const& data,
-                                                    string const& jobId,
-                                                    TestEchoQservMgtRequest::CallbackType const& onFinish,
-                                                    unsigned int requestExpirationIvalSec) {
-    auto const request =
-            TestEchoQservMgtRequest::create(serviceProvider(), worker, data,
-                                            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
-                                                self->_finish(request->id());
-                                            });
+std::shared_ptr<TestEchoQservMgtRequest> QservMgtServices::echo(
+        string const& worker, string const& data, string const& jobId,
+        TestEchoQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
+    auto const request = TestEchoQservMgtRequest::create(
+            serviceProvider(), worker, data,
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
+                self->_finish(request->id());
+            });
     _register(__func__, request, onFinish);
     request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
-GetStatusQservMgtRequest::Ptr QservMgtServices::status(string const& worker, string const& jobId,
-                                                       wbase::TaskSelector const& taskSelector,
-                                                       GetStatusQservMgtRequest::CallbackType const& onFinish,
-                                                       unsigned int requestExpirationIvalSec) {
+std::shared_ptr<GetStatusQservMgtRequest> QservMgtServices::status(
+        string const& worker, string const& jobId, wbase::TaskSelector const& taskSelector,
+        GetStatusQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
     auto const request = GetStatusQservMgtRequest::create(
             serviceProvider(), worker, taskSelector,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -128,11 +139,12 @@ GetStatusQservMgtRequest::Ptr QservMgtServices::status(string const& worker, str
     return request;
 }
 
-GetDbStatusQservMgtRequest::Ptr QservMgtServices::databaseStatus(
+std::shared_ptr<GetDbStatusQservMgtRequest> QservMgtServices::databaseStatus(
         string const& worker, string const& jobId, GetDbStatusQservMgtRequest::CallbackType const& onFinish,
         unsigned int requestExpirationIvalSec) {
     auto const request = GetDbStatusQservMgtRequest::create(
-            serviceProvider(), worker, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            serviceProvider(), worker,
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -140,11 +152,12 @@ GetDbStatusQservMgtRequest::Ptr QservMgtServices::databaseStatus(
     return request;
 }
 
-GetConfigQservMgtRequest::Ptr QservMgtServices::config(string const& worker, string const& jobId,
-                                                       GetConfigQservMgtRequest::CallbackType const& onFinish,
-                                                       unsigned int requestExpirationIvalSec) {
+std::shared_ptr<GetConfigQservMgtRequest> QservMgtServices::config(
+        string const& worker, string const& jobId, GetConfigQservMgtRequest::CallbackType const& onFinish,
+        unsigned int requestExpirationIvalSec) {
     auto const request = GetConfigQservMgtRequest::create(
-            serviceProvider(), worker, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            serviceProvider(), worker,
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -152,12 +165,12 @@ GetConfigQservMgtRequest::Ptr QservMgtServices::config(string const& worker, str
     return request;
 }
 
-GetResultFilesQservMgtRequest::Ptr QservMgtServices::resultFiles(
+std::shared_ptr<GetResultFilesQservMgtRequest> QservMgtServices::resultFiles(
         string const& worker, string const& jobId, vector<QueryId> const& queryIds, unsigned int maxFiles,
         GetResultFilesQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
     auto const request = GetResultFilesQservMgtRequest::create(
             serviceProvider(), worker, queryIds, maxFiles,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -165,11 +178,12 @@ GetResultFilesQservMgtRequest::Ptr QservMgtServices::resultFiles(
     return request;
 }
 
-GetStatusQservCzarMgtRequest::Ptr QservMgtServices::czarStatus(
+std::shared_ptr<GetStatusQservCzarMgtRequest> QservMgtServices::czarStatus(
         string const& czarName, string const& jobId,
         GetStatusQservCzarMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
     auto const request = GetStatusQservCzarMgtRequest::create(
-            serviceProvider(), czarName, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            serviceProvider(), czarName,
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -177,14 +191,14 @@ GetStatusQservCzarMgtRequest::Ptr QservMgtServices::czarStatus(
     return request;
 }
 
-GetQueryProgressQservCzarMgtRequest::Ptr QservMgtServices::czarQueryProgress(
+std::shared_ptr<GetQueryProgressQservCzarMgtRequest> QservMgtServices::czarQueryProgress(
         string const& czarName, string const& jobId, vector<QueryId> const& queryIds,
         unsigned int lastSeconds, string const& queryStatus,
         GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish,
         unsigned int requestExpirationIvalSec) {
     auto const request = GetQueryProgressQservCzarMgtRequest::create(
             serviceProvider(), czarName, queryIds, lastSeconds, queryStatus,
-            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -192,11 +206,12 @@ GetQueryProgressQservCzarMgtRequest::Ptr QservMgtServices::czarQueryProgress(
     return request;
 }
 
-GetConfigQservCzarMgtRequest::Ptr QservMgtServices::czarConfig(
+std::shared_ptr<GetConfigQservCzarMgtRequest> QservMgtServices::czarConfig(
         string const& czarName, string const& jobId,
         GetConfigQservCzarMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
     auto const request = GetConfigQservCzarMgtRequest::create(
-            serviceProvider(), czarName, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+            serviceProvider(), czarName,
+            [self = shared_from_this()](shared_ptr<QservMgtRequest> const& request) {
                 self->_finish(request->id());
             });
     _register(__func__, request, onFinish);
@@ -214,7 +229,7 @@ void QservMgtServices::_finish(string const& id) {
     //     to be notified will be doing any API calls of the service manager.
     //   - it will reduce the controller API dead-time due to a prolonged execution
     //     time of the callback function.
-    detail::QservMgtRequestWrapper::Ptr requestWrapper;
+    shared_ptr<detail::QservMgtRequestWrapper> requestWrapper;
     {
         replica::Lock const lock(_mtx, context);
         auto&& itr = _registry.find(id);

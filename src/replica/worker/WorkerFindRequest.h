@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_WORKERFINDREQUEST_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Qserv headers
@@ -31,6 +32,7 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class MultiFileCsComputeEngine;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -42,8 +44,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerFindRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerFindRequest> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -64,15 +64,17 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
+    static std::shared_ptr<WorkerFindRequest> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                     std::string const& worker, std::string const& id,
+                                                     int priority, ExpirationCallbackType const& onExpired,
+                                                     unsigned int requestExpirationIvalSec,
+                                                     ProtocolRequestFind const& request);
 
     WorkerFindRequest() = delete;
     WorkerFindRequest(WorkerFindRequest const&) = delete;
     WorkerFindRequest& operator=(WorkerFindRequest const&) = delete;
 
-    ~WorkerFindRequest() override = default;
+    virtual ~WorkerFindRequest() override = default;
 
     std::string const& database() const { return _request.database(); }
     unsigned int chunk() const { return _request.chunk(); }
@@ -84,10 +86,10 @@ public:
      */
     void setInfo(ProtocolResponseFind& response) const;
 
-    bool execute() override;
+    virtual bool execute() override;
 
 protected:
-    WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    WorkerFindRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                       std::string const& id, int priority, ExpirationCallbackType const& onExpired,
                       unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 

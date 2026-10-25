@@ -32,6 +32,7 @@
 #include "replica/qserv/QservWorkerMgtRequest.h"
 #include "replica/util/ReplicaInfo.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -45,10 +46,8 @@ namespace lsst::qserv::replica {
  */
 class SetReplicasQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<SetReplicasQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SetReplicasQservMgtRequest>)> CallbackType;
 
     SetReplicasQservMgtRequest() = delete;
     SetReplicasQservMgtRequest(SetReplicasQservMgtRequest const&) = delete;
@@ -72,14 +71,12 @@ public:
      *   the operation are in use.
      * @param onFinish A callback function to be called upon request completion.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                      QservReplicaCollection const& newReplicas, std::vector<std::string> const& databases,
-                      bool force = false, CallbackType const& onFinish = nullptr);
+    static std::shared_ptr<SetReplicasQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
+            QservReplicaCollection const& newReplicas, std::vector<std::string> const& databases,
+            bool force = false, CallbackType const& onFinish = nullptr);
 
-    /// @return a collection of replicas passed into the request
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }
-
-    /// @return a flag indicating (if set) the 'force' mode of the operation
     bool force() const { return _force; }
 
     /**
@@ -92,24 +89,17 @@ public:
      */
     QservReplicaCollection const& replicas() const;
 
-    /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::dataReady()
     virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
                                                      nlohmann::json const& data) override;
-
-    /// @see QservMgtRequest::notify
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see SetReplicasQservMgtRequest::create()
-    SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                               QservReplicaCollection const& newReplicas,
+    SetReplicasQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                               std::string const& workerName, QservReplicaCollection const& newReplicas,
                                std::vector<std::string> const& databases, bool force,
                                CallbackType const& onFinish);
 

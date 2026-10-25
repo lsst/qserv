@@ -45,15 +45,17 @@ using namespace nlohmann;
 
 namespace lsst::qserv::replica {
 
-void HttpSqlIndexModule::process(Controller::Ptr const& controller, string const& taskName,
-                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName, http::AuthType const authType) {
+void HttpSqlIndexModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                 shared_ptr<qhttp::Request> const& req,
+                                 shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                 http::AuthType const authType) {
     HttpSqlIndexModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpSqlIndexModule::HttpSqlIndexModule(Controller::Ptr const& controller, string const& taskName,
-                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpSqlIndexModule::HttpSqlIndexModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                       shared_ptr<qhttp::Request> const& req,
+                                       shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpSqlIndexModule::executeImpl(string const& subModuleName) {

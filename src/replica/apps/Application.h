@@ -30,7 +30,11 @@
 // Qserv headers
 #include "replica/apps/ApplicationTypes.h"
 #include "replica/config/ConfigSchema.h"
-#include "replica/services/ServiceProvider.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -94,7 +98,7 @@ protected:
      *  not enabled in the constructor of the class, or if the method gets called
      *  before Parser finishes processing command-line parameters.
      */
-    ServiceProvider::Ptr const& serviceProvider() const;
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const;
 
     /**
      * This method is required to be implements by subclasses to run
@@ -124,7 +128,7 @@ private:
     std::map<std::string, std::map<std::string, std::string>> _generalParams;
 
     /// The provider of the Config and other services
-    ServiceProvider::Ptr _serviceProvider;
+    std::shared_ptr<ServiceProvider> _serviceProvider;
 };
 
 }  // namespace lsst::qserv::replica
