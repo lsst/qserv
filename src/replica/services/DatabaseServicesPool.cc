@@ -42,10 +42,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesPool");
 
 namespace lsst::qserv::replica {
 
-// ======================
-// == ServiceAllocator ==
-// ======================
-
 /**
  * Class ServiceAllocator implements the RAII paradigm by allocating
  * a service (and storing its reference in the corresponding data member)
@@ -54,10 +50,8 @@ namespace lsst::qserv::replica {
  */
 class ServiceAllocator {
 public:
-    ServiceAllocator(DatabaseServicesPool::Ptr const& pool)
+    ServiceAllocator(shared_ptr<DatabaseServicesPool> const& pool)
             : _pool(pool), _service(pool->_allocateService()) {}
-
-    // Default construction and copy semantics are prohibited
 
     ServiceAllocator() = delete;
     ServiceAllocator(ServiceAllocator const&) = delete;
@@ -66,19 +60,19 @@ public:
     ~ServiceAllocator() { _pool->_releaseService(_service); }
 
     /// @return a reference to the allocated service
-    DatabaseServices::Ptr const& operator()() { return _service; }
+    shared_ptr<DatabaseServices> const& operator()() { return _service; }
 
 private:
-    DatabaseServicesPool::Ptr const _pool;
-    DatabaseServices::Ptr const _service;
+    shared_ptr<DatabaseServicesPool> const _pool;
+    shared_ptr<DatabaseServices> const _service;
 };
 
 // ==========================
 // == DatabaseServicesPool ==
 // ==========================
 
-DatabaseServicesPool::Ptr DatabaseServicesPool::create(shared_ptr<Config> const& config) {
-    return DatabaseServicesPool::Ptr(new DatabaseServicesPool(config));
+shared_ptr<DatabaseServicesPool> DatabaseServicesPool::create(shared_ptr<Config> const& config) {
+    return shared_ptr<DatabaseServicesPool>(new DatabaseServicesPool(config));
 }
 
 DatabaseServicesPool::DatabaseServicesPool(shared_ptr<Config> const& config) : DatabaseServices() {
@@ -370,7 +364,7 @@ void DatabaseServicesPool::deleteTableRowStats(string const& databaseName, strin
     service()->deleteTableRowStats(databaseName, tableName, overlapSelector);
 }
 
-DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
+shared_ptr<DatabaseServices> DatabaseServicesPool::_allocateService() {
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
     LOGS(_log, LOG_LVL_TRACE, context);
 
@@ -379,21 +373,21 @@ DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {
     _available.wait(lock, [self]() { return not self->_availableServices.empty(); });
 
     // Get the next request and move it between queues.
-    DatabaseServices::Ptr service = _availableServices.front();
+    shared_ptr<DatabaseServices> service = _availableServices.front();
     _availableServices.pop_front();
     _usedServices.push_back(service);
 
     return service;
 }
 
-void DatabaseServicesPool::_releaseService(DatabaseServices::Ptr const& service) {
+void DatabaseServicesPool::_releaseService(shared_ptr<DatabaseServices> const& service) {
     string const context = "DatabaseServicesPool::" + string(__func__) + "  ";
     LOGS(_log, LOG_LVL_TRACE, context);
     unique_lock<mutex> lock(_mtx);
 
     // Move it between queues.
     size_t numRemoved = 0;
-    _usedServices.remove_if([&numRemoved, &service](DatabaseServices::Ptr const& ptr) {
+    _usedServices.remove_if([&numRemoved, &service](shared_ptr<DatabaseServices> const& ptr) {
         if (ptr == service) {
             numRemoved++;
             return true;

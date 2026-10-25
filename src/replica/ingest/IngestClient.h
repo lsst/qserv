@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_INGESTCLIENT_H
 
 // System headers
+#include <cstddef>
 #include <ctime>
 #include <memory>
 #include <stdexcept>
@@ -58,10 +59,8 @@ public:
  */
 class IngestClient : public std::enable_shared_from_this<IngestClient> {
 public:
-    typedef std::shared_ptr<IngestClient> Ptr;
-
     /// The default record size when reading from an input file.
-    constexpr static size_t defaultRecordSizeBytes = 1048576;
+    constexpr static std::size_t defaultRecordSizeBytes = 1048576;
 
     /**
      * Establish a connection to the remote service. If the operation is successful
@@ -92,12 +91,12 @@ public:
      * @throws IngestClientError for any problem occurred when establishing
      *   a connection or during the initial handshake with the server
      */
-    static Ptr connect(std::string const& workerHost, uint16_t workerPort, TransactionId transactionId,
-                       std::string const& tableName, unsigned int chunk, bool isOverlap,
-                       std::string const& inputFilePath, std::string const& authKey = std::string(),
-                       csv::DialectInput const& dialectInput = csv::DialectInput(),
-                       std::string const& charsetName = "", unsigned int maxNumWarnings = 0,
-                       size_t recordSizeBytes = defaultRecordSizeBytes);
+    static std::shared_ptr<IngestClient> connect(
+            std::string const& workerHost, std::uint16_t workerPort, TransactionId transactionId,
+            std::string const& tableName, unsigned int chunk, bool isOverlap,
+            std::string const& inputFilePath, std::string const& authKey = std::string(),
+            csv::DialectInput const& dialectInput = csv::DialectInput(), std::string const& charsetName = "",
+            unsigned int maxNumWarnings = 0, std::size_t recordSizeBytes = defaultRecordSizeBytes);
 
     // Default construction and copy semantics are prohibited
 
@@ -106,22 +105,21 @@ public:
     IngestClient& operator=(IngestClient const&) = delete;
 
     /// Non-trivial destructor is needed to close a connection to the server
-    ~IngestClient();
+    virtual ~IngestClient();
 
     /**
      * Send the whole file. Note, this is a blocking operation
      * for a thread which calls the method.
      *
-     * @throws IngestClientError for any problem occurred when sending the file
-     *   content to the server
+     * @throws IngestClientError for any problem occurred when sending the file content to the server
      */
     void send();
 
     /// @return the unique identifier of the contribution request
-    uint64_t id() const;
+    std::uint64_t id() const;
 
     /// @return the number of bytes read from an input file
-    size_t sizeBytes() const { return _sizeBytes; }
+    std::size_t sizeBytes() const { return _sizeBytes; }
 
     /// @return the flag indicating if the failed attempt is allowed to be retried
     /// @throws std::logic_error if the request hasn't been completed
@@ -131,17 +129,17 @@ public:
     unsigned int numWarnings() const;
 
     /// @return The number of rows parsed in the contribution
-    uint64_t numRows() const;
+    std::uint64_t numRows() const;
 
     /// @return The number of rows that were actually loaded into Qserv
-    uint64_t numRowsLoaded() const;
+    std::uint64_t numRowsLoaded() const;
 
 private:
-    IngestClient(std::string const& workerHost, uint16_t workerPort, TransactionId transactionId,
+    IngestClient(std::string const& workerHost, std::uint16_t workerPort, TransactionId transactionId,
                  std::string const& tableName, unsigned int chunk, bool isOverlap,
                  std::string const& inputFilePath, std::string const& authKey,
                  csv::DialectInput const& dialectInput, std::string const& charsetName,
-                 unsigned int maxNumWarnings, size_t recordSizeBytes);
+                 unsigned int maxNumWarnings, std::size_t recordSizeBytes);
 
     /// @return a context string for the logger and exceptions
     std::string _context(std::string const& func) const {
@@ -149,8 +147,7 @@ private:
     }
 
     /**
-     * Establish a connection with the service and perform the initial
-     * handshake.
+     * Establish a connection with the service and perform the initial handshake.
      *
      * @throws IngestClientError for any problem occurred when establishing
      *   a connection or during the initial handshake with the server.
@@ -160,10 +157,8 @@ private:
     /**
      * Read a response message from the server
      *
-     * @param response an object to be initialized upon successful completion
-     *   of the operation
-     * @throws IngestClientError for any problem occurred when communicating
-     *   with the server
+     * @param response an object to be initialized upon successful completion of the operation
+     * @throws IngestClientError for any problem occurred when communicating with the server
      */
     void _readResponse(ProtocolIngestResponse& response);
 
@@ -175,9 +170,8 @@ private:
      *
      * @param ec error code to be checked
      * @param func the name of a method which requested the test
-     * @param msg a message to be reported in case of a problem. The input message
-     *   will be extended with an explanation of the problem extracted from
-     *   the error code.
+     * @param msg a message to be reported in case of a problem. The input message will be extended with
+     *  an explanation of the problem extracted from the error code.
      * @throws IngestClientError if a problem was found
      */
     void _assertErrorCode(boost::system::error_code const& ec, std::string const& func,
@@ -202,7 +196,7 @@ private:
     // Input parameters
 
     std::string const _workerHost;
-    uint16_t const _workerPort;
+    std::uint16_t const _workerPort;
     TransactionId const _transactionId;
     std::string const _tableName;
     unsigned int const _chunk;
@@ -212,7 +206,7 @@ private:
     csv::DialectInput const _dialectInput;
     std::string const _charsetName;
     unsigned int _maxNumWarnings;
-    size_t const _recordSizeBytes;
+    std::size_t const _recordSizeBytes;
 
     /// Buffer for data moved over the network.
     std::unique_ptr<ProtocolBuffer> _bufferPtr;
@@ -220,13 +214,13 @@ private:
     boost::asio::io_service _io_service;
     boost::asio::ip::tcp::socket _socket;
 
-    bool _sent = false;             ///< Set to 'true' after a successful completion of the ingest.
-    uint64_t _id = 0;               ///< The unique identifier of the request received from the server.
-    bool _retryAllowed = false;     ///< Set to 'true' to indicate that failed request may be retried.
-    size_t _sizeBytes = 0;          ///< The number of bytes read from an input file.
-    unsigned int _numWarnings = 0;  ///< The number of MySQL warnings detected during ingest.
-    uint64_t _numRows = 0;          ///< The number of rows parsed in the contribution.
-    uint64_t _numRowsLoaded = 0;    ///< The number of rows that were actually loaded into Qserv.
+    bool _sent = false;                ///< Set to 'true' after a successful completion of the ingest.
+    std::uint64_t _id = 0;             ///< The unique identifier of the request received from the server.
+    bool _retryAllowed = false;        ///< Set to 'true' to indicate that failed request may be retried.
+    std::size_t _sizeBytes = 0;        ///< The number of bytes read from an input file.
+    unsigned int _numWarnings = 0;     ///< The number of MySQL warnings detected during ingest.
+    std::uint64_t _numRows = 0;        ///< The number of rows parsed in the contribution.
+    std::uint64_t _numRowsLoaded = 0;  ///< The number of rows that were actually loaded into Qserv.
 };
 
 }  // namespace lsst::qserv::replica

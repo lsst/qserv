@@ -32,6 +32,7 @@
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkNumber.h"
@@ -49,7 +50,7 @@ namespace {
  * among workers mentioned in the input collection of workers.
  */
 template <typename COLLECTION_OF_WORKERS>
-string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
+string leastLoadedWorker(shared_ptr<DatabaseServices> const& databaseServices,
                          COLLECTION_OF_WORKERS const& workers) {
     string worker;
     string const noSpecificDatabase;
@@ -84,7 +85,7 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
  */
 template <typename COLLECTION_OF_WORKERS>
 string leastLoadedWorker(map<string, size_t>& worker2replicasCache,
-                         DatabaseServices::Ptr const& databaseServices,
+                         shared_ptr<DatabaseServices> const& databaseServices,
                          COLLECTION_OF_WORKERS const& workers) {
     string worker;
     string const noSpecificDatabase;
@@ -125,16 +126,17 @@ namespace lsst::qserv::replica {
 
 replica::Mutex HttpIngestChunksModule::_ingestManagementMtx;
 
-void HttpIngestChunksModule::process(Controller::Ptr const& controller, string const& taskName,
-                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName, http::AuthType const authType) {
+void HttpIngestChunksModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                     shared_ptr<qhttp::Request> const& req,
+                                     shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                     http::AuthType const authType) {
     HttpIngestChunksModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpIngestChunksModule::HttpIngestChunksModule(Controller::Ptr const& controller, string const& taskName,
-                                               qhttp::Request::Ptr const& req,
-                                               qhttp::Response::Ptr const& resp)
+HttpIngestChunksModule::HttpIngestChunksModule(shared_ptr<Controller> const& controller,
+                                               string const& taskName, shared_ptr<qhttp::Request> const& req,
+                                               shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestChunksModule::executeImpl(string const& subModuleName) {

@@ -59,7 +59,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Controller");
 void tracker(weak_ptr<Controller> const& controller, string const& context) {
     LOGS(_log, LOG_LVL_INFO, context << "started tracking workers.");
     while (true) {
-        Controller::Ptr const ptr = controller.lock();
+        shared_ptr<Controller> const ptr = controller.lock();
         if (ptr == nullptr) break;
 
         auto const config = ptr->serviceProvider()->config();
@@ -143,8 +143,8 @@ ostream& operator<<(ostream& os, ControllerIdentity const& identity) {
     return os;
 }
 
-Controller::Ptr Controller::create(shared_ptr<ServiceProvider> const& serviceProvider) {
-    auto const ptr = Controller::Ptr(new Controller(serviceProvider));
+shared_ptr<Controller> Controller::create(shared_ptr<ServiceProvider> const& serviceProvider) {
+    auto const ptr = shared_ptr<Controller>(new Controller(serviceProvider));
 
     // The code below is starting the worker status tracking algorithm that would
     // be running in the detached thread. The thread will cache the weak pointer to

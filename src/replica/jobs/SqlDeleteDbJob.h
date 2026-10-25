@@ -49,9 +49,6 @@ namespace lsst::qserv::replica {
  */
 class SqlDeleteDbJob : public SqlJob {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<SqlDeleteDbJob> Ptr;
-
     /// The function type for notifications on the completion of the request
     typedef std::function<void(std::shared_ptr<SqlDeleteDbJob>)> CallbackType;
 

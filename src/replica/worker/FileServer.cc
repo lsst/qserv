@@ -29,6 +29,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/services/ServiceProvider.h"
+#include "replica/worker/FileServerConnection.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -37,18 +38,17 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServer");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-FileServer::Ptr FileServer::create(ServiceProvider::Ptr const& serviceProvider, string const& workerName) {
-    return FileServer::Ptr(new FileServer(serviceProvider, workerName));
+shared_ptr<FileServer> FileServer::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                          string const& workerName) {
+    return shared_ptr<FileServer>(new FileServer(serviceProvider, workerName));
 }
 
-FileServer::FileServer(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
+FileServer::FileServer(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName)
         : _serviceProvider(serviceProvider),
           _workerName(workerName),
           _io_service(),
@@ -69,25 +69,23 @@ void FileServer::run() {
     // Launch all threads in the pool
     vector<shared_ptr<thread>> threads(
             _serviceProvider->config()->get<size_t>("worker", "num-fs-processing-threads"));
-    for (auto&& ptr : threads) {
+    for (auto& ptr : threads) {
         ptr = shared_ptr<thread>(new thread([self = shared_from_this()]() { self->_io_service.run(); }));
     }
 
     // Wait for all threads in the pool to exit.
-    for (auto&& ptr : threads) {
+    for (auto& ptr : threads) {
         ptr->join();
     }
 }
 
 void FileServer::_beginAccept() {
-    FileServerConnection::Ptr const connection =
-            FileServerConnection::create(_serviceProvider, _workerName, _io_service);
-
+    auto const connection = FileServerConnection::create(_serviceProvider, _workerName, _io_service);
     _acceptor.async_accept(connection->socket(),
                            bind(&FileServer::_handleAccept, shared_from_this(), connection, _1));
 }
 
-void FileServer::_handleAccept(FileServerConnection::Ptr const& connection,
+void FileServer::_handleAccept(shared_ptr<FileServerConnection> const& connection,
                                boost::system::error_code const& ec) {
     if (ec.value() == 0) {
         connection->beginProtocol();
