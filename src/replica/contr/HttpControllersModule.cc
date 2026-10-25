@@ -28,6 +28,7 @@
 // Qserv headers
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
+#include "replica/contr/Controller.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -36,15 +37,17 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-void HttpControllersModule::process(Controller::Ptr const& controller, string const& taskName,
-                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName, http::AuthType const authType) {
+void HttpControllersModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                    shared_ptr<qhttp::Request> const& req,
+                                    shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                    http::AuthType const authType) {
     HttpControllersModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller, string const& taskName,
-                                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpControllersModule::HttpControllersModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                             shared_ptr<qhttp::Request> const& req,
+                                             shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpControllersModule::executeImpl(string const& subModuleName) {

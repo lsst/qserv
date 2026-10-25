@@ -130,9 +130,6 @@ struct RebalanceJobResult {
  */
 class RebalanceJob : public Job {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<RebalanceJob> Ptr;
-
     /// The function type for notifications on the completion of the request
     typedef std::function<void(std::shared_ptr<RebalanceJob>)> CallbackType;
 

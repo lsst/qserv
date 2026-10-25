@@ -54,8 +54,6 @@ namespace lsst::qserv::replica {
  */
 class Job : public std::enable_shared_from_this<Job> {
 public:
-    typedef std::shared_ptr<Job> Ptr;
-
     /// The function type for initiating periodic monitoring callbacks while waiting for
     /// the completion of a job.
     typedef std::function<void(std::shared_ptr<Job> const&)> WaitMonitorFunc;

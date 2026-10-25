@@ -61,7 +61,7 @@ replica::Mutex WorkerRequest::_mtxDataFolderOperations;
 
 atomic<size_t> WorkerRequest::_numInstances{0};
 
-WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+WorkerRequest::WorkerRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
                              string const& type, string const& id, int priority,
                              ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec)
         : _serviceProvider(serviceProvider),

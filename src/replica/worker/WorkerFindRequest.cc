@@ -43,25 +43,23 @@ using namespace std;
 namespace fs = std::filesystem;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerFindRequest::Ptr WorkerFindRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                 string const& worker, string const& id, int priority,
-                                                 ExpirationCallbackType const& onExpired,
-                                                 unsigned int requestExpirationIvalSec,
-                                                 ProtocolRequestFind const& request) {
-    auto ptr = WorkerFindRequest::Ptr(new WorkerFindRequest(serviceProvider, worker, id, priority, onExpired,
-                                                            requestExpirationIvalSec, request));
+shared_ptr<WorkerFindRequest> WorkerFindRequest::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                        string const& worker, string const& id, int priority,
+                                                        ExpirationCallbackType const& onExpired,
+                                                        unsigned int requestExpirationIvalSec,
+                                                        ProtocolRequestFind const& request) {
+    auto ptr = shared_ptr<WorkerFindRequest>(new WorkerFindRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+WorkerFindRequest::WorkerFindRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
                                      string const& id, int priority, ExpirationCallbackType const& onExpired,
                                      unsigned int requestExpirationIvalSec,
                                      ProtocolRequestFind const& request)

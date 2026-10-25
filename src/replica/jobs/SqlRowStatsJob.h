@@ -66,8 +66,6 @@ namespace lsst::qserv::replica {
  */
 class SqlRowStatsJob : public SqlJob {
 public:
-    typedef std::shared_ptr<SqlRowStatsJob> Ptr;
-
     /// The function type for notifications on the completion of the request
     typedef std::function<void(std::shared_ptr<SqlRowStatsJob>)> CallbackType;
 

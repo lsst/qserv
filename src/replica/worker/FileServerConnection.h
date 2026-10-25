@@ -29,7 +29,7 @@
  */
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <cstdio>
 #include <memory>
 
@@ -38,8 +38,12 @@
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
-#include "replica/services/ServiceProvider.h"
-#include "replica/util/ProtocolBuffer.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ProtocolBuffer;
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -64,8 +68,6 @@ namespace lsst::qserv::replica {
  */
 class FileServerConnection : public std::enable_shared_from_this<FileServerConnection> {
 public:
-    typedef std::shared_ptr<FileServerConnection> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -76,15 +78,16 @@ public:
      *   for checking a consistency of the protocol)
      * @param io_service A service object for the network I/O operations
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                      boost::asio::io_service& io_service);
+    static std::shared_ptr<FileServerConnection> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
+            boost::asio::io_service& io_service);
 
     FileServerConnection() = delete;
     FileServerConnection(FileServerConnection const&) = delete;
     FileServerConnection& operator=(FileServerConnection const&) = delete;
 
     /// Destructor (non-trivial because some resources need to be properly released)
-    ~FileServerConnection();
+    virtual ~FileServerConnection();
 
     /// @return network socket associated with the connection.
     boost::asio::ip::tcp::socket& socket() { return _socket; }
@@ -119,9 +122,8 @@ public:
     void beginProtocol();
 
 private:
-    /// @see FileServerConnection::create()
-    FileServerConnection(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                         boost::asio::io_service& io_service);
+    FileServerConnection(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                         std::string const& workerName, boost::asio::io_service& io_service);
 
     /**
      * Begin reading (asynchronously) the frame header of a new request
@@ -139,7 +141,7 @@ private:
      * @param ec An error code to be evaluated.
      * @param bytes_transferred The number of bytes received from a client.
      */
-    void _requestReceived(boost::system::error_code const& ec, size_t bytes_transferred);
+    void _requestReceived(boost::system::error_code const& ec, std::size_t bytes_transferred);
 
     /**
      * Begin sending (asynchronously) a result back to a client
@@ -152,7 +154,7 @@ private:
      * @param ec An error code to be evaluated.
      * @param bytes_transferred The number of bytes sent to a client in a response.
      */
-    void _responseSent(boost::system::error_code const& ec, size_t bytes_transferred);
+    void _responseSent(boost::system::error_code const& ec, std::size_t bytes_transferred);
 
     /**
      * Read the next record from the currently open file, and if succeeded
@@ -166,31 +168,23 @@ private:
      * @param ec An error code to be evaluated.
      * @param bytes_transferred The number of bytes of the file payload sent to a client.
      */
-    void _dataSent(boost::system::error_code const& ec, size_t bytes_transferred);
+    void _dataSent(boost::system::error_code const& ec, std::size_t bytes_transferred);
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _workerName;
 
-    /// A socket for communication with clients
-    boost::asio::ip::tcp::socket _socket;
+    boost::asio::ip::tcp::socket _socket;  ///< A socket for communication with clients
 
     /// Buffer management class facilitating serialization/de-serialization
     /// of data sent over the network
     std::shared_ptr<ProtocolBuffer> const _bufferPtr;
 
-    /// The name of a file during on-going transfer
-    std::string _fileName;
-
-    /// For a file during on-going transfer
-    std::FILE* _filePtr;
-
-    /// The file record buffer size (bytes)
-    size_t _fileBufSize;
-
-    /// The file record buffer
-    uint8_t* _fileBuf;
+    std::string _fileName;     ///< The name of a file during on-going transfer
+    std::FILE* _filePtr;       ///< For a file during on-going transfer
+    std::size_t _fileBufSize;  ///< The file record buffer size (bytes)
+    std::uint8_t* _fileBuf;    ///< The file record buffer
 };
 
 }  // namespace lsst::qserv::replica

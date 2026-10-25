@@ -29,8 +29,18 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/contr/HealthMonitorTask.h"
 #include "replica/contr/HttpModule.h"
+
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+class HealthMonitorTask;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -41,11 +51,10 @@ namespace lsst::qserv::replica {
  */
 class HttpWorkerStatusModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpWorkerStatusModule> Ptr;
-
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        HealthMonitorTask::Ptr const& healthMonitorTask,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
+                        std::shared_ptr<HealthMonitorTask> const& healthMonitorTask,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -53,15 +62,16 @@ public:
     HttpWorkerStatusModule(HttpWorkerStatusModule const&) = delete;
     HttpWorkerStatusModule& operator=(HttpWorkerStatusModule const&) = delete;
 
-    ~HttpWorkerStatusModule() final = default;
+    virtual ~HttpWorkerStatusModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpWorkerStatusModule(Controller::Ptr const& controller, std::string const& taskName,
-                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                           HealthMonitorTask::Ptr const& healthMonitorTask);
+    HttpWorkerStatusModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                           std::shared_ptr<qhttp::Request> const& req,
+                           std::shared_ptr<qhttp::Response> const& resp,
+                           std::shared_ptr<HealthMonitorTask> const& healthMonitorTask);
 
     // Input parameters
 
