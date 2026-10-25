@@ -30,6 +30,11 @@
 #include "replica/util/ReplicaInfo.h"
 #include "replica/worker/WorkerRequest.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -39,8 +44,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerDeleteRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerDeleteRequest> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -61,15 +64,16 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
+    static std::shared_ptr<WorkerDeleteRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 
     WorkerDeleteRequest() = delete;
     WorkerDeleteRequest(WorkerDeleteRequest const&) = delete;
     WorkerDeleteRequest& operator=(WorkerDeleteRequest const&) = delete;
 
-    ~WorkerDeleteRequest() override = default;
+    virtual ~WorkerDeleteRequest() override = default;
 
     std::string const& database() const { return _request.database(); }
     unsigned int chunk() const { return _request.chunk(); }
@@ -80,10 +84,10 @@ public:
      */
     void setInfo(ProtocolResponseDelete& response) const;
 
-    bool execute() override;
+    virtual bool execute() override;
 
 protected:
-    WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    WorkerDeleteRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                         std::string const& id, int priority, ExpirationCallbackType const& onExpired,
                         unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 

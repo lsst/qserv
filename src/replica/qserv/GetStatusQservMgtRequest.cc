@@ -31,9 +31,7 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetStatusQservMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {

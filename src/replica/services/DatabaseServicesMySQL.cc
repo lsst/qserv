@@ -36,6 +36,7 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
+#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/proto/Protocol.h"
 #include "replica/qserv/QservWorkerMgtRequest.h"

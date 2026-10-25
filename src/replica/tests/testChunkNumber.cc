@@ -50,8 +50,8 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
     // -------------------------
     // Test equality of policies
 
-    ChunkNumberValidator::Ptr const validator1 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
-    ChunkNumberValidator::Ptr const validator2 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
+    shared_ptr<ChunkNumberValidator> const validator1 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
+    shared_ptr<ChunkNumberValidator> const validator2 = make_shared<ChunkNumberSingleRangeValidator>(0, 1000);
 
     BOOST_CHECK(*validator1 == *validator1);
     BOOST_CHECK(*validator1 != *validator2);
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
 
     unsigned int const beginRange = 10, endRange = 20;
 
-    ChunkNumberValidator::Ptr const validator10to20 =
+    shared_ptr<ChunkNumberValidator> const validator10to20 =
             make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     // Overflow values are always valid
@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
 
     // Compare chunks constructed with different validators
 
-    ChunkNumberSingleRangeValidator::Ptr const otherValidator10to20 =
+    shared_ptr<ChunkNumberSingleRangeValidator> const otherValidator10to20 =
             make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     BOOST_CHECK(*otherValidator10to20 != *validator10to20);

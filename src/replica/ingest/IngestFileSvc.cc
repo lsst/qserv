@@ -41,6 +41,7 @@
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLTypes.h"
 #include "replica/services/DatabaseServices.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkedTable.h"
 #include "replica/util/FileUtils.h"
 #include "replica/util/Mutex.h"
@@ -64,7 +65,7 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
+IngestFileSvc::IngestFileSvc(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName)
         : _serviceProvider(serviceProvider), _workerName(workerName) {}
 
 IngestFileSvc::~IngestFileSvc() { closeFile(); }
@@ -206,7 +207,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
             // tables (not just for the current one) to ensure they have representations
             // in all chunks touched by the ingest workflows. Missing representations would
             // cause Qserv to fail when processing queries involving these tables.
-            for (auto&& tableName : _database.partitionedTables()) {
+            for (auto const& tableName : _database.partitionedTables()) {
                 auto const table = _database.findTable(tableName);
                 // Chunked tables are created from the prototype table which is expected
                 // to exist in the database before attempting data loading.
@@ -224,7 +225,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
                              ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, !overlap).name()),
                         g.id(_database.name,
                              ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, overlap).name())};
-                for (auto&& sqlTable : tablesToBeCreated) {
+                for (auto const& sqlTable : tablesToBeCreated) {
                     bool const ifNotExists = true;
                     string const query = g.createTableLike(sqlTable, sqlProtoTable, ifNotExists);
                     tableMgtStatements.push_back(Query(query, sqlTable.str));
@@ -234,7 +235,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
                 // result in the MySQL failures.
                 if (!table.isPublished) {
                     SqlId const tablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
-                    for (auto&& sqlTable : tablesToBePartitioned) {
+                    for (auto const& sqlTable : tablesToBePartitioned) {
                         bool const ifNotExists = true;
                         string const query =
                                 g.alterTable(sqlTable) + g.addPartition(_transactionId, ifNotExists);
@@ -266,7 +267,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
             partitionRemovalQuery =
                     Query(g.alterTable(sqlTable) + g.dropPartition(_transactionId, ifExists), sqlTable.str);
         }
-        for (auto&& statement : tableMgtStatements) {
+        for (auto const& statement : tableMgtStatements) {
             LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << statement.query);
         }
         LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << dataLoadQuery);
@@ -285,7 +286,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
 
         h.conn->executeInOwnTransaction(
                 [&](decltype(h.conn) const& conn_) {
-                    for (auto&& statement : tableMgtStatements) {
+                    for (auto const& statement : tableMgtStatements) {
                         if (statement.mutexName.empty()) {
                             conn_->execute(statement.query);
                         } else {

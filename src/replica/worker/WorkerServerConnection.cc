@@ -29,6 +29,7 @@
 #include "replica/config/Config.h"
 #include "replica/util/Performance.h"
 #include "replica/util/ProtocolBuffer.h"
+#include "replica/services/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -99,14 +100,15 @@ namespace lsst::qserv::replica {
 
 atomic<unsigned int> WorkerServerConnection::_connectionIdSeries{0};
 
-WorkerServerConnection::Ptr WorkerServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
-                                                           WorkerProcessor::Ptr const& processor,
-                                                           boost::asio::io_service& io_service) {
-    return WorkerServerConnection::Ptr(new WorkerServerConnection(serviceProvider, processor, io_service));
+shared_ptr<WorkerServerConnection> WorkerServerConnection::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, shared_ptr<WorkerProcessor> const& processor,
+        boost::asio::io_service& io_service) {
+    return shared_ptr<WorkerServerConnection>(
+            new WorkerServerConnection(serviceProvider, processor, io_service));
 }
 
-WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                                               WorkerProcessor::Ptr const& processor,
+WorkerServerConnection::WorkerServerConnection(shared_ptr<ServiceProvider> const& serviceProvider,
+                                               shared_ptr<WorkerProcessor> const& processor,
                                                boost::asio::io_service& io_service)
         : _serviceProvider(serviceProvider),
           _connectionId(_connectionIdSeries++),
@@ -471,6 +473,10 @@ void WorkerServerConnection::_sent(boost::system::error_code const& ec, size_t b
 
     // Go wait for another request
     _receive();
+}
+
+bool WorkerServerConnection::_instanceMatches(ProtocolRequestHeader const& hdr) const {
+    return hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id");
 }
 
 }  // namespace lsst::qserv::replica

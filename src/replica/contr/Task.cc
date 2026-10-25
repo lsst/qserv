@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/QservSyncJob.h"
 #include "replica/services/ServiceProvider.h"
 #include "util/BlockPost.h"
@@ -39,46 +40,37 @@ namespace lsst::qserv::replica {
 TaskError::TaskError(util::Issue::Context const& ctx, string const& message)
         : util::Issue(ctx, "Task: " + message) {}
 
+shared_ptr<ServiceProvider> const& Task::serviceProvider() const { return _controller->serviceProvider(); }
+
 bool Task::start() {
     debug("starting...");
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (_isRunning.exchange(true)) return true;
-
     thread t(bind(&Task::_startImpl, shared_from_this()));
     t.detach();
-
     return false;
 }
 
 bool Task::stop() {
     debug("stopping...");
-
     replica::Lock lock(_mtx, context() + __func__);
-
-    if (not _isRunning) return true;
-
+    if (!_isRunning) return true;
     _stopRequested = true;
-
     return false;
 }
 
 bool Task::startAndWait(WaitEvaluatorType const& abortWait) {
     bool const wasRunning = start();
-
     auto self = shared_from_this();
-
     util::BlockPost blockPost(1000, 1001);  // ~1s
     while (isRunning()) {
         if ((nullptr != abortWait) and abortWait(self)) break;
         blockPost.wait();
     }
-
     return wasRunning;
 }
 
-Task::Task(Controller::Ptr const& controller, string const& name,
+Task::Task(shared_ptr<Controller> const& controller, string const& name,
            Task::AbnormalTerminationCallbackType const& onTerminated, unsigned int const waitIntervalSec)
         : EventLogger(controller, name),
           _onTerminated(onTerminated),
@@ -110,21 +102,17 @@ void Task::_startImpl() {
         debug("started");
         logOnStartEvent();
         onStart();
-
         util::BlockPost blockPost(1000 * _waitIntervalSec, 1000 * _waitIntervalSec + 1);
-
-        while (not stopRequested() and onRun()) {
+        while (!stopRequested() and onRun()) {
             blockPost.wait();
         }
         debug("stopped");
         logOnStopEvent();
         onStop();
-
     } catch (TaskStopped const&) {
         debug("stopped");
         logOnStopEvent();
         onStop();
-
     } catch (exception const& ex) {
         string const msg = ex.what();
         error("terminated, exception: " + msg);
@@ -141,12 +129,9 @@ void Task::_startImpl() {
     // run in a different thread with the life expectancy of the current
     // object guaranteed through a copy of a shared pointer bound as
     // a parameter of the callback.
-
     replica::Lock lock(_mtx, context() + __func__);
-
     _stopRequested = false;
     _isRunning = false;
-
     if (terminated) {
         serviceProvider()->io_service().post(bind(_onTerminated, shared_from_this()));
     }
