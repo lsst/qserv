@@ -68,8 +68,6 @@ namespace lsst::qserv::replica {
  */
 class DirectorIndexJob : public Job {
 public:
-    typedef std::shared_ptr<DirectorIndexJob> Ptr;
-
     /// The function type for notifications on the completion of the request
     typedef std::function<void(std::shared_ptr<DirectorIndexJob>)> CallbackType;
 

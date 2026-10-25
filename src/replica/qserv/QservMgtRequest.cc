@@ -39,9 +39,7 @@ using namespace nlohmann;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -86,7 +84,7 @@ string QservMgtRequest::state2string(ExtendedState state) {
     throw logic_error("QservMgtRequest::" + string(__func__) + "(ExtendedState)  incomplete implementation");
 }
 
-QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider, string const& type,
+QservMgtRequest::QservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& type,
                                  string const& remoteServiceKey, string const& remoteServiceId)
         : _serviceProvider(serviceProvider),
           _type(type),

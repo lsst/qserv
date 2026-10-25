@@ -36,6 +36,7 @@
 #include "replica/worker/WorkerEchoRequest.h"
 #include "replica/worker/WorkerFindRequest.h"
 #include "replica/worker/WorkerFindAllRequest.h"
+#include "replica/worker/WorkerProcessorThread.h"
 #include "replica/worker/WorkerReplicationRequest.h"
 #include "replica/worker/WorkerSqlRequest.h"
 #include "replica/worker/WorkerDirectorIndexRequest.h"
@@ -60,7 +61,7 @@ shared_ptr<WorkerProcessor> WorkerProcessor::create(shared_ptr<ServiceProvider> 
     return shared_ptr<WorkerProcessor>(new WorkerProcessor(serviceProvider, worker));
 }
 
-WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, string const& worker)
+WorkerProcessor::WorkerProcessor(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker)
         : _serviceProvider(serviceProvider),
           _worker(worker),
           _connectionPool(database::mysql::ConnectionPool::create(
@@ -76,7 +77,7 @@ void WorkerProcessor::run() {
     if (_state == protocol::ServiceState::SUSPENDED) {
         size_t const numThreads =
                 _serviceProvider->config()->get<size_t>("worker", "num-svc-processing-threads");
-        if (not numThreads) {
+        if (numThreads == 0) {
             throw out_of_range(_classMethodContext(__func__) +
                                "invalid configuration parameter for the number of processing threads. "
                                "The value of the parameter must be greater than 0");
@@ -91,7 +92,7 @@ void WorkerProcessor::run() {
         }
 
         // Tell each thread to run
-        for (auto&& t : _threads) {
+        for (auto& t : _threads) {
             t->run();
         }
         _state = protocol::ServiceState::RUNNING;
@@ -104,7 +105,7 @@ void WorkerProcessor::stop() {
 
     if (_state == protocol::ServiceState::RUNNING) {
         // Tell each thread to stop.
-        for (auto&& t : _threads) {
+        for (auto& t : _threads) {
             t->stop();
         }
 
@@ -352,7 +353,7 @@ void WorkerProcessor::checkStatus(ProtocolRequestStatus const& request, Protocol
     replica::Lock lock(_mtx, _context(__func__));
 
     // Still waiting in the queue?
-    WorkerRequest::Ptr targetRequestPtr;
+    shared_ptr<WorkerRequest> targetRequestPtr;
     for (auto ptr : _newRequests) {
         if (ptr->id() == request.id()) {
             targetRequestPtr = ptr;
@@ -397,7 +398,7 @@ void WorkerProcessor::dequeueOrCancel(ProtocolRequestStop const& request, Protoc
     }
 }
 
-WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lock, string const& id) {
+shared_ptr<WorkerRequest> WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
@@ -480,10 +481,10 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
     }
 
     // No request found!
-    return WorkerRequest::Ptr();
+    return shared_ptr<WorkerRequest>();
 }
 
-WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock, string const& id) {
+shared_ptr<WorkerRequest> WorkerProcessor::_trackRequestImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
@@ -544,7 +545,7 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
     }
 
     // No request found!
-    return WorkerRequest::Ptr();
+    return shared_ptr<WorkerRequest>();
 }
 
 void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, string const& id,
@@ -572,7 +573,7 @@ void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, stri
     }
 }
 
-void WorkerProcessor::_setServiceResponseInfo(WorkerRequest::Ptr const& request,
+void WorkerProcessor::_setServiceResponseInfo(shared_ptr<WorkerRequest> const& request,
                                               ProtocolServiceResponseInfo* info) const {
     if (nullptr != dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
@@ -626,8 +627,8 @@ size_t WorkerProcessor::numFinishedRequests() const {
 
 string WorkerProcessor::_classMethodContext(string const& func) { return "WorkerProcessor::" + func; }
 
-WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThread::Ptr const& processorThread,
-                                                            unsigned int timeoutMilliseconds) {
+shared_ptr<WorkerRequest> WorkerProcessor::_fetchNextForProcessing(
+        shared_ptr<WorkerProcessorThread> const& processorThread, unsigned int timeoutMilliseconds) {
     LOGS(_log, LOG_LVL_TRACE,
          _context(__func__) << "  thread: " << processorThread->id() << "  timeout: " << timeoutMilliseconds);
 
@@ -647,8 +648,8 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
         // the wait.
         {
             replica::Lock lock(_mtx, _context(__func__));
-            if (not _newRequests.empty()) {
-                WorkerRequest::Ptr request = _newRequests.top();
+            if (!_newRequests.empty()) {
+                shared_ptr<WorkerRequest> request = _newRequests.top();
                 _newRequests.pop();
                 request->start();
                 _inProgressRequests[request->id()] = request;
@@ -661,10 +662,10 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
     // Return null pointer since noting has been found within the specified
     // timeout.
 
-    return WorkerRequest::Ptr();
+    return shared_ptr<WorkerRequest>();
 }
 
-void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
+void WorkerProcessor::_processingRefused(shared_ptr<WorkerRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << request->id());
     replica::Lock lock(_mtx, _context(__func__));
 
@@ -679,7 +680,7 @@ void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
     }
 }
 
-void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
+void WorkerProcessor::_processingFinished(shared_ptr<WorkerRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context(__func__) << "  id: " << request->id()
                             << "  status: " << protocol::toString(request->status()));
@@ -693,7 +694,7 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
     }
 }
 
-void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread) {
+void WorkerProcessor::_processorThreadStopped(shared_ptr<WorkerProcessorThread> const& processorThread) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  thread: " << processorThread->id());
     replica::Lock lock(_mtx, _context(__func__));
     if (_state == protocol::ServiceState::SUSPEND_IN_PROGRESS) {
@@ -705,10 +706,11 @@ void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& 
     }
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseReplicate& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request,
+                               ProtocolResponseReplicate& response) {
     if (nullptr == request) return;
     auto ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerReplicationRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -717,9 +719,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDelete& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseDelete& response) {
     auto ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerDeleteRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -728,9 +730,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseFind& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseFind& response) {
     auto ptr = dynamic_pointer_cast<WorkerFindRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerFindRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -739,9 +741,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseFindAll& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseFindAll& response) {
     auto ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerFindAllRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -750,9 +752,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseEcho& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseEcho& response) {
     auto ptr = dynamic_pointer_cast<WorkerEchoRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerEchoRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -761,9 +763,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseSql& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseSql& response) {
     auto ptr = dynamic_pointer_cast<WorkerSqlRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerSqlRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -772,9 +774,10 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request,
+                               ProtocolResponseDirectorIndex& response) {
     auto ptr = dynamic_pointer_cast<WorkerDirectorIndexRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerDirectorIndexRequest)"
                           "  incorrect dynamic type of request id: " +

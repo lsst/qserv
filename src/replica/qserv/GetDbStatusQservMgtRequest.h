@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/qserv/QservWorkerMgtRequest.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -41,10 +42,8 @@ namespace lsst::qserv::replica {
  */
 class GetDbStatusQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<GetDbStatusQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<GetDbStatusQservMgtRequest>)> CallbackType;
 
     GetDbStatusQservMgtRequest() = delete;
     GetDbStatusQservMgtRequest(GetDbStatusQservMgtRequest const&) = delete;
@@ -67,14 +66,10 @@ public:
             CallbackType const& onFinish = nullptr);
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify()
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see GetDbStatusQservMgtRequest::create()
     GetDbStatusQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                std::string const& workerName, CallbackType const& onFinish);
 

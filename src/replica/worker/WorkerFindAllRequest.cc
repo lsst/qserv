@@ -43,26 +43,23 @@ using namespace std;
 namespace fs = std::filesystem;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindAllRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerFindAllRequest::Ptr WorkerFindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                       string const& worker, string const& id, int priority,
-                                                       ExpirationCallbackType const& onExpired,
-                                                       unsigned int requestExpirationIvalSec,
-                                                       ProtocolRequestFindAll const& request) {
-    auto ptr = WorkerFindAllRequest::Ptr(new WorkerFindAllRequest(
+shared_ptr<WorkerFindAllRequest> WorkerFindAllRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, string const& id,
+        int priority, ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+        ProtocolRequestFindAll const& request) {
+    auto ptr = shared_ptr<WorkerFindAllRequest>(new WorkerFindAllRequest(
             serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerFindAllRequest::WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
-                                           string const& id, int priority,
+WorkerFindAllRequest::WorkerFindAllRequest(shared_ptr<ServiceProvider> const& serviceProvider,
+                                           string const& worker, string const& id, int priority,
                                            ExpirationCallbackType const& onExpired,
                                            unsigned int requestExpirationIvalSec,
                                            ProtocolRequestFindAll const& request)
@@ -74,7 +71,7 @@ void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
     response.set_allocated_target_performance(performance().info().release());
-    for (auto&& replicaInfo : _replicaInfoCollection) {
+    for (auto& replicaInfo : _replicaInfoCollection) {
         replicaInfo.setInfo(response.add_replica_info_many());
     }
     *(response.mutable_request()) = _request;
@@ -167,7 +164,7 @@ bool WorkerFindAllRequest::execute() {
     // Analyze results to see which chunks are complete using chunk 0 as an example
     // of the total number of files which are normally associated with each chunk.
     size_t const numFilesPerChunkRequired = FileUtils::partitionedFiles(databaseInfo, 0).size();
-    for (auto&& entry : chunk2fileInfoCollection) {
+    for (auto const& entry : chunk2fileInfoCollection) {
         unsigned int const chunk = entry.first;
         size_t const numFiles = entry.second.size();
         _replicaInfoCollection.emplace_back(

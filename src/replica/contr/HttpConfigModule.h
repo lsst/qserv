@@ -31,6 +31,16 @@
 // Qserv headers
 #include "replica/contr/HttpModule.h"
 
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -40,8 +50,6 @@ namespace lsst::qserv::replica {
  */
 class HttpConfigModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpConfigModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -60,8 +68,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -69,14 +78,15 @@ public:
     HttpConfigModule(HttpConfigModule const&) = delete;
     HttpConfigModule& operator=(HttpConfigModule const&) = delete;
 
-    ~HttpConfigModule() final = default;
+    virtual ~HttpConfigModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpConfigModule(Controller::Ptr const& controller, std::string const& taskName,
-                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpConfigModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                     std::shared_ptr<qhttp::Request> const& req,
+                     std::shared_ptr<qhttp::Response> const& resp);
 
     /**
      * Return the current Config of the system.

@@ -33,8 +33,13 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigDatabaseFamily.h"
 #include "replica/config/ConfigWorker.h"
-#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
+#include "replica/mysql/DatabaseMySQLRow.h"
+
+// Forward declarations
+namespace lsst::qserv::replica::database::mysql {
+class Connection;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -59,7 +64,7 @@ public:
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
      */
-    ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
+    ConfigParserMySQL(std::shared_ptr<database::mysql::Connection> const& conn,
                       std::map<std::string, ConfigWorker>& workers,
                       std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                       std::map<std::string, DatabaseInfo>& databases);
@@ -122,7 +127,7 @@ private:
 
     // Input parameters
 
-    database::mysql::Connection::Ptr const _conn;
+    std::shared_ptr<database::mysql::Connection> const _conn;
     database::mysql::QueryGenerator const _g;
     std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;

@@ -23,14 +23,19 @@
 
 // System headers
 #include <atomic>
-#include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <set>
 
 // Qserv headers
 #include "replica/contr/Task.h"
-#include "replica/jobs/ClusterHealthJob.h"
 #include "replica/util/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class ClusterHealthJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -49,16 +54,14 @@ public:
                               unsigned int>>
             WorkerResponseDelay;
 
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<HealthMonitorTask> Ptr;
-
     /// The function type for notifications on the worker eviction events
     typedef std::function<void(std::string const&)> WorkerEvictCallbackType;
 
     HealthMonitorTask() = delete;
     HealthMonitorTask(HealthMonitorTask const&) = delete;
     HealthMonitorTask& operator=(HealthMonitorTask const&) = delete;
-    ~HealthMonitorTask() final = default;
+
+    virtual ~HealthMonitorTask() final = default;
 
     /**
      * Create a new task with specified parameters.
@@ -84,9 +87,10 @@ public:
      * @return
      *   the smart pointer to a new object
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated,
-                      WorkerEvictCallbackType const& onWorkerEvictTimeout);
+    static std::shared_ptr<HealthMonitorTask> create(
+            std::shared_ptr<Controller> const& controller,
+            Task::AbnormalTerminationCallbackType const& onTerminated,
+            WorkerEvictCallbackType const& onWorkerEvictTimeout);
 
     /// @return delays (seconds) in getting responses from the worker services
     WorkerResponseDelay workerResponseDelay() const;
@@ -96,7 +100,7 @@ protected:
     virtual bool onRun() final;
 
 private:
-    HealthMonitorTask(Controller::Ptr const& controller,
+    HealthMonitorTask(std::shared_ptr<Controller> const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
                       WorkerEvictCallbackType const& onWorkerEvictTimeout);
 
@@ -104,20 +108,20 @@ private:
      * Log a persistent event on the started job
      * @param job A pointer to the job
      */
-    void _logStartedEvent(ClusterHealthJob::Ptr const& job) const;
+    void _logStartedEvent(std::shared_ptr<ClusterHealthJob> const& job) const;
 
     /**
      * Log a persistent event on the finished job
      * @param job A pointer to the job
      */
-    void _logFinishedEvent(ClusterHealthJob::Ptr const& job) const;
+    void _logFinishedEvent(std::shared_ptr<ClusterHealthJob> const& job) const;
 
     // Input parameters
 
     WorkerEvictCallbackType const _onWorkerEvictTimeout;
 
     /// The thread-safe counter of the finished jobs
-    std::atomic<size_t> _numFinishedJobs;
+    std::atomic<std::size_t> _numFinishedJobs;
 
     /// Mutex guarding internal state. This object is made protected
     /// to allow subclasses use it.
@@ -128,7 +132,7 @@ private:
     WorkerResponseDelay _workerServiceNoResponseSec;
 
     /// Last time the workers response delays were updated
-    uint64_t _prevUpdateTimeMs;
+    std::uint64_t _prevUpdateTimeMs;
 };
 
 }  // namespace lsst::qserv::replica

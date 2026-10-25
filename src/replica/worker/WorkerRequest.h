@@ -23,6 +23,7 @@
 
 // System headers
 #include <atomic>
+#include <cstddef>
 #include <exception>
 #include <functional>
 #include <memory>
@@ -34,10 +35,14 @@
 // Qserv headers
 #include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/Performance.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -60,8 +65,6 @@ public:
  */
 class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
 public:
-    typedef std::shared_ptr<WorkerRequest> Ptr;
-
     /// The function type for notifications on the expiration of the request
     /// given its unique identifier.
     typedef std::function<void(std::string const&)> ExpirationCallbackType;
@@ -77,7 +80,7 @@ public:
 
     // Trivial getter methods
 
-    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
     std::string const& type() const { return _type; }
@@ -204,7 +207,7 @@ protected:
      *   the Config.
      * @throws std::invalid_argument if the worker is unknown
      */
-    WorkerRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    WorkerRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                   std::string const& type, std::string const& id, int priority,
                   ExpirationCallbackType const& onExpired = nullptr,
                   unsigned int requestExpirationIvalSec = 0);
@@ -290,7 +293,7 @@ protected:
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
 
     std::string const _worker;
     std::string const _type;
@@ -344,7 +347,7 @@ private:
     void _expired(boost::system::error_code const& ec);
 
     // For memory usage monitoring and memory leak diagnostic.
-    static std::atomic<size_t> _numInstances;
+    static std::atomic<std::size_t> _numInstances;
 };
 
 /**
@@ -358,7 +361,8 @@ struct WorkerRequestCompare {
      * @param rhs pointer to a request on the right side of a logical comparison
      * @return 'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
      */
-    bool operator()(WorkerRequest::Ptr const& lhs, WorkerRequest::Ptr const& rhs) const {
+    bool operator()(std::shared_ptr<WorkerRequest> const& lhs,
+                    std::shared_ptr<WorkerRequest> const& rhs) const {
         return lhs->priority() < rhs->priority();
     }
 };
