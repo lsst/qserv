@@ -38,6 +38,7 @@
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/Performance.h"
 #include "replica/util/ProtocolBuffer.h"
 
@@ -57,23 +58,23 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-WorkerDirectorIndexRequest::Ptr WorkerDirectorIndexRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
-        string const& worker, string const& id, int priority, ExpirationCallbackType const& onExpired,
+shared_ptr<WorkerDirectorIndexRequest> WorkerDirectorIndexRequest::create(
+        std::shared_ptr<ServiceProvider> const& serviceProvider,
+        std::shared_ptr<database::mysql::ConnectionPool> const& connectionPool, string const& worker,
+        string const& id, int priority, ExpirationCallbackType const& onExpired,
         unsigned int requestExpirationIvalSec, ProtocolRequestDirectorIndex const& request) {
-    auto ptr = WorkerDirectorIndexRequest::Ptr(
+    auto ptr = shared_ptr<WorkerDirectorIndexRequest>(
             new WorkerDirectorIndexRequest(serviceProvider, connectionPool, worker, id, priority, onExpired,
                                            requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                                                       ConnectionPoolPtr const& connectionPool,
-                                                       string const& worker, string const& id, int priority,
-                                                       ExpirationCallbackType const& onExpired,
-                                                       unsigned int requestExpirationIvalSec,
-                                                       ProtocolRequestDirectorIndex const& request)
+WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(
+        std::shared_ptr<ServiceProvider> const& serviceProvider,
+        std::shared_ptr<database::mysql::ConnectionPool> const& connectionPool, string const& worker,
+        string const& id, int priority, ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec, ProtocolRequestDirectorIndex const& request)
         : WorkerRequest(serviceProvider, worker, "INDEX", id, priority, onExpired, requestExpirationIvalSec),
           _connectionPool(connectionPool),
           _request(request),
@@ -187,7 +188,8 @@ bool WorkerDirectorIndexRequest::execute() {
     return true;
 }
 
-string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn, string const& primaryKeyColumn) const {
+string WorkerDirectorIndexRequest::_query(std::shared_ptr<Connection> const& conn,
+                                          string const& primaryKeyColumn) const {
     // IMPORTANT: injecting the chunk number into each row of the result set because
     // the chunk-id column is optional.
     QueryGenerator const g(conn);

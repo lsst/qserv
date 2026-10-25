@@ -41,12 +41,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerProcessorThread : public std::enable_shared_from_this<WorkerProcessorThread> {
 public:
-    /// Smart reference to objects of the class
-    typedef std::shared_ptr<WorkerProcessorThread> Ptr;
-
-    /// Smart reference for the WorkerProcessor's objects
-    typedef std::shared_ptr<WorkerProcessor> WorkerProcessorPtr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -60,7 +54,7 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(WorkerProcessorPtr const& processor);
+    static std::shared_ptr<WorkerProcessorThread> create(std::shared_ptr<WorkerProcessor> const& processor);
 
     // Default construction and copy semantics are prohibited
 
@@ -68,7 +62,7 @@ public:
     WorkerProcessorThread(WorkerProcessorThread const&) = delete;
     WorkerProcessorThread& operator=(WorkerProcessorThread const&) = delete;
 
-    ~WorkerProcessorThread() = default;
+    virtual ~WorkerProcessorThread() = default;
 
     /// @return identifier of this thread object
     unsigned int id() const { return _id; }
@@ -97,8 +91,7 @@ public:
     std::string context() const { return "THREAD: " + std::to_string(_id) + "  "; }
 
 private:
-    /// @see WorkerProcessorThread::create()
-    WorkerProcessorThread(WorkerProcessorPtr const& processor, unsigned int id);
+    WorkerProcessorThread(std::shared_ptr<WorkerProcessor> const& processor, unsigned int id);
 
     /**
      * Event handler called by the thread when it's about to stop
@@ -107,7 +100,7 @@ private:
 
     // Input parameters
 
-    WorkerProcessorPtr const _processor;
+    std::shared_ptr<WorkerProcessor> const _processor;
 
     /// The identifier of this thread object
     unsigned int const _id;

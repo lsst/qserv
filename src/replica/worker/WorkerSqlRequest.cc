@@ -48,18 +48,18 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                               string const& worker, string const& id, int priority,
-                                               ExpirationCallbackType const& onExpired,
-                                               unsigned int requestExpirationIvalSec,
-                                               ProtocolRequestSql const& request) {
-    auto ptr = WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider, worker, id, priority, onExpired,
-                                                          requestExpirationIvalSec, request));
+shared_ptr<WorkerSqlRequest> WorkerSqlRequest::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                      string const& worker, string const& id, int priority,
+                                                      ExpirationCallbackType const& onExpired,
+                                                      unsigned int requestExpirationIvalSec,
+                                                      ProtocolRequestSql const& request) {
+    auto ptr = shared_ptr<WorkerSqlRequest>(new WorkerSqlRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+WorkerSqlRequest::WorkerSqlRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
                                    string const& id, int priority, ExpirationCallbackType const& onExpired,
                                    unsigned int requestExpirationIvalSec, ProtocolRequestSql const& request)
         : WorkerRequest(serviceProvider, worker, "SQL", id, priority, onExpired, requestExpirationIvalSec),
@@ -209,7 +209,7 @@ bool WorkerSqlRequest::execute() {
     return true;
 }
 
-Connection::Ptr WorkerSqlRequest::_connector() const {
+shared_ptr<Connection> WorkerSqlRequest::_connector() const {
     // A choice of credential for connecting to the database service depends
     // on a type of the request. For the sake of greater security, arbitrary
     // queries require a client to explicitly provide the credentials.
@@ -224,7 +224,7 @@ Connection::Ptr WorkerSqlRequest::_connector() const {
     return Connection::open(connectionParams);
 }
 
-vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
+vector<Query> WorkerSqlRequest::_queries(shared_ptr<Connection> const& conn) const {
     QueryGenerator const g(conn);
     vector<Query> queries;
     protocol::SqlRequestType const requestType = protocol::toSqlRequestType(_request.type());
@@ -271,7 +271,7 @@ vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
     return queries;
 }
 
-Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table) const {
+Query WorkerSqlRequest::_query(shared_ptr<Connection> const& conn, string const& table) const {
     QueryGenerator const g(conn);
     SqlId const databaseTable = g.id(_request.database(), table);
     protocol::SqlRequestType const requestType = protocol::toSqlRequestType(_request.type());
@@ -369,7 +369,7 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
     }
 }
 
-void WorkerSqlRequest::_extractResultSet(replica::Lock const& lock, Connection::Ptr const& conn) {
+void WorkerSqlRequest::_extractResultSet(replica::Lock const& lock, shared_ptr<Connection> const& conn) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     auto resultSet = _currentResultSet(lock);

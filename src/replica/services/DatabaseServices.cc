@@ -268,9 +268,9 @@ json TableRowStats::toJson() const {
     return result;
 }
 
-DatabaseServices::Ptr DatabaseServices::create(shared_ptr<Config> const& config) {
+shared_ptr<DatabaseServices> DatabaseServices::create(shared_ptr<Config> const& config) {
     try {
-        return DatabaseServices::Ptr(new DatabaseServicesMySQL(config));
+        return shared_ptr<DatabaseServices>(new DatabaseServicesMySQL(config));
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              "DatabaseServices::" << __func__ << "  failed to instantiate MySQL-based database services"

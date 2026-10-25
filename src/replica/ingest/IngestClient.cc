@@ -47,15 +47,16 @@ size_t const defaultBufferCapacity = 1024;
 
 namespace lsst::qserv::replica {
 
-IngestClient::Ptr IngestClient::connect(string const& workerHost, uint16_t workerPort,
-                                        TransactionId transactionId, string const& tableName,
-                                        unsigned int chunk, bool isOverlap, string const& inputFilePath,
-                                        string const& authKey, csv::DialectInput const& dialectInput,
-                                        std::string const& charsetName, unsigned int maxNumWarnings,
-                                        size_t recordSizeBytes) {
-    IngestClient::Ptr const ptr(new IngestClient(workerHost, workerPort, transactionId, tableName, chunk,
-                                                 isOverlap, inputFilePath, authKey, dialectInput, charsetName,
-                                                 maxNumWarnings, recordSizeBytes));
+shared_ptr<IngestClient> IngestClient::connect(string const& workerHost, std::uint16_t workerPort,
+                                               TransactionId transactionId, string const& tableName,
+                                               unsigned int chunk, bool isOverlap,
+                                               string const& inputFilePath, string const& authKey,
+                                               csv::DialectInput const& dialectInput,
+                                               std::string const& charsetName, unsigned int maxNumWarnings,
+                                               size_t recordSizeBytes) {
+    shared_ptr<IngestClient> const ptr(new IngestClient(
+            workerHost, workerPort, transactionId, tableName, chunk, isOverlap, inputFilePath, authKey,
+            dialectInput, charsetName, maxNumWarnings, recordSizeBytes));
     ptr->_connectImpl();
     return ptr;
 }

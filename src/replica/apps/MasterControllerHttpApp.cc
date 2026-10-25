@@ -111,12 +111,12 @@ int MasterControllerHttpApp::runImpl() {
 
     auto self = shared_from_base<MasterControllerHttpApp>();
 
-    _replicationTask =
-            ReplicationTask::create(_controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); });
+    _replicationTask = ReplicationTask::create(
+            _controller, [self](shared_ptr<Task> const& ptr) { self->_isFailed.fail(); });
     _replicationTask->start();
 
     _healthMonitorTask = HealthMonitorTask::create(
-            _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); },
+            _controller, [self](shared_ptr<Task> const& ptr) { self->_isFailed.fail(); },
             [self](string const& worker2evict) { self->_evict(worker2evict); });
     _healthMonitorTask->start();
 
@@ -159,8 +159,9 @@ void MasterControllerHttpApp::_evict(string const& worker) {
     auto self = shared_from_base<MasterControllerHttpApp>();
 
     _deleteWorkerTask = DeleteWorkerTask::create(
-            _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, worker);
-    _deleteWorkerTask->startAndWait([self](Task::Ptr const& ptr) -> bool { return self->_isFailed(); });
+            _controller, [self](shared_ptr<Task> const& ptr) { self->_isFailed.fail(); }, worker);
+    _deleteWorkerTask->startAndWait(
+            [self](shared_ptr<Task> const& ptr) -> bool { return self->_isFailed(); });
     _deleteWorkerTask->stop();  // it's safe to call this method even if the thread is
                                 // no longer running.
 

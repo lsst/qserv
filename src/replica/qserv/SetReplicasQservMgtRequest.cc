@@ -40,23 +40,21 @@ using namespace nlohmann;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SetReplicasQservMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SetReplicasQservMgtRequest::Ptr SetReplicasQservMgtRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& workerName,
+shared_ptr<SetReplicasQservMgtRequest> SetReplicasQservMgtRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         QservReplicaCollection const& newReplicas, vector<string> const& databases, bool force,
         SetReplicasQservMgtRequest::CallbackType const& onFinish) {
-    return SetReplicasQservMgtRequest::Ptr(new SetReplicasQservMgtRequest(
+    return shared_ptr<SetReplicasQservMgtRequest>(new SetReplicasQservMgtRequest(
             serviceProvider, workerName, newReplicas, databases, force, onFinish));
 }
 
 SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
-        ServiceProvider::Ptr const& serviceProvider, string const& workerName,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         QservReplicaCollection const& newReplicas, vector<string> const& databases, bool force,
         SetReplicasQservMgtRequest::CallbackType const& onFinish)
         : QservWorkerMgtRequest(serviceProvider, "QSERV_SET_REPLICAS", workerName),

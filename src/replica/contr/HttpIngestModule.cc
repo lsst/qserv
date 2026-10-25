@@ -42,6 +42,7 @@
 #include "global/constants.h"
 #include "http/Exceptions.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/QservSyncJob.h"
@@ -73,7 +74,7 @@ using namespace lsst::qserv::replica;
 
 namespace {
 
-string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
+string jobCompletionErrorIfAny(shared_ptr<SqlJob> const& job, string const& prefix) {
     string error;
     switch (job->extendedState()) {
         case Job::ExtendedState::NONE:
@@ -127,15 +128,16 @@ using namespace database::mysql;
 string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
-void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+void HttpIngestModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                               shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
                                string const& subModuleName, http::AuthType const authType) {
     HttpIngestModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller, string const& taskName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpIngestModule::HttpIngestModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                   shared_ptr<qhttp::Request> const& req,
+                                   shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestModule::executeImpl(string const& subModuleName) {

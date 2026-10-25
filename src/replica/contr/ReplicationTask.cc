@@ -28,12 +28,15 @@
 
 // Qserv headers
 #include "cconfig/DataManagementEvent.h"
+#include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/FixUpJob.h"
 #include "replica/jobs/ReplicateJob.h"
 #include "replica/jobs/RebalanceJob.h"
 #include "replica/jobs/PurgeJob.h"
 #include "replica/registry/Registry.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/qserv/PostEventQservCzarMgtRequest.h"
 #include "replica/services/ChunkMap.h"
 
@@ -41,9 +44,9 @@ using namespace std;
 
 namespace lsst::qserv::replica {
 
-ReplicationTask::Ptr ReplicationTask::create(Controller::Ptr const& controller,
-                                             Task::AbnormalTerminationCallbackType const& onTerminated) {
-    return Ptr(new ReplicationTask(controller, onTerminated));
+shared_ptr<ReplicationTask> ReplicationTask::create(
+        shared_ptr<Controller> const& controller, Task::AbnormalTerminationCallbackType const& onTerminated) {
+    return shared_ptr<ReplicationTask>(new ReplicationTask(controller, onTerminated));
 }
 
 bool ReplicationTask::onRun() {
@@ -77,7 +80,7 @@ bool ReplicationTask::onRun() {
     return true;
 }
 
-ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
+ReplicationTask::ReplicationTask(shared_ptr<Controller> const& controller,
                                  Task::AbnormalTerminationCallbackType const& onTerminated)
         : Task(controller, "REPLICATION-THREAD  ", onTerminated,
                controller->serviceProvider()->config()->get<unsigned int>("controller",

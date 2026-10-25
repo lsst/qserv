@@ -57,8 +57,6 @@ namespace lsst::qserv::replica {
  */
 class SqlDeleteTablePartitionJob : public SqlJob {
 public:
-    typedef std::shared_ptr<SqlDeleteTablePartitionJob> Ptr;
-
     /// The function type for notifications on the completion of the request
     typedef std::function<void(std::shared_ptr<SqlDeleteTablePartitionJob>)> CallbackType;
 

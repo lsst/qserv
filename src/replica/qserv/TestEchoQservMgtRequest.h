@@ -33,6 +33,7 @@
 // Qserv headers
 #include "replica/qserv/QservWorkerMgtRequest.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -46,10 +47,8 @@ namespace lsst::qserv::replica {
  */
 class TestEchoQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<TestEchoQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<TestEchoQservMgtRequest>)> CallbackType;
 
     TestEchoQservMgtRequest() = delete;
     TestEchoQservMgtRequest(TestEchoQservMgtRequest const&) = delete;
@@ -72,7 +71,6 @@ public:
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             std::string const& data, CallbackType const& onFinish = nullptr);
 
-    /// @return input data string sent to the worker
     std::string const& data() const { return _data; }
 
     /**
@@ -82,22 +80,15 @@ public:
      */
     std::string const& dataEcho() const;
 
-    /// @see QservMgtRequest::extendedPersistentState()
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::dataReady()
     virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
                                                      nlohmann::json const& data) override;
-
-    /// @see QservMgtRequest::notify()
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see TestEchoQservMgtRequest::create()
     TestEchoQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                             std::string const& workerName, std::string const& data,
                             CallbackType const& onFinish);

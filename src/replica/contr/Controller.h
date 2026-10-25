@@ -27,7 +27,7 @@
  */
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -78,17 +78,16 @@ std::ostream& operator<<(std::ostream& os, ControllerIdentity const& identity);
  */
 class Controller : public std::enable_shared_from_this<Controller> {
 public:
-    typedef std::shared_ptr<Controller> Ptr;
-
-    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider);
+    static std::shared_ptr<Controller> create(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     Controller() = delete;
     Controller(Controller const&) = delete;
     Controller& operator=(Controller const&) = delete;
-    ~Controller() = default;
+
+    virtual ~Controller() = default;
 
     ControllerIdentity const& identity() const { return _identity; }
-    uint64_t startTime() const { return _startTime; }
+    std::uint64_t startTime() const { return _startTime; }
     std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
     /**

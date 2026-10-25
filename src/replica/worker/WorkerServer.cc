@@ -31,6 +31,7 @@
 #include "replica/config/Config.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/worker/WorkerProcessor.h"
+#include "replica/worker/WorkerServerConnection.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -39,27 +40,24 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServer");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                       string const& workerName) {
-    return WorkerServer::Ptr(new WorkerServer(serviceProvider, workerName));
+shared_ptr<WorkerServer> WorkerServer::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                              string const& workerName) {
+    return shared_ptr<WorkerServer>(new WorkerServer(serviceProvider, workerName));
 }
 
-WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
+WorkerServer::WorkerServer(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName)
         : _serviceProvider(serviceProvider),
           _workerName(workerName),
           _processor(WorkerProcessor::create(serviceProvider, workerName)),
           _acceptor(_io_service, boost::asio::ip::tcp::endpoint(
                                          boost::asio::ip::tcp::v4(),
                                          serviceProvider->config()->get<uint16_t>("worker", "svc-port"))) {
-    // Set the socket reuse option to allow recycling ports after catastrophic
-    // failures.
+    // Set the socket reuse option to allow recycling ports after catastrophic failures.
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
@@ -74,24 +72,23 @@ void WorkerServer::run() {
 
     // Launch the pool of the BOOST ASIO threads
     vector<shared_ptr<thread>> threads(_serviceProvider->config()->get<size_t>("worker", "num-threads"));
-    for (auto&& ptr : threads) {
+    for (auto& ptr : threads) {
         ptr = shared_ptr<thread>(new thread([&]() { _io_service.run(); }));
     }
 
     // Wait for all threads in the pool to exit.
-    for (auto&& ptr : threads) {
+    for (auto& ptr : threads) {
         ptr->join();
     }
 }
 
 void WorkerServer::_beginAccept() {
     auto const connection = WorkerServerConnection::create(_serviceProvider, _processor, _io_service);
-
     _acceptor.async_accept(connection->socket(),
                            bind(&WorkerServer::_handleAccept, shared_from_this(), connection, _1));
 }
 
-void WorkerServer::_handleAccept(WorkerServerConnection::Ptr const& connection,
+void WorkerServer::_handleAccept(shared_ptr<WorkerServerConnection> const& connection,
                                  boost::system::error_code const& ec) {
     if (ec.value() == 0) {
         connection->beginProtocol();

@@ -73,7 +73,6 @@ struct QservSyncJobResult {
  */
 class QservSyncJob : public Job {
 public:
-    typedef std::shared_ptr<QservSyncJob> Ptr;
     typedef std::function<void(std::shared_ptr<QservSyncJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs

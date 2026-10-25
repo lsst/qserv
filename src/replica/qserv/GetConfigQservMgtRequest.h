@@ -41,10 +41,8 @@ namespace lsst::qserv::replica {
  */
 class GetConfigQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<GetConfigQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<GetConfigQservMgtRequest>)> CallbackType;
 
     GetConfigQservMgtRequest() = delete;
     GetConfigQservMgtRequest(GetConfigQservMgtRequest const&) = delete;
@@ -67,14 +65,10 @@ public:
             CallbackType const& onFinish = nullptr);
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify()
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see GetConfigQservMgtRequest::create()
     GetConfigQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                              std::string const& workerName, CallbackType const& onFinish);
 

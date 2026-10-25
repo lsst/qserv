@@ -26,8 +26,11 @@
 #include "css/CssAccess.h"
 #include "http/Auth.h"
 #include "http/Exceptions.h"
+#include "qhttp/Request.h"
+#include "qhttp/Response.h"
 #include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
+#include "replica/config/ConfigTable.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/ServiceManagementJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
@@ -49,14 +52,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModule");
 
 namespace lsst::qserv::replica {
 
-HttpModule::HttpModule(Controller::Ptr const& controller, string const& taskName,
-                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpModule::HttpModule(shared_ptr<Controller> const& controller, string const& taskName,
+                       shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
         : EventLogger(controller, taskName),
           http::QhttpModule(controller->serviceProvider()->config()->httpAuthContext(), req, resp) {}
 
 string HttpModule::context() const { return name() + " "; }
 
-database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string const& database) const {
+shared_ptr<database::mysql::Connection> HttpModule::qservMasterDbConnection(string const& database) const {
     auto const config = controller()->serviceProvider()->config();
     return database::mysql::Connection::open(config->qservCzarDbParams(database));
 }
@@ -90,11 +93,9 @@ string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool all
 
     string error;
     auto const& resultData = job->getResultData();
-    for (auto&& itr : resultData.workers) {
-        auto&& worker = itr.first;
-        auto&& success = itr.second;
-        if (not success) {
-            error += "reconfiguration failed on worker: " + worker + " ";
+    for (auto const& [workerName, success] : resultData.workers) {
+        if (!success) {
+            error += "reconfiguration failed on worker: " + workerName + " ";
         }
     }
     return error;
@@ -116,9 +117,9 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
     debug(func);
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
-    string database;
+    string databaseName;
     if (body().has("database")) {
-        database = body().required<string>("database");
+        databaseName = body().required<string>("database");
     } else {
         if (!body().has("transaction_id")) {
             throw invalid_argument(context() + "::" + func +
@@ -128,11 +129,11 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
         TransactionId const transactionId = body().required<TransactionId>("transaction_id");
         debug(func, "transactionId=" + to_string(transactionId));
         auto const transactionInfo = databaseServices->transaction(transactionId);
-        database = transactionInfo.database;
+        databaseName = transactionInfo.database;
     }
-    debug(func, "database=" + database);
+    debug(func, "database=" + databaseName);
 
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const databaseInfo = config->databaseInfo(databaseName);
     if (throwIfPublished && databaseInfo.isPublished) {
         throw http::Error(context() + "::" + func,
                           "database '" + databaseInfo.name + " is already published.");

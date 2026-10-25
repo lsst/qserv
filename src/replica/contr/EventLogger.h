@@ -25,13 +25,11 @@
 #include <memory>
 #include <string>
 
-// Qserv headers
-#include "replica/contr/Controller.h"
-#include "replica/jobs/Job.h"
-
 // Forward declarations
 namespace lsst::qserv::replica {
+class Controller;
 struct ControllerEvent;
+class Job;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -52,7 +50,7 @@ public:
     virtual ~EventLogger() = default;
 
     /// @return a reference to the Controller
-    Controller::Ptr const& controller() const { return _controller; }
+    std::shared_ptr<Controller> const& controller() const { return _controller; }
 
     /// @return the name of a task/activity
     std::string const& name() const { return _name; }
@@ -65,7 +63,7 @@ protected:
      * @param name  the name of a task/activity (used for logging info into
      *              the log stream, and for logging events into the persistent log)
      */
-    EventLogger(Controller::Ptr const& controller, std::string const& name);
+    EventLogger(std::shared_ptr<Controller> const& controller, std::string const& name);
 
     /// Log an event in the persistent log
     void logEvent(ControllerEvent& event) const;
@@ -90,7 +88,7 @@ protected:
      * @param job       pointer to the job
      * @param family    the name of a database family
      */
-    void logJobStartedEvent(std::string const& typeName, Job::Ptr const& job,
+    void logJobStartedEvent(std::string const& typeName, std::shared_ptr<Job> const& job,
                             std::string const& family) const;
 
     /**
@@ -100,12 +98,12 @@ protected:
      * @param job       pointer to the job
      * @param family    the name of a database family
      */
-    void logJobFinishedEvent(std::string const& typeName, Job::Ptr const& job,
+    void logJobFinishedEvent(std::string const& typeName, std::shared_ptr<Job> const& job,
                              std::string const& family) const;
 
     // Input parameters
 
-    Controller::Ptr const _controller;
+    std::shared_ptr<Controller> const _controller;
     std::string const _name;
 };
 

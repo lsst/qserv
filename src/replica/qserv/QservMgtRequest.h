@@ -49,8 +49,6 @@ namespace lsst::qserv::replica {
  */
 class QservMgtRequest : public std::enable_shared_from_this<QservMgtRequest> {
 public:
-    typedef std::shared_ptr<QservMgtRequest> Ptr;
-
     /// The lock type used by the implementations
     typedef std::lock_guard<replica::Mutex> LockType;
 

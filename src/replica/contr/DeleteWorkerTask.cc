@@ -27,45 +27,42 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/jobs/DeleteWorkerJob.h"
 #include "replica/services/DatabaseServices.h"
 
 using namespace std;
 
 namespace lsst::qserv::replica {
 
-DeleteWorkerTask::Ptr DeleteWorkerTask::create(Controller::Ptr const& controller,
-                                               Task::AbnormalTerminationCallbackType const& onTerminated,
-                                               string const& worker) {
-    return Ptr(new DeleteWorkerTask(controller, onTerminated, worker));
+shared_ptr<DeleteWorkerTask> DeleteWorkerTask::create(
+        shared_ptr<Controller> const& controller, Task::AbnormalTerminationCallbackType const& onTerminated,
+        string const& worker) {
+    return shared_ptr<DeleteWorkerTask>(new DeleteWorkerTask(controller, onTerminated, worker));
 }
 
-DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
+DeleteWorkerTask::DeleteWorkerTask(shared_ptr<Controller> const& controller,
                                    Task::AbnormalTerminationCallbackType const& onTerminated,
                                    string const& worker)
         : Task(controller, "EVICT-WORKER  ", onTerminated, 0), _worker(worker) {}
 
 void DeleteWorkerTask::onStart() {
     info(DeleteWorkerJob::typeName());
-
     auto const config = serviceProvider()->config();
     string const noParentJobId;
     atomic<size_t> numFinishedJobs{0};
-    vector<DeleteWorkerJob::Ptr> jobs;
+    vector<shared_ptr<DeleteWorkerJob>> jobs;
     bool const permanentDelete = config->get<unsigned int>("controller", "permanent-worker-delete") != 0;
-
     jobs.emplace_back(DeleteWorkerJob::create(
             _worker, permanentDelete, controller(), noParentJobId,
-            [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) { ++numFinishedJobs; },
+            [&numFinishedJobs](shared_ptr<DeleteWorkerJob> const& job) { ++numFinishedJobs; },
             config->get<int>("controller", "worker-evict-priority-level")));
     jobs[0]->start();
     _logStartedEvent(jobs[0]);
-
     track<DeleteWorkerJob>(DeleteWorkerJob::typeName(), jobs, numFinishedJobs);
-
     _logFinishedEvent(jobs[0]);
 }
 
-void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {
+void DeleteWorkerTask::_logStartedEvent(shared_ptr<DeleteWorkerJob> const& job) const {
     ControllerEvent event;
     event.operation = job->typeName();
     event.status = "STARTED";
@@ -74,7 +71,7 @@ void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {
     logEvent(event);
 }
 
-void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const {
+void DeleteWorkerTask::_logFinishedEvent(shared_ptr<DeleteWorkerJob> const& job) const {
     ControllerEvent event;
     event.operation = job->typeName();
     event.status = job->state2string();

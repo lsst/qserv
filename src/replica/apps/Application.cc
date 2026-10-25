@@ -30,7 +30,7 @@
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/proto/protocol.pb.h"
-#include "util/Issue.h"
+#include "replica/services/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -170,7 +170,7 @@ int Application::run() {
     return exitCode;
 }
 
-ServiceProvider::Ptr const& Application::serviceProvider() const {
+std::shared_ptr<ServiceProvider> const& Application::serviceProvider() const {
     string const context_ = "Application::" + string(__func__) + " ";
     if (_parser.status() != Parser::SUCCESS) {
         throw logic_error(context_ +

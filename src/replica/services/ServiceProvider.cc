@@ -38,20 +38,18 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-ServiceProvider::Ptr ServiceProvider::create(shared_ptr<Config> const& config) {
-    return ServiceProvider::Ptr(new ServiceProvider(config));
+shared_ptr<ServiceProvider> ServiceProvider::create(shared_ptr<Config> const& config) {
+    return shared_ptr<ServiceProvider>(new ServiceProvider(config));
 }
 
 ServiceProvider::ServiceProvider(shared_ptr<Config> const& config) : _config(config) {}
 
-DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
+shared_ptr<DatabaseServices> const& ServiceProvider::databaseServices() {
     replica::Lock lock(_mtx, _context() + __func__);
     if (_databaseServices == nullptr) {
         if (!config()->exists("database")) {
@@ -63,7 +61,7 @@ DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     return _databaseServices;
 }
 
-Registry::Ptr const& ServiceProvider::registry() {
+shared_ptr<Registry> const& ServiceProvider::registry() {
     replica::Lock lock(_mtx, _context() + __func__);
     if (_registry == nullptr) {
         _registry = Registry::create(shared_from_this());

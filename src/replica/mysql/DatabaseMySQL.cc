@@ -83,16 +83,17 @@ void Connection::setDatabaseMaxReconnects(unsigned int value) {
     _databaseMaxReconnects = value;
 }
 
-Connection::Ptr Connection::open(ConnectionParams const& connectionParams) {
+shared_ptr<Connection> Connection::open(ConnectionParams const& connectionParams) {
     return open2(connectionParams, Connection::_databaseAllowReconnect.load(),
                  Connection::_databaseConnectTimeoutSec.load());
 }
 
-Connection::Ptr Connection::open2(ConnectionParams const& connectionParams, bool allowReconnects,
-                                  unsigned int connectTimeoutSec) {
+shared_ptr<Connection> Connection::open2(ConnectionParams const& connectionParams, bool allowReconnects,
+                                         unsigned int connectTimeoutSec) {
     unsigned int const effectiveConnectTimeoutSec =
             0 == connectTimeoutSec ? Connection::_databaseConnectTimeoutSec.load() : connectTimeoutSec;
-    Connection::Ptr ptr(new Connection(connectionParams, allowReconnects ? effectiveConnectTimeoutSec : 0));
+    shared_ptr<Connection> ptr(
+            new Connection(connectionParams, allowReconnects ? effectiveConnectTimeoutSec : 0));
     ptr->_connect();
     return ptr;
 }
@@ -168,7 +169,7 @@ bool Connection::tableExists(string const& table, string const& proposedDatabase
     return selectSingleValue(self, query, count) && count != 0;
 }
 
-Connection::Ptr Connection::begin() {
+shared_ptr<Connection> Connection::begin() {
     string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) + ")  ";
 
@@ -180,7 +181,7 @@ Connection::Ptr Connection::begin() {
     return shared_from_this();
 }
 
-Connection::Ptr Connection::commit() {
+shared_ptr<Connection> Connection::commit() {
     string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) + ")  ";
 
@@ -192,7 +193,7 @@ Connection::Ptr Connection::commit() {
     return shared_from_this();
 }
 
-Connection::Ptr Connection::rollback() {
+shared_ptr<Connection> Connection::rollback() {
     string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) + ")  ";
 
@@ -305,7 +306,7 @@ void Connection::_processLastError(string const& context, bool instantAutoReconn
     }
 }
 
-Connection::Ptr Connection::execute(string const& query) {
+shared_ptr<Connection> Connection::execute(string const& query) {
     string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) + ")  ";
 
@@ -351,8 +352,8 @@ Connection::Ptr Connection::execute(string const& query) {
     return shared_from_this();
 }
 
-Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& script, unsigned int maxReconnects,
-                                    unsigned int timeoutSec) {
+shared_ptr<Connection> Connection::execute(function<void(shared_ptr<Connection>)> const& script,
+                                           unsigned int maxReconnects, unsigned int timeoutSec) {
     unsigned int const effectiveMaxReconnects =
             0 != maxReconnects ? maxReconnects : Connection::_databaseMaxReconnects.load();
 
@@ -405,9 +406,9 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
     } while (true);
 }
 
-Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& script,
-                                                    unsigned int maxReconnects, unsigned int timeoutSec,
-                                                    unsigned int maxRetriesOnDeadLock) {
+shared_ptr<Connection> Connection::executeInOwnTransaction(
+        function<void(shared_ptr<Connection>)> const& script, unsigned int maxReconnects,
+        unsigned int timeoutSec, unsigned int maxRetriesOnDeadLock) {
     string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) +
                            ",maxRetriesOnDeadLock=" + to_string(maxRetriesOnDeadLock) + ")  ";
@@ -426,7 +427,7 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                  context << "running user script, numRetriesOnDeadLock: " << numRetriesOnDeadLock);
             try {
                 return execute(
-                        [&script](Connection::Ptr const& conn) {
+                        [&script](shared_ptr<Connection> const& conn) {
                             conn->begin();
                             script(conn);
                             conn->commit();
@@ -454,10 +455,10 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
     return shared_from_this();
 }
 
-Connection::Ptr Connection::executeInsertOrUpdate(function<void(Ptr)> const& insertScript,
-                                                  function<void(Ptr)> const& updateScript,
-                                                  unsigned int maxReconnects, unsigned int timeoutSec,
-                                                  unsigned int maxRetriesOnDeadLock) {
+shared_ptr<Connection> Connection::executeInsertOrUpdate(
+        function<void(shared_ptr<Connection>)> const& insertScript,
+        function<void(shared_ptr<Connection>)> const& updateScript, unsigned int maxReconnects,
+        unsigned int timeoutSec, unsigned int maxRetriesOnDeadLock) {
     try {
         return executeInOwnTransaction(insertScript, maxReconnects, timeoutSec, maxRetriesOnDeadLock);
     } catch (database::mysql::ER_DUP_ENTRY_ const&) {
@@ -785,14 +786,14 @@ void Connection::_reset(bool closeConnection) {
     }
 }
 
-ConnectionPool::Ptr ConnectionPool::create(ConnectionParams const& params, size_t maxConnections) {
-    return Ptr(new ConnectionPool(params, maxConnections));
+shared_ptr<ConnectionPool> ConnectionPool::create(ConnectionParams const& params, size_t maxConnections) {
+    return shared_ptr<ConnectionPool>(new ConnectionPool(params, maxConnections));
 }
 
 ConnectionPool::ConnectionPool(ConnectionParams const& params, size_t maxConnections)
         : _params(params), _maxConnections(maxConnections) {}
 
-Connection::Ptr ConnectionPool::allocate() {
+shared_ptr<Connection> ConnectionPool::allocate() {
     string const context = "ConnectionPool::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_TRACE, context);
@@ -819,7 +820,7 @@ Connection::Ptr ConnectionPool::allocate() {
 
         _available.wait(lock, [&]() { return not _availableConnections.empty(); });
     }
-    Connection::Ptr conn = _availableConnections.front();
+    shared_ptr<Connection> conn = _availableConnections.front();
     _availableConnections.pop_front();
     _usedConnections.push_back(conn);
 
@@ -829,7 +830,7 @@ Connection::Ptr ConnectionPool::allocate() {
     return conn;
 }
 
-void ConnectionPool::release(Connection::Ptr const& conn) {
+void ConnectionPool::release(shared_ptr<Connection> const& conn) {
     string const context = "ConnectionPool::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_TRACE, context);
@@ -839,7 +840,7 @@ void ConnectionPool::release(Connection::Ptr const& conn) {
     // Move it between queues.
 
     size_t numRemoved = 0;
-    _usedConnections.remove_if([&numRemoved, &conn](Connection::Ptr const& ptr) {
+    _usedConnections.remove_if([&numRemoved, &conn](shared_ptr<Connection> const& ptr) {
         if (ptr == conn) {
             numRemoved++;
             return true;
@@ -860,9 +861,10 @@ void ConnectionPool::release(Connection::Ptr const& conn) {
     _available.notify_one();
 }
 
-ConnectionHandler::ConnectionHandler(Connection::Ptr const& conn_) : conn(conn_) {}
+ConnectionHandler::ConnectionHandler(shared_ptr<Connection> const& conn_) : conn(conn_) {}
 
-ConnectionHandler::ConnectionHandler(ConnectionPool::Ptr const& pool) : conn(pool->allocate()), _pool(pool) {}
+ConnectionHandler::ConnectionHandler(shared_ptr<ConnectionPool> const& pool)
+        : conn(pool->allocate()), _pool(pool) {}
 
 ConnectionHandler::~ConnectionHandler() {
     string const context = "ConnectionHandler::" + string(__func__) + "  ";

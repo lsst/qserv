@@ -34,7 +34,6 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/Mutex.h"
@@ -43,6 +42,10 @@
 namespace lsst::qserv::replica {
 class Config;
 }  // namespace lsst::qserv::replica
+
+namespace lsst::qserv::replica::database::mysql {
+class Connection;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -55,11 +58,6 @@ namespace lsst::qserv::replica {
  */
 class DatabaseServicesMySQL : public DatabaseServices {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<DatabaseServicesMySQL> Ptr;
-
-    // Default construction and copy semantics are prohibited
-
     DatabaseServicesMySQL() = delete;
     DatabaseServicesMySQL(DatabaseServicesMySQL const&) = delete;
     DatabaseServicesMySQL& operator=(DatabaseServicesMySQL const&) = delete;
@@ -375,7 +373,7 @@ private:
     std::shared_ptr<Config> const _config;
 
     /// Database connection
-    database::mysql::Connection::Ptr const _conn;
+    std::shared_ptr<database::mysql::Connection> const _conn;
 
     /// The query generator tied to the connector
     database::mysql::QueryGenerator const _g;

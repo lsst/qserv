@@ -78,8 +78,6 @@ class IngestRequestContribNotFound : public std::runtime_error {
  */
 class IngestRequest : public std::enable_shared_from_this<IngestRequest>, public IngestFileSvc {
 public:
-    typedef std::shared_ptr<IngestRequest> Ptr;
-
     /// The default record size when reading from an input file.
     constexpr static size_t defaultRecordSizeBytes = 1048576;
 

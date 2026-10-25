@@ -48,19 +48,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerDeleteRequest");
 
 namespace lsst::qserv::replica {
 
-WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                     string const& worker, string const& id, int priority,
-                                                     ExpirationCallbackType const& onExpired,
-                                                     unsigned int requestExpirationIvalSec,
-                                                     ProtocolRequestDelete const& request) {
-    auto ptr = WorkerDeleteRequest::Ptr(new WorkerDeleteRequest(
+shared_ptr<WorkerDeleteRequest> WorkerDeleteRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, string const& id,
+        int priority, ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+        ProtocolRequestDelete const& request) {
+    auto ptr = shared_ptr<WorkerDeleteRequest>(new WorkerDeleteRequest(
             serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
-                                         string const& id, int priority,
+WorkerDeleteRequest::WorkerDeleteRequest(shared_ptr<ServiceProvider> const& serviceProvider,
+                                         string const& worker, string const& id, int priority,
                                          ExpirationCallbackType const& onExpired,
                                          unsigned int requestExpirationIvalSec,
                                          ProtocolRequestDelete const& request)

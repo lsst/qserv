@@ -34,6 +34,17 @@
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/Common.h"
 
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+class DatabaseInfo;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -43,8 +54,6 @@ namespace lsst::qserv::replica {
  */
 class HttpIngestTransModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpIngestTransModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -56,24 +65,27 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, NamedMutexRegistry& transactionMutexRegistry,
-                        std::string const& taskName, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+    static void process(std::shared_ptr<Controller> const& controller,
+                        NamedMutexRegistry& transactionMutexRegistry, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
+                        std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpIngestTransModule() = delete;
     HttpIngestTransModule(HttpIngestTransModule const&) = delete;
     HttpIngestTransModule& operator=(HttpIngestTransModule const&) = delete;
 
-    ~HttpIngestTransModule() final = default;
+    virtual ~HttpIngestTransModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestTransModule(Controller::Ptr const& controller, NamedMutexRegistry& transactionMutexRegistry,
-                          std::string const& taskName, qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
+    HttpIngestTransModule(std::shared_ptr<Controller> const& controller,
+                          NamedMutexRegistry& transactionMutexRegistry, std::string const& taskName,
+                          std::shared_ptr<qhttp::Request> const& req,
+                          std::shared_ptr<qhttp::Response> const& resp);
 
     /// Get info on super-transactions
     nlohmann::json _getTransactions();

@@ -23,7 +23,7 @@
 
 // System headers
 #include <algorithm>
-#include <cstdint>
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <queue>
@@ -34,12 +34,15 @@
 // Qserv headers
 #include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/Mutex.h"
-#include "replica/worker/WorkerProcessorThread.h"
 #include "replica/worker/WorkerRequest.h"
 
 // Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+class WorkerProcessorThread;
+}  // namespace lsst::qserv::replica
+
 namespace lsst::qserv::replica::database::mysql {
 class ConnectionPool;
 }  // namespace lsst::qserv::replica::database::mysql
@@ -53,8 +56,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerProcessor : public std::enable_shared_from_this<WorkerProcessor> {
 public:
-    typedef std::shared_ptr<WorkerProcessor> Ptr;
-
     // The thread-based processor class is allowed to access the internal API
     friend class WorkerProcessorThread;
 
@@ -67,7 +68,8 @@ public:
      * in order to implement the iterator protocol.
      */
     struct PriorityQueueType
-            : std::priority_queue<WorkerRequest::Ptr, std::vector<WorkerRequest::Ptr>, WorkerRequestCompare> {
+            : std::priority_queue<std::shared_ptr<WorkerRequest>, std::vector<std::shared_ptr<WorkerRequest>>,
+                                  WorkerRequestCompare> {
         /// @return iterator to the beginning of the container
         decltype(c.begin()) begin() { return c.begin(); }
 
@@ -81,8 +83,9 @@ public:
          * @return 'true' if the object was actually removed
          */
         bool remove(std::string const& id) {
-            auto itr = std::find_if(c.begin(), c.end(),
-                                    [&id](WorkerRequest::Ptr const& ptr) { return ptr->id() == id; });
+            auto itr = std::find_if(c.begin(), c.end(), [&id](std::shared_ptr<WorkerRequest> const& ptr) {
+                return ptr->id() == id;
+            });
             if (itr != c.end()) {
                 c.erase(itr);
                 std::make_heap(c.begin(), c.end(), comp);
@@ -100,13 +103,14 @@ public:
      *   by the processor.
      * @param worker the name of a worker
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker);
+    static std::shared_ptr<WorkerProcessor> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                   std::string const& worker);
 
     WorkerProcessor() = delete;
     WorkerProcessor(WorkerProcessor const&) = delete;
     WorkerProcessor& operator=(WorkerProcessor const&) = delete;
 
-    ~WorkerProcessor() = default;
+    virtual ~WorkerProcessor() = default;
 
     /// @return the state of the processor
     protocol::ServiceState state() const { return _state; }
@@ -258,7 +262,7 @@ public:
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_ID);
-        if (WorkerRequest::Ptr const ptr = _trackRequestImpl(lock, request.id())) {
+        if (std::shared_ptr<WorkerRequest> const ptr = _trackRequestImpl(lock, request.id())) {
             try {
                 // Set request-specific fields. Note exception handling for scenarios
                 // when request identifiers won't match actual types of requests
@@ -302,7 +306,7 @@ public:
     size_t numFinishedRequests() const;
 
 private:
-    WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, std::string const& worker);
+    WorkerProcessor(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker);
 
     static std::string _classMethodContext(std::string const& func);
 
@@ -326,8 +330,9 @@ private:
      * @param timeoutMilliseconds (optional) amount of time to wait before to finish if
      *   no suitable requests are available for processing
      */
-    WorkerRequest::Ptr _fetchNextForProcessing(WorkerProcessorThread::Ptr const& processorThread,
-                                               unsigned int timeoutMilliseconds = 0);
+    std::shared_ptr<WorkerRequest> _fetchNextForProcessing(
+            std::shared_ptr<WorkerProcessorThread> const& processorThread,
+            unsigned int timeoutMilliseconds = 0);
 
     /**
      * Implement the operation for the specified identifier if such request
@@ -340,7 +345,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _dequeueOrCancelImpl(replica::Lock const& lock, std::string const& id);
+    std::shared_ptr<WorkerRequest> _dequeueOrCancelImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Find and return a reference to the request object.
@@ -351,7 +356,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _trackRequestImpl(replica::Lock const& lock, std::string const& id);
+    std::shared_ptr<WorkerRequest> _trackRequestImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Extract the extra data from the request and put
@@ -360,7 +365,7 @@ private:
      * @note This method expects a correct dynamic type of the request
      *   object. Otherwise it will throw the std::logic_error exception.
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseReplicate& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseReplicate& response);
 
     /**
      * Extract the extra data from the request and put it into the response object.
@@ -369,7 +374,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDelete& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseDelete& response);
 
     /**
      * Extract the replica info (for one chunk) from the request and put
@@ -379,7 +384,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseFind& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseFind& response);
 
     /**
      * Extract the replica info (for multiple chunks) from the request and put
@@ -389,7 +394,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseFindAll& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseFindAll& response);
 
     /**
      * Extract the input data string received with the request and put
@@ -399,7 +404,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseEcho& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseEcho& response);
 
     /**
      * Extract the result set (if the query has succeeded) and put
@@ -409,7 +414,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseSql& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseSql& response);
 
     /**
      * Extract the result set (if the query has succeeded) and put
@@ -419,7 +424,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response);
+    void _setInfo(std::shared_ptr<WorkerRequest> const& request, ProtocolResponseDirectorIndex& response);
 
     /**
      * Fill in the information object for the specified request based on its
@@ -429,7 +434,8 @@ private:
      * @param info a pointer to the Protobuf object to be filled
      * @throw std::logic_error for unsupported request types.
      */
-    void _setServiceResponseInfo(WorkerRequest::Ptr const& request, ProtocolServiceResponseInfo* info) const;
+    void _setServiceResponseInfo(std::shared_ptr<WorkerRequest> const& request,
+                                 ProtocolServiceResponseInfo* info) const;
 
     /**
      * Report a decision not to process a request
@@ -443,7 +449,7 @@ private:
      *
      * @param request a pointer to the request
      */
-    void _processingRefused(WorkerRequest::Ptr const& request);
+    void _processingRefused(std::shared_ptr<WorkerRequest> const& request);
 
     /**
      * Report a request which has been processed or cancelled.
@@ -454,7 +460,7 @@ private:
      *
      * @param request a pointer to the request
      */
-    void _processingFinished(WorkerRequest::Ptr const& request);
+    void _processingFinished(std::shared_ptr<WorkerRequest> const& request);
 
     /**
      * For threads reporting their completion
@@ -466,26 +472,26 @@ private:
      *
      * @param processorThread reference to the processing thread which finished
      */
-    void _processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread);
+    void _processorThreadStopped(std::shared_ptr<WorkerProcessorThread> const& processorThread);
 
     std::string _context(std::string const& func = std::string()) const { return "PROCESSOR  " + func; }
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _worker;
     std::shared_ptr<database::mysql::ConnectionPool> const _connectionPool;
 
     protocol::ServiceState _state;
 
-    uint64_t _startTime;  /// When the processor started (milliseconds since UNIX Epoch)
+    std::uint64_t _startTime;  /// When the processor started (milliseconds since UNIX Epoch)
 
-    std::vector<WorkerProcessorThread::Ptr> _threads;
+    std::vector<std::shared_ptr<WorkerProcessorThread>> _threads;
 
     mutable replica::Mutex _mtx;  /// Mutex guarding the queues
 
     PriorityQueueType _newRequests;
 
-    std::map<std::string, WorkerRequest::Ptr> _inProgressRequests;
-    std::map<std::string, WorkerRequest::Ptr> _finishedRequests;
+    std::map<std::string, std::shared_ptr<WorkerRequest>> _inProgressRequests;
+    std::map<std::string, std::shared_ptr<WorkerRequest>> _finishedRequests;
 };
 
 }  // namespace lsst::qserv::replica

@@ -252,7 +252,7 @@ bool WorkerSqlHttpRequest::execute() {
     return true;
 }
 
-vector<Query> WorkerSqlHttpRequest::_queries(Connection::Ptr const& conn) const {
+vector<Query> WorkerSqlHttpRequest::_queries(shared_ptr<Connection> const& conn) const {
     QueryGenerator const g(conn);
     vector<Query> queries;
     switch (_sqlRequestType) {
@@ -296,7 +296,7 @@ vector<Query> WorkerSqlHttpRequest::_queries(Connection::Ptr const& conn) const 
     return queries;
 }
 
-Query WorkerSqlHttpRequest::_generateQuery(Connection::Ptr const& conn, string const& table) const {
+Query WorkerSqlHttpRequest::_generateQuery(shared_ptr<Connection> const& conn, string const& table) const {
     QueryGenerator const g(conn);
     SqlId const databaseTable = g.id(_databaseName, table);
     switch (_sqlRequestType) {
@@ -373,7 +373,7 @@ Query WorkerSqlHttpRequest::_generateQuery(Connection::Ptr const& conn, string c
     }
 }
 
-void WorkerSqlHttpRequest::_extractResultSet(replica::Lock const& lock, Connection::Ptr const& conn) {
+void WorkerSqlHttpRequest::_extractResultSet(replica::Lock const& lock, shared_ptr<Connection> const& conn) {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
 
     json& resultSet = _currentResultSet(lock);

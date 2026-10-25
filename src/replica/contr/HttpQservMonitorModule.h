@@ -33,7 +33,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "replica/contr/HttpModule.h"
-#include "replica/mysql/DatabaseMySQL.h"
 
 // Forward declarations
 namespace lsst::qserv::css {
@@ -44,16 +43,26 @@ namespace lsst::qserv::mysql {
 class MySqlConfig;
 }  // namespace lsst::qserv::mysql
 
-namespace lsst::qserv::wbase {
-struct TaskSelector;
-}  // namespace lsst::qserv::wbase
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
 
 namespace lsst::qserv::replica {
 class ConfigCzar;
 class ConfigWorker;
 class Config;
+class Controller;
 class QservMgtRequest;
 }  // namespace lsst::qserv::replica
+
+namespace lsst::qserv::replica::database::mysql {
+class Connection;
+}  // namespace lsst::qserv::replica::database::mysql
+
+namespace lsst::qserv::wbase {
+struct TaskSelector;
+}  // namespace lsst::qserv::wbase
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -64,8 +73,6 @@ namespace lsst::qserv::replica {
  */
 class HttpQservMonitorModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpQservMonitorModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -87,8 +94,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -96,7 +104,7 @@ public:
     HttpQservMonitorModule(HttpQservMonitorModule const&) = delete;
     HttpQservMonitorModule& operator=(HttpQservMonitorModule const&) = delete;
 
-    ~HttpQservMonitorModule() final = default;
+    virtual ~HttpQservMonitorModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
@@ -111,8 +119,9 @@ private:
     static void _throwIfNotSucceeded(std::string const& func,
                                      std::shared_ptr<QservMgtRequest> const& request);
 
-    HttpQservMonitorModule(Controller::Ptr const& controller, std::string const& taskName,
-                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpQservMonitorModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                           std::shared_ptr<qhttp::Request> const& req,
+                           std::shared_ptr<qhttp::Response> const& resp);
 
     /**
      * Process a request for extracting various status info for select
@@ -217,12 +226,12 @@ private:
 
     /**
      * @brief Extract info on the ongoing queries.
-     * @param conn Database connection to the Czar database.
+     * @param conn Database connection to the Czar database (shared pointer).
      * @param queryId2scheduler The map with optional entries indicating which schedulers
      *   are used by Qserv workers for processing the corresponding queries.
      * @return nlohmann::json A collection queries found in the database.
      */
-    nlohmann::json _currentUserQueries(database::mysql::Connection::Ptr& conn,
+    nlohmann::json _currentUserQueries(std::shared_ptr<database::mysql::Connection> const& conn,
                                        std::map<QueryId, std::string> const& queryId2scheduler);
 
     /**
@@ -237,9 +246,9 @@ private:
      * @return nlohmann::json A collection queries found in the database for
      *   the specified constraint.
      */
-    nlohmann::json _pastUserQueries(database::mysql::Connection::Ptr& conn, std::string const& constraint,
-                                    unsigned int limit4past, bool includeMessages,
-                                    std::string const& searchDatabase = std::string(),
+    nlohmann::json _pastUserQueries(std::shared_ptr<database::mysql::Connection> const& conn,
+                                    std::string const& constraint, unsigned int limit4past,
+                                    bool includeMessages, std::string const& searchDatabase = std::string(),
                                     std::string const& searchTable = std::string());
 
     /**

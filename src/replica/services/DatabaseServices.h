@@ -378,9 +378,6 @@ public:
  */
 class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<DatabaseServices> Ptr;
-
     /**
      * The factory method for instantiating a proper service object based
      * on an application configuration.
@@ -388,7 +385,7 @@ public:
      * @param config The configuration service
      * @return pointer to the created object
      */
-    static Ptr create(std::shared_ptr<Config> const& config);
+    static std::shared_ptr<DatabaseServices> create(std::shared_ptr<Config> const& config);
 
     // Copy semantics is prohibited
 

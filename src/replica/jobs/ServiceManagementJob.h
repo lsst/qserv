@@ -61,9 +61,6 @@ struct ServiceManagementJobResult {
  */
 class ServiceManagementBaseJob : public Job {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementBaseJob> Ptr;
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -145,9 +142,6 @@ private:
 template <class REQUEST>
 class ServiceManagementJob : public ServiceManagementBaseJob {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementJob<REQUEST>> Ptr;
-
     /// The function type for notifications on the completion of the job
     typedef std::function<void(std::shared_ptr<ServiceManagementJob<REQUEST>>)> CallbackType;
 

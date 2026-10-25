@@ -55,9 +55,6 @@ public:
     /// the implementation of the pool.
     friend class ServiceAllocator;
 
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<DatabaseServicesPool> Ptr;
-
     /**
      * The factory method for instantiating a proper service object based
      * on an application configuration.
@@ -65,7 +62,7 @@ public:
      * @param config the configuration service
      * @return pointer to the created object
      */
-    static Ptr create(std::shared_ptr<Config> const& config);
+    static std::shared_ptr<DatabaseServicesPool> create(std::shared_ptr<Config> const& config);
 
     DatabaseServicesPool() = delete;
     DatabaseServicesPool(DatabaseServicesPool const&) = delete;
@@ -230,7 +227,7 @@ private:
      * @return pointer to a service
      * @see DatabaseServicesPool::_releaseService()
      */
-    DatabaseServices::Ptr _allocateService();
+    std::shared_ptr<DatabaseServices> _allocateService();
 
     /**
      * Return a service object back into the pool of the available ones.
@@ -239,13 +236,13 @@ private:
      * @throws std::logic_error if the service object was not previously allocated
      * @see DatabaseServicesPool::_allocateService()
      */
-    void _releaseService(DatabaseServices::Ptr const& service);
+    void _releaseService(std::shared_ptr<DatabaseServices> const& service);
 
     /// Service objects which are available
-    std::list<DatabaseServices::Ptr> _availableServices;
+    std::list<std::shared_ptr<DatabaseServices>> _availableServices;
 
     /// Service objects which are in use
-    std::list<DatabaseServices::Ptr> _usedServices;
+    std::list<std::shared_ptr<DatabaseServices>> _usedServices;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations. The mutex is locked by methods _allocateService

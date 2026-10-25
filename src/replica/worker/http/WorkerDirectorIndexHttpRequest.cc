@@ -195,7 +195,7 @@ bool WorkerDirectorIndexHttpRequest::execute() {
     return true;
 }
 
-string WorkerDirectorIndexHttpRequest::_query(Connection::Ptr const& conn,
+string WorkerDirectorIndexHttpRequest::_query(shared_ptr<Connection> const& conn,
                                               string const& primaryKeyColumn) const {
     // IMPORTANT: injecting the chunk number into each row of the result set because
     // the chunk-id column is optional.

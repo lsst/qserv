@@ -23,18 +23,22 @@
 
 // System headers
 #include <atomic>
+#include <cstddef>
 #include <memory>
 
 // Third party headers
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/config/Config.h"
 #include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
 #include "replica/worker/WorkerProcessor.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -54,21 +58,20 @@ namespace lsst::qserv::replica {
  */
 class WorkerServerConnection : public std::enable_shared_from_this<WorkerServerConnection> {
 public:
-    typedef std::shared_ptr<WorkerServerConnection> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
      * @param serviceProvider A provider is needed to access the Config of a setup.
-     * @param processor A processor for long (queued) requests.
+     * @param processor A shared pointer to a processor for long (queued) requests.
      * @param io_service An endpoint for network I/O, timers, etc.
      *
      * @return A pointer to the new object created by the factory.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, WorkerProcessor::Ptr const& processor,
-                      boost::asio::io_service& io_service);
+    static std::shared_ptr<WorkerServerConnection> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider,
+            std::shared_ptr<WorkerProcessor> const& processor, boost::asio::io_service& io_service);
 
     WorkerServerConnection() = delete;
     WorkerServerConnection(WorkerServerConnection const&) = delete;
@@ -76,7 +79,7 @@ public:
 
     /// Non-default destructor is needed for the purposes of logging the connection
     /// termination event in the log stream.
-    ~WorkerServerConnection();
+    virtual ~WorkerServerConnection();
 
     /// @return network socket associated with the connection
     boost::asio::ip::tcp::socket& socket() { return _socket; }
@@ -107,8 +110,8 @@ public:
     void beginProtocol();
 
 private:
-    /// @see WorkerServerConnection::create()
-    WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider, WorkerProcessor::Ptr const& processor,
+    WorkerServerConnection(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                           std::shared_ptr<WorkerProcessor> const& processor,
                            boost::asio::io_service& io_service);
 
     /// @return A context string for error reporting and logging purposes.
@@ -128,7 +131,7 @@ private:
      * @param ec  А error condition to be checked for.
      * @param bytes_transferred  Тhe number of bytes received (if successful).
      */
-    void _received(boost::system::error_code const& ec, size_t bytes_transferred);
+    void _received(boost::system::error_code const& ec, std::size_t bytes_transferred);
 
     /**
      * Process queued requests (REPLICATE, DELETE, FIND, FIND-ALL, ECHO, etc.)
@@ -182,7 +185,7 @@ private:
      * @param ec  A error condition to be checked for.
      * @param bytes_transferred  The number of bytes sent (if successful).
      */
-    void _sent(boost::system::error_code const& ec, size_t bytes_transferred);
+    void _sent(boost::system::error_code const& ec, std::size_t bytes_transferred);
 
     /**
      * Verify if the name of a Qserv instance found in the request header matches
@@ -200,8 +203,7 @@ private:
      */
     template <class RESPONSE>
     bool _verifyInstance(ProtocolRequestHeader const& hdr, RESPONSE& response) const {
-        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
-            return true;
+        if (_instanceMatches(hdr)) return true;
         WorkerProcessor::setDefaultResponse(response, protocol::Status::BAD,
                                             protocol::StatusExt::FOREIGN_INSTANCE);
         return false;
@@ -210,8 +212,7 @@ private:
     /// The specialized version of the above defined template method for responses
     /// to the requests stoppings.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseStop& response) const {
-        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
-            return true;
+        if (_instanceMatches(hdr)) return true;
         response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
         response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::FOREIGN_INSTANCE));
         return false;
@@ -220,8 +221,7 @@ private:
     /// The specialized version of the above defined template method for responses
     /// to the requests disposals.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseDispose& response) const {
-        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
-            return true;
+        if (_instanceMatches(hdr)) return true;
         response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
         response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::FOREIGN_INSTANCE));
         return false;
@@ -230,16 +230,21 @@ private:
     /// The specialized version of the above defined template method for responses
     /// to the worker services management requests.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolServiceResponse& response) const {
-        if (hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id"))
-            return true;
+        if (_instanceMatches(hdr)) return true;
         response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
         response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::FOREIGN_INSTANCE));
         return false;
     }
 
+    /// @brief  Check if the instance ID in the protocol header matches the one expected by the current
+    /// worker.
+    /// @param hdr The protocol request header containing the instance ID.
+    /// @return 'true' if the instance ID matches, 'false' otherwise.
+    bool _instanceMatches(ProtocolRequestHeader const& hdr) const;
+
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
 
     // Data strctures related to unique identifiers of connections.
 
@@ -251,7 +256,7 @@ private:
 
     /// This is pointer onto an object where the requests would
     /// get processed.
-    WorkerProcessor::Ptr _processor;
+    std::shared_ptr<WorkerProcessor> _processor;
 
     boost::asio::ip::tcp::socket _socket;
 

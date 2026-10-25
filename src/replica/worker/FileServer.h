@@ -33,9 +33,11 @@
 // Third party headers
 #include "boost/asio.hpp"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-#include "replica/worker/FileServerConnection.h"
+// Forward declarations
+namespace lsst::qserv::replica {
+class FileServerConnection;
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -47,8 +49,6 @@ namespace lsst::qserv::replica {
  */
 class FileServer : public std::enable_shared_from_this<FileServer> {
 public:
-    typedef std::shared_ptr<FileServer> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -60,13 +60,14 @@ public:
      *
      * @return A pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    static std::shared_ptr<FileServer> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                              std::string const& workerName);
 
     FileServer() = delete;
     FileServer(FileServer const&) = delete;
     FileServer& operator=(FileServer const&) = delete;
 
-    ~FileServer() = default;
+    virtual ~FileServer() = default;
 
     /// @return the name of a worker this server runs for
     std::string const& worker() const { return _workerName; }
@@ -81,7 +82,7 @@ public:
 
 private:
     /// @see FileServer::create()
-    FileServer(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    FileServer(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
@@ -93,14 +94,15 @@ private:
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
-    void _handleAccept(FileServerConnection::Ptr const& connection, boost::system::error_code const& ec);
+    void _handleAccept(std::shared_ptr<FileServerConnection> const& connection,
+                       boost::system::error_code const& ec);
 
     /// @return the context string to be used for the message logging
     std::string _context() const { return "FILE-SERVER  "; }
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _workerName;
 
     boost::asio::io_service _io_service;

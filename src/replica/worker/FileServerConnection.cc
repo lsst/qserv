@@ -36,6 +36,7 @@
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
+#include "replica/util/ProtocolBuffer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -95,13 +96,14 @@ bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer
 
 namespace lsst::qserv::replica {
 
-FileServerConnection::Ptr FileServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
-                                                       string const& workerName,
-                                                       boost::asio::io_service& io_service) {
-    return FileServerConnection::Ptr(new FileServerConnection(serviceProvider, workerName, io_service));
+shared_ptr<FileServerConnection> FileServerConnection::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
+        boost::asio::io_service& io_service) {
+    return shared_ptr<FileServerConnection>(
+            new FileServerConnection(serviceProvider, workerName, io_service));
 }
 
-FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
+FileServerConnection::FileServerConnection(shared_ptr<ServiceProvider> const& serviceProvider,
                                            string const& workerName, boost::asio::io_service& io_service)
         : _serviceProvider(serviceProvider),
           _workerName(workerName),
@@ -112,12 +114,12 @@ FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& servicePr
           _filePtr(0),
           _fileBufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")),
           _fileBuf(0) {
-    if (not _fileBufSize or (_fileBufSize > maxFileBufSizeBytes)) {
+    if (_fileBufSize == 0 or (_fileBufSize > maxFileBufSizeBytes)) {
         throw invalid_argument("FileServerConnection: the buffer size must be in a range of: 0-" +
                                to_string(maxFileBufSizeBytes) + " bytes. Check the configuration.");
     }
     _fileBuf = new uint8_t[_fileBufSize];
-    if (not _fileBuf) {
+    if (!_fileBuf) {
         throw runtime_error("FileServerConnection: failed to allocate the buffer, size: " +
                             to_string(maxFileBufSizeBytes) + " bytes.");
     }
@@ -167,7 +169,7 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
     uint64_t size = 0;
     time_t mtime = 0;
     do {
-        if (not _serviceProvider->config()->isKnownDatabase(request.database())) {
+        if (!_serviceProvider->config()->isKnownDatabase(request.database())) {
             LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  unknown database: " << request.database());
             break;
         }
@@ -257,7 +259,7 @@ void FileServerConnection::_responseSent(boost::system::error_code const& ec, si
     //
     // In either case just finish the protocol right here.
 
-    if (not _filePtr) return;
+    if (!_filePtr) return;
 
     // The file is open. Begin streaming its content.
     _sendData();
@@ -269,7 +271,7 @@ void FileServerConnection::_sendData() {
     // Read next record if possible (a failure or EOF)
 
     size_t const bytes = fread(_fileBuf, sizeof(uint8_t), _fileBufSize, _filePtr);
-    if (not bytes) {
+    if (bytes == 0) {
         if (ferror(_filePtr)) {
             LOGS(_log, LOG_LVL_ERROR,
                  context << __func__ << "  file read error: " << strerror(errno) << ", file: " << _fileName);

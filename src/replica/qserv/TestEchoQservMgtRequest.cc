@@ -32,9 +32,7 @@ using namespace nlohmann;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.TestEchoQservMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {

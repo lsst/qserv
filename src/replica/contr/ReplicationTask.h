@@ -27,6 +27,11 @@
 // Qserv headers
 #include "replica/contr/Task.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -36,14 +41,11 @@ namespace lsst::qserv::replica {
  */
 class ReplicationTask : public Task {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<ReplicationTask> Ptr;
-
     ReplicationTask() = delete;
     ReplicationTask(ReplicationTask const&) = delete;
     ReplicationTask& operator=(ReplicationTask const&) = delete;
 
-    ~ReplicationTask() final = default;
+    virtual ~ReplicationTask() final = default;
 
     /**
      * Create a new task with specified parameters.
@@ -57,14 +59,15 @@ public:
      *   of the task. Set it to 'nullptr' if no call back should be made.
      * @return The smart pointer to a new object
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated);
+    static std::shared_ptr<ReplicationTask> create(std::shared_ptr<Controller> const& controller,
+                                                   Task::AbnormalTerminationCallbackType const& onTerminated);
 
 protected:
     virtual bool onRun() final;
 
 private:
-    ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated);
+    ReplicationTask(std::shared_ptr<Controller> const& controller,
+                    AbnormalTerminationCallbackType const& onTerminated);
 
     void _updateChunkMap();
 };

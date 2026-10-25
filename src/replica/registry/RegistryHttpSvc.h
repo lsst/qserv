@@ -26,12 +26,12 @@
 #include <string>
 
 // Qserv headers
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/HttpSvc.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
 class RegistryServices;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -42,14 +42,12 @@ namespace lsst::qserv::replica {
  * the workers registration service. Each instance of this class
  * will be running in its own thread.
  *
- * @note The class's implementation starts its own collection of BOOST ASIO
- *   service threads as configured in Config.
+ * @note The class's implementation starts its own collection of BOOST ASIO service threads as configured in
+ * Config.
  * @note The implementation of the class is not thread-safe.
  */
 class RegistryHttpSvc : public HttpSvc {
 public:
-    typedef std::shared_ptr<RegistryHttpSvc> Ptr;
-
     /**
      * Create an instance of the service.
      *
@@ -57,7 +55,7 @@ public:
      * @param httpPort The TCP port number for running the service.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider);
+    static std::shared_ptr<RegistryHttpSvc> create(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     RegistryHttpSvc() = delete;
     RegistryHttpSvc(RegistryHttpSvc const&) = delete;
@@ -66,15 +64,11 @@ public:
     virtual ~RegistryHttpSvc() = default;
 
 protected:
-    /// @see HttpSvc::context()
     virtual std::string const& context() const;
-
-    /// @see HttpSvc::registerServices()
     virtual void registerServices();
 
 private:
-    /// @see RegistryHttpSvc::create()
-    RegistryHttpSvc(ServiceProvider::Ptr const& serviceProvider);
+    RegistryHttpSvc(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     /// Synchronized collection of the Replication System's workers
     std::unique_ptr<RegistryServices> _services;

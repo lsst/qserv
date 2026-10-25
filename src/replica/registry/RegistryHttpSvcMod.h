@@ -29,11 +29,11 @@
 
 // Qserv headers
 #include "http/QhttpModule.h"
-#include "replica/services/ServiceProvider.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
 class RegistryServices;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -76,7 +76,7 @@ public:
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
+    static void process(std::shared_ptr<ServiceProvider> const& serviceProvider, RegistryServices& services,
                         std::shared_ptr<qhttp::Request> const& req,
                         std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::REQUIRED);
@@ -90,7 +90,7 @@ protected:
 
 private:
     /// @see method RegistryHttpSvcMod::create()
-    RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
+    RegistryHttpSvcMod(std::shared_ptr<ServiceProvider> const& serviceProvider, RegistryServices& services,
                        std::shared_ptr<qhttp::Request> const& req,
                        std::shared_ptr<qhttp::Response> const& resp);
 
@@ -117,7 +117,7 @@ private:
     nlohmann::json _deleteController();
 
     // Input parameters
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     RegistryServices& _services;
 };
 

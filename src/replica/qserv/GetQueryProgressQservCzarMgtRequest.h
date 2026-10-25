@@ -43,10 +43,8 @@ namespace lsst::qserv::replica {
  */
 class GetQueryProgressQservCzarMgtRequest : public QservCzarMgtRequest {
 public:
-    typedef std::shared_ptr<GetQueryProgressQservCzarMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<GetQueryProgressQservCzarMgtRequest>)> CallbackType;
 
     GetQueryProgressQservCzarMgtRequest() = delete;
     GetQueryProgressQservCzarMgtRequest(GetQueryProgressQservCzarMgtRequest const&) = delete;
@@ -75,14 +73,10 @@ public:
             std::string const& queryStatus = std::string(), CallbackType const& onFinish = nullptr);
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify()
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see GetQueryProgressQservCzarMgtRequest::create()
     GetQueryProgressQservCzarMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                         std::string const& czarName, std::vector<QueryId> const& queryIds,
                                         unsigned int lastSeconds, std::string const& queryStatus,

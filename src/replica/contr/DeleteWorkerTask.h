@@ -27,7 +27,12 @@
 
 // Qserv headers
 #include "replica/contr/Task.h"
-#include "replica/jobs/DeleteWorkerJob.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class DeleteWorkerJob;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -40,13 +45,11 @@ namespace lsst::qserv::replica {
  */
 class DeleteWorkerTask : public Task {
 public:
-    typedef std::shared_ptr<DeleteWorkerTask> Ptr;
-
     DeleteWorkerTask() = delete;
     DeleteWorkerTask(DeleteWorkerTask const&) = delete;
     DeleteWorkerTask& operator=(DeleteWorkerTask const&) = delete;
 
-    ~DeleteWorkerTask() override = default;
+    virtual ~DeleteWorkerTask() override = default;
 
     /**
      * Create a new task with specified parameters.
@@ -61,27 +64,28 @@ public:
      * @param worker The name of a worker to be evicted.
      * @return The smart pointer to a new object
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker);
+    static std::shared_ptr<DeleteWorkerTask> create(std::shared_ptr<Controller> const& controller,
+                                                    Task::AbnormalTerminationCallbackType const& onTerminated,
+                                                    std::string const& worker);
 
 protected:
-    void onStart() override;
+    virtual void onStart() override;
 
 private:
-    DeleteWorkerTask(Controller::Ptr const& controller,
+    DeleteWorkerTask(std::shared_ptr<Controller> const& controller,
                      Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker);
 
     /**
      * Log a persistent event on the started job
      * @param job A pointer to the worker eviction job.
      */
-    void _logStartedEvent(DeleteWorkerJob::Ptr const& job) const;
+    virtual void _logStartedEvent(std::shared_ptr<DeleteWorkerJob> const& job) const;
 
     /**
      * Log a persistent event on the finished job
      * @param job A pointer to the worker eviction job.
      */
-    void _logFinishedEvent(DeleteWorkerJob::Ptr const& job) const;
+    virtual void _logFinishedEvent(std::shared_ptr<DeleteWorkerJob> const& job) const;
 
     // Input parameters
 

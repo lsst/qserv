@@ -70,9 +70,6 @@ struct MoveReplicaJobResult {
  */
 class MoveReplicaJob : public Job {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<MoveReplicaJob> Ptr;
-
     /// The function type for notifications on the completion of the request
     typedef std::function<void(std::shared_ptr<MoveReplicaJob>)> CallbackType;
 

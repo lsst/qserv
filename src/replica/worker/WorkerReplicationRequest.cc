@@ -45,26 +45,22 @@ using namespace std;
 namespace fs = std::filesystem;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerReplicationRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                               string const& worker, string const& id,
-                                                               int priority,
-                                                               ExpirationCallbackType const& onExpired,
-                                                               unsigned int requestExpirationIvalSec,
-                                                               ProtocolRequestReplicate const& request) {
-    auto ptr = WorkerReplicationRequest::Ptr(new WorkerReplicationRequest(
+shared_ptr<WorkerReplicationRequest> WorkerReplicationRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, string const& id,
+        int priority, ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+        ProtocolRequestReplicate const& request) {
+    auto ptr = shared_ptr<WorkerReplicationRequest>(new WorkerReplicationRequest(
             serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerReplicationRequest::WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
+WorkerReplicationRequest::WorkerReplicationRequest(shared_ptr<ServiceProvider> const& serviceProvider,
                                                    string const& worker, string const& id, int priority,
                                                    ExpirationCallbackType const& onExpired,
                                                    unsigned int requestExpirationIvalSec,
@@ -153,7 +149,7 @@ bool WorkerReplicationRequest::execute() {
 
         vector<fs::path> tmpFiles;
         vector<fs::path> outFiles;
-        for (auto&& file : _files) {
+        for (auto const& file : _files) {
             fs::path const tmpFile = outDir / ("_" + file);
             tmpFiles.push_back(tmpFile);
 
@@ -181,10 +177,10 @@ bool WorkerReplicationRequest::execute() {
             uintmax_t totalBytes = 0;          // the total number of bytes in all input files to be moved
             map<string, uintmax_t> file2size;  // the number of bytes in each file
 
-            for (auto&& file : _files) {
+            for (auto const& file : _files) {
                 // Open the file on the remote server in the no-content-read mode
-                FileClient::Ptr inFilePtr = FileClient::stat(_serviceProvider, sourceWorkerHost(),
-                                                             sourceWorkerPort(), _request.database(), file);
+                shared_ptr<FileClient> inFilePtr = FileClient::stat(
+                        _serviceProvider, sourceWorkerHost(), sourceWorkerPort(), _request.database(), file);
                 errorContext =
                         errorContext ||
                         reportErrorIf(!inFilePtr, protocol::StatusExt::FILE_ROPEN,
@@ -214,7 +210,7 @@ bool WorkerReplicationRequest::execute() {
 
             // The files with canonical(!) names should NOT exist at the destination
             // folder.
-            for (auto&& file : outFiles) {
+            for (auto const& file : outFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext =
                         errorContext ||
@@ -228,7 +224,7 @@ bool WorkerReplicationRequest::execute() {
 
             // Check if there are any files with the temporary names at the destination
             // folder and if so then get rid of them.
-            for (auto&& file : tmpFiles) {
+            for (auto const& file : tmpFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext =
                         errorContext ||
@@ -263,7 +259,7 @@ bool WorkerReplicationRequest::execute() {
 
             // Pre-create temporary files with the final size to assert disk space
             // availability before filling these files with the actual payload.
-            for (auto&& file : _files) {
+            for (auto const& file : _files) {
                 fs::path const tmpFile = _file2descr[file].tmpFile;
 
                 // Create a file of size 0
@@ -442,7 +438,7 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
     //            in a special way?
     WorkerRequest::ErrorContext errorContext;
     std::error_code ec;
-    for (auto&& file : _files) {
+    for (auto const& file : _files) {
         fs::path const tmpFile = _file2descr[file].tmpFile;
         fs::path const outFile = _file2descr[file].outFile;
         fs::rename(tmpFile, outFile, ec);
@@ -472,7 +468,7 @@ void WorkerReplicationRequest::_updateInfo(replica::Lock const& lock) {
     size_t totalInSizeBytes = 0;
     size_t totalOutSizeBytes = 0;
     ReplicaInfo::FileInfoCollection fileInfoCollection;
-    for (auto&& file : _files) {
+    for (auto const& file : _files) {
         fileInfoCollection.emplace_back(file, _file2descr[file].outSizeBytes, _file2descr[file].mtime,
                                         to_string(_file2descr[file].cs), _file2descr[file].beginTransferTime,
                                         _file2descr[file].endTransferTime, _file2descr[file].inSizeBytes);
