@@ -34,6 +34,7 @@
 #include "cconfig/DataManagementEvent.h"
 #include "replica/qserv/QservCzarMgtRequest.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -47,10 +48,8 @@ namespace lsst::qserv::replica {
  */
 class PostEventQservCzarMgtRequest : public QservCzarMgtRequest {
 public:
-    typedef std::shared_ptr<PostEventQservCzarMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<PostEventQservCzarMgtRequest>)> CallbackType;
 
     PostEventQservCzarMgtRequest() = delete;
     PostEventQservCzarMgtRequest(PostEventQservCzarMgtRequest const&) = delete;
@@ -70,23 +69,20 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& czarName,
-                      cconfig::DataManagementEvent const& event, CallbackType const& onFinish = nullptr);
+    static std::shared_ptr<PostEventQservCzarMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& czarName,
+            cconfig::DataManagementEvent const& event, CallbackType const& onFinish = nullptr);
 
-    /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see PostEventQservCzarMgtRequest::create()
-    PostEventQservCzarMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& czarName,
-                                 cconfig::DataManagementEvent const& event, CallbackType const& onFinish);
+    PostEventQservCzarMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                 std::string const& czarName, cconfig::DataManagementEvent const& event,
+                                 CallbackType const& onFinish);
 
     // Input parameters
 

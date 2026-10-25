@@ -27,23 +27,22 @@
 
 // Qserv headers
 #include "http/QhttpModule.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
-#include "replica/config/Config.h"
 #include "replica/contr/EventLogger.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace css {
+namespace lsst::qserv::css {
 class CssAccess;
-}  // namespace css
-namespace replica {
+}  // namespace lsst::qserv::css
+
+namespace lsst::qserv::replica {
+class Controller;
 class DatabaseInfo;
-namespace database::mysql {
+class TableInfo;
+}  // namespace lsst::qserv::replica
+
+namespace lsst::qserv::replica::database::mysql {
 class Connection;
-}  // namespace database::mysql
-}  // namespace replica
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -68,8 +67,8 @@ protected:
      * @param req              The HTTP request
      * @param resp             The HTTP response channel
      */
-    HttpModule(Controller::Ptr const& controller, std::string const& taskName, qhttp::Request::Ptr const& req,
-               qhttp::Response::Ptr const& resp);
+    HttpModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+               std::shared_ptr<qhttp::Request> const& req, std::shared_ptr<qhttp::Response> const& resp);
 
     /// @see http::Module::context()
     virtual std::string context() const final;

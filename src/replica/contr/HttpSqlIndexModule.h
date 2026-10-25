@@ -32,6 +32,16 @@
 #include "replica/contr/HttpModule.h"
 #include "replica/util/Common.h"
 
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -40,8 +50,6 @@ namespace lsst::qserv::replica {
  */
 class HttpSqlIndexModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpSqlIndexModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -51,8 +59,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -60,14 +69,15 @@ public:
     HttpSqlIndexModule(HttpSqlIndexModule const&) = delete;
     HttpSqlIndexModule& operator=(HttpSqlIndexModule const&) = delete;
 
-    ~HttpSqlIndexModule() final = default;
+    virtual ~HttpSqlIndexModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpSqlIndexModule(Controller::Ptr const& controller, std::string const& taskName,
-                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpSqlIndexModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                       std::shared_ptr<qhttp::Request> const& req,
+                       std::shared_ptr<qhttp::Response> const& resp);
 
     /**
      * Return a status of the existing indexes on all instances of a table.

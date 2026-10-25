@@ -110,8 +110,6 @@ private:
  */
 class ClusterHealthJob : public Job {
 public:
-    typedef std::shared_ptr<ClusterHealthJob> Ptr;
-
     /// The function type for notifications on the completion of the request.
     typedef std::function<void(std::shared_ptr<ClusterHealthJob>)> CallbackType;
 

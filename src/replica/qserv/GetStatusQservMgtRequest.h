@@ -29,6 +29,7 @@
 #include "replica/qserv/QservWorkerMgtRequest.h"
 #include "wbase/TaskState.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -53,10 +54,8 @@ std::string taskSelectorToHttpQuery(wbase::TaskSelector const& taskSelector);
  */
 class GetStatusQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<GetStatusQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<GetStatusQservMgtRequest>)> CallbackType;
 
     GetStatusQservMgtRequest() = delete;
     GetStatusQservMgtRequest(GetStatusQservMgtRequest const&) = delete;
@@ -81,14 +80,10 @@ public:
             CallbackType const& onFinish = nullptr);
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify()
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see GetStatusQservMgtRequest::create()
     GetStatusQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                              std::string const& workerName, wbase::TaskSelector const& taskSelector,
                              CallbackType const& onFinish);

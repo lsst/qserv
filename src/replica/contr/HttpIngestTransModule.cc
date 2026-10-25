@@ -35,6 +35,7 @@
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/AbortTransactionJob.h"
 #include "replica/jobs/DirectorIndexJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
@@ -59,18 +60,19 @@ void incrementBy(json& obj, string const& key, T const val) {
 
 namespace lsst::qserv::replica {
 
-void HttpIngestTransModule::process(Controller::Ptr const& controller,
+void HttpIngestTransModule::process(shared_ptr<Controller> const& controller,
                                     NamedMutexRegistry& transactionMutexRegistry, string const& taskName,
-                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName, http::AuthType const authType) {
+                                    shared_ptr<qhttp::Request> const& req,
+                                    shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                    http::AuthType const authType) {
     HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpIngestTransModule::HttpIngestTransModule(Controller::Ptr const& controller,
+HttpIngestTransModule::HttpIngestTransModule(shared_ptr<Controller> const& controller,
                                              NamedMutexRegistry& transactionMutexRegistry,
-                                             string const& taskName, qhttp::Request::Ptr const& req,
-                                             qhttp::Response::Ptr const& resp)
+                                             string const& taskName, shared_ptr<qhttp::Request> const& req,
+                                             shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp), _transactionMutexRegistry(transactionMutexRegistry) {}
 
 json HttpIngestTransModule::executeImpl(string const& subModuleName) {
@@ -397,7 +399,7 @@ json HttpIngestTransModule::_endTransaction() {
 
             job->start();
             logJobStartedEvent(AbortTransactionJob::typeName(), job, database.family);
-            job->wait(jobMonitoringIval, [&](Job::Ptr const& job) {
+            job->wait(jobMonitoringIval, [&](shared_ptr<Job> const& job) {
                 auto data = transEventData;
                 data["progress"] = job->progress().toJson();
                 transaction =
@@ -462,7 +464,7 @@ json HttpIngestTransModule::_endTransaction() {
 
                     job->start();
                     logJobStartedEvent(DirectorIndexJob::typeName(), job, database.family);
-                    job->wait(jobMonitoringIval, [&](Job::Ptr const& job) {
+                    job->wait(jobMonitoringIval, [&](shared_ptr<Job> const& job) {
                         auto data = transEventData;
                         data["progress"] = job->progress().toJson();
                         transaction = databaseServices->updateTransaction(transactionId,

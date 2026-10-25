@@ -27,10 +27,12 @@
 // Third party headers
 #include "boost/asio.hpp"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-#include "replica/worker/WorkerProcessor.h"
-#include "replica/worker/WorkerServerConnection.h"
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+class WorkerProcessor;
+class WorkerServerConnection;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -42,25 +44,18 @@ namespace lsst::qserv::replica {
  */
 class WorkerServer : public std::enable_shared_from_this<WorkerServer> {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<WorkerServer> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider
-     *   provider is needed to access the Config of a setup
-     *   and for validating the input parameters
-     *
-     * @param workerName
-     *   the name of a worker this instance represents
-     *
-     * @return
-     *   pointer to the new object created by the factory
+     * @param serviceProvider The provider is needed to access the Config of a setup and for validating
+     *  the input parameters
+     * @param workerName The name of a worker this instance represents
+     * @return A pointer to the new object created by the factory
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    static std::shared_ptr<WorkerServer> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
 
@@ -68,7 +63,7 @@ public:
     WorkerServer(WorkerServer const&) = delete;
     WorkerServer& operator=(WorkerServer const&) = delete;
 
-    ~WorkerServer() = default;
+    virtual ~WorkerServer() = default;
 
     /// @return the name of a worker this server runs for
     std::string const& worker() const { return _workerName; }
@@ -77,24 +72,20 @@ public:
      * The processor object can be used for detailed monitoring of
      * the on-going activities and statistics collection if needed.
      *
-     * @return
-     *   reference to the request processor
+     * @return A reference to the request processor
      */
-    WorkerProcessor::Ptr const& processor() const { return _processor; }
+    std::shared_ptr<WorkerProcessor> const& processor() const { return _processor; }
 
     /**
      * Begin listening for and processing incoming connections.
      *
-     * @note
-     *   This method is blocking, so it can be called just once from
-     *   a thread. Calling it from different threads won't work because
-     *   of a port conflict.
+     * @note This method is blocking, so it can be called just once from a thread. Calling it from
+     *  different threads won't work because of a port conflict.
      */
     void run();
 
-private:
     /// @see WorkerServer::create()
-    WorkerServer(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    WorkerServer(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
@@ -106,26 +97,23 @@ private:
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      *
-     * @param connection
-     *   object responsible for communications with a client
-     *
-     * @param ec
-     *   error condition to be checked for
+     * @param connection An object referring to communications with a client
+     * @param ec An error condition to be checked for
      */
-    void _handleAccept(WorkerServerConnection::Ptr const& connection, boost::system::error_code const& ec);
+    void _handleAccept(std::shared_ptr<WorkerServerConnection> const& connection,
+                       boost::system::error_code const& ec);
 
     /// @return the context string
     std::string context() const { return "SERVER  "; }
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _workerName;
 
-    /// This is pointer onto an object where the requests would
-    /// get processed. This object gets created by the constructor of
-    /// the class.
-    WorkerProcessor::Ptr const _processor;
+    /// This is pointer onto an object where the requests would get processed. This object gets created
+    /// by the constructor of the class.
+    std::shared_ptr<WorkerProcessor> const _processor;
 
     boost::asio::io_service _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;
