@@ -31,6 +31,8 @@
 // Qserv headers
 #include "http/Exceptions.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#include "replica/contr/HealthMonitorTask.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ReplicaInfo.h"
@@ -47,19 +49,19 @@ json HttpReplicationLevelsModule::_replicationLevelReport = json::object();
 uint64_t HttpReplicationLevelsModule::_replicationLevelReportTimeMs = 0;
 replica::Mutex HttpReplicationLevelsModule::_replicationLevelMtx;
 
-void HttpReplicationLevelsModule::process(Controller::Ptr const& controller, string const& taskName,
-                                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                          HealthMonitorTask::Ptr const& healthMonitorTask,
+void HttpReplicationLevelsModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                          shared_ptr<qhttp::Request> const& req,
+                                          shared_ptr<qhttp::Response> const& resp,
+                                          shared_ptr<HealthMonitorTask> const& healthMonitorTask,
                                           string const& subModuleName, http::AuthType const authType) {
     HttpReplicationLevelsModule module(controller, taskName, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }
 
-HttpReplicationLevelsModule::HttpReplicationLevelsModule(Controller::Ptr const& controller,
-                                                         string const& taskName,
-                                                         qhttp::Request::Ptr const& req,
-                                                         qhttp::Response::Ptr const& resp,
-                                                         HealthMonitorTask::Ptr const& healthMonitorTask)
+HttpReplicationLevelsModule::HttpReplicationLevelsModule(
+        std::shared_ptr<Controller> const& controller, string const& taskName,
+        shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
+        shared_ptr<HealthMonitorTask> const& healthMonitorTask)
         : HttpModule(controller, taskName, req, resp), _healthMonitorTask(healthMonitorTask) {}
 
 json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {

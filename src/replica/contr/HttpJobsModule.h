@@ -32,7 +32,13 @@
 #include "replica/contr/HttpModule.h"
 
 // Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
 namespace lsst::qserv::replica {
+class Controller;
 class DatabaseFamilyInfo;
 }  // namespace lsst::qserv::replica
 
@@ -45,8 +51,6 @@ namespace lsst::qserv::replica {
  */
 class HttpJobsModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpJobsModule> Ptr;
-
     /**
      * @note supported values for parameter 'subModuleName':
      *
@@ -56,8 +60,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -65,14 +70,14 @@ public:
     HttpJobsModule(HttpJobsModule const&) = delete;
     HttpJobsModule& operator=(HttpJobsModule const&) = delete;
 
-    ~HttpJobsModule() final = default;
+    virtual ~HttpJobsModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpJobsModule(Controller::Ptr const& controller, std::string const& taskName,
-                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpJobsModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                   std::shared_ptr<qhttp::Request> const& req, std::shared_ptr<qhttp::Response> const& resp);
 
     nlohmann::json _jobs();
     nlohmann::json _oneJob();

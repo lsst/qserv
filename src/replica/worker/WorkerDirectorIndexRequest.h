@@ -22,6 +22,8 @@
 #define LSST_QSERV_REPLICA_WORKERDIRECTORINDEXREQUEST_H
 
 // System headers
+#include <cstddef>
+#include <memory>
 #include <string>
 
 // Qserv headers
@@ -30,6 +32,10 @@
 #include "replica/worker/WorkerRequest.h"
 
 // Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
+
 namespace lsst::qserv::replica::database::mysql {
 class Connection;
 class ConnectionPool;
@@ -45,11 +51,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerDirectorIndexRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerDirectorIndexRequest> Ptr;
-
-    /// Forward declaration for the connection pool
-    typedef std::shared_ptr<database::mysql::ConnectionPool> ConnectionPoolPtr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -71,16 +72,17 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
-                      std::string const& worker, std::string const& id, int priority,
-                      ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
-                      ProtocolRequestDirectorIndex const& request);
+    static std::shared_ptr<WorkerDirectorIndexRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider,
+            std::shared_ptr<database::mysql::ConnectionPool> const& connectionPool, std::string const& worker,
+            std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec, ProtocolRequestDirectorIndex const& request);
 
     WorkerDirectorIndexRequest() = delete;
     WorkerDirectorIndexRequest(WorkerDirectorIndexRequest const&) = delete;
     WorkerDirectorIndexRequest& operator=(WorkerDirectorIndexRequest const&) = delete;
 
-    ~WorkerDirectorIndexRequest() override = default;
+    virtual ~WorkerDirectorIndexRequest() override = default;
 
     /// @return the original request
     ProtocolRequestDirectorIndex const& request() const { return _request; }
@@ -91,13 +93,13 @@ public:
      */
     void setInfo(ProtocolResponseDirectorIndex& response) const;
 
-    bool execute() override;
+    virtual bool execute() override;
 
 private:
-    WorkerDirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                               ConnectionPoolPtr const& connectionPool, std::string const& worker,
-                               std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                               unsigned int requestExpirationIvalSec,
+    WorkerDirectorIndexRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                               std::shared_ptr<database::mysql::ConnectionPool> const& connectionPool,
+                               std::string const& worker, std::string const& id, int priority,
+                               ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
                                ProtocolRequestDirectorIndex const& request);
 
     /**
@@ -121,12 +123,12 @@ private:
      * @param offset A position of the first byte in the file to read.
      * @return The completion status to be returned to the Controller.
      */
-    protocol::StatusExt _readFile(size_t offset);
+    protocol::StatusExt _readFile(std::size_t offset);
 
     /// Get rid of the temporary file if it's still there.
     void _removeFile() const;
 
-    ConnectionPoolPtr const _connectionPool;
+    std::shared_ptr<database::mysql::ConnectionPool> const _connectionPool;
     ProtocolRequestDirectorIndex const _request;
 
     /// The path name of a temporary folder where the file will be stored.
@@ -139,7 +141,7 @@ private:
     std::string const _fileName;
 
     /// The size of the file is determined each time before reading it.
-    size_t _fileSizeBytes = 0;
+    std::size_t _fileSizeBytes = 0;
 
     /// Cached error to be sent to a client
     std::string _error;

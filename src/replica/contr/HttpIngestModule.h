@@ -38,7 +38,13 @@ namespace lsst::qserv::cconfig {
 class DataManagementEvent;
 }  // namespace lsst::qserv::cconfig
 
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
 namespace lsst::qserv::replica {
+class Controller;
 class DatabaseInfo;
 }  // namespace lsst::qserv::replica
 
@@ -51,8 +57,6 @@ namespace lsst::qserv::replica {
  */
 class HttpIngestModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpIngestModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -72,8 +76,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -81,14 +86,15 @@ public:
     HttpIngestModule(HttpIngestModule const&) = delete;
     HttpIngestModule& operator=(HttpIngestModule const&) = delete;
 
-    ~HttpIngestModule() final = default;
+    virtual ~HttpIngestModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestModule(Controller::Ptr const& controller, std::string const& taskName,
-                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpIngestModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                     std::shared_ptr<qhttp::Request> const& req,
+                     std::shared_ptr<qhttp::Response> const& resp);
 
     /// Get info on select databases
     nlohmann::json _getDatabases();

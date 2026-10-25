@@ -36,6 +36,7 @@
 #include "replica/config/ConfigWorker.h"
 #include "replica/config/ConfigExceptions.h"
 #include "replica/config/ConfigSchema.h"
+#include "replica/contr/Controller.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -64,15 +65,16 @@ json meta4general(shared_ptr<Config> const& config) {
 
 namespace lsst::qserv::replica {
 
-void HttpConfigModule::process(Controller::Ptr const& controller, string const& taskName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+void HttpConfigModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                               shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
                                string const& subModuleName, http::AuthType const authType) {
     HttpConfigModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpConfigModule::HttpConfigModule(Controller::Ptr const& controller, string const& taskName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpConfigModule::HttpConfigModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                   shared_ptr<qhttp::Request> const& req,
+                                   shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpConfigModule::executeImpl(string const& subModuleName) {

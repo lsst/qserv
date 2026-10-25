@@ -102,8 +102,7 @@ struct FindAllJobResult {
  */
 class FindAllJob : public Job {
 public:
-    typedef std::shared_ptr<FindAllJob> Ptr;
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<FindAllJob>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();

@@ -33,6 +33,10 @@
 #include "replica/worker/WorkerRequest.h"
 
 // Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
+
 namespace lsst::qserv::replica::database::mysql {
 class Connection;
 }  // namespace lsst::qserv::replica::database::mysql
@@ -52,8 +56,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerSqlRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerSqlRequest> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -74,9 +76,11 @@ public:
      * @param request The ProtoBuf body of the original request
      * @return A pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestSql const& request);
+    static std::shared_ptr<WorkerSqlRequest> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                    std::string const& worker, std::string const& id,
+                                                    int priority, ExpirationCallbackType const& onExpired,
+                                                    unsigned int requestExpirationIvalSec,
+                                                    ProtocolRequestSql const& request);
 
     WorkerSqlRequest() = delete;
     WorkerSqlRequest(WorkerSqlRequest const&) = delete;
@@ -96,7 +100,7 @@ public:
     bool execute() override;
 
 private:
-    WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    WorkerSqlRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
                      unsigned int requestExpirationIvalSec, ProtocolRequestSql const& request);
 
