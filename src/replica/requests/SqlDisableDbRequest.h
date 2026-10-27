@@ -43,41 +43,33 @@ namespace lsst::qserv::replica {
  */
 class SqlDisableDbRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlDisableDbRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SqlDisableDbRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param database The name of an existing database to be disabled.
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<SqlDisableDbRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
 
     SqlDisableDbRequest() = delete;
     SqlDisableDbRequest(SqlDisableDbRequest const&) = delete;
     SqlDisableDbRequest& operator=(SqlDisableDbRequest const&) = delete;
 
-    ~SqlDisableDbRequest() final = default;
+    virtual ~SqlDisableDbRequest() final = default;
 
     std::string const& database() const { return requestBody.database(); }
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param database The name of an existing database to be disabled.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return A pointer to the created object.
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
-
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlDisableDbRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

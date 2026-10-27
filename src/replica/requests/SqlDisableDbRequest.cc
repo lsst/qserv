@@ -33,14 +33,12 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlDisableDbRequest::Ptr SqlDisableDbRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                             string const& workerName,
-                                                             std::string const& database,
-                                                             CallbackType const& onFinish, int priority,
-                                                             bool keepTracking, string const& jobId,
-                                                             unsigned int requestExpirationIvalSec) {
-    auto ptr =
-            Ptr(new SqlDisableDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
+shared_ptr<SqlDisableDbRequest> SqlDisableDbRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, std::string const& database,
+        CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<SqlDisableDbRequest>(
+            new SqlDisableDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
