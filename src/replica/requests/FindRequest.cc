@@ -52,13 +52,14 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-FindRequest::Ptr FindRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                             string const& workerName, string const& database,
-                                             unsigned int chunk, CallbackType const& onFinish, int priority,
-                                             bool computeCheckSum, bool keepTracking, string const& jobId,
-                                             unsigned int requestExpirationIvalSec) {
-    auto ptr = FindRequest::Ptr(new FindRequest(controller, workerName, database, chunk, onFinish, priority,
-                                                computeCheckSum, keepTracking));
+shared_ptr<FindRequest> FindRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                    string const& workerName, string const& database,
+                                                    unsigned int chunk, CallbackType const& onFinish,
+                                                    int priority, bool computeCheckSum, bool keepTracking,
+                                                    string const& jobId,
+                                                    unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<FindRequest>(new FindRequest(controller, workerName, database, chunk, onFinish,
+                                                       priority, computeCheckSum, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

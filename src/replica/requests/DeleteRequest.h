@@ -46,54 +46,45 @@ namespace lsst::qserv::replica {
  */
 class DeleteRequest : public Request {
 public:
-    typedef std::shared_ptr<DeleteRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<DeleteRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param database The name of a database.
+     * @param chunk The number of a chunk to replicate (implies all relevant tables).
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<DeleteRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, unsigned int chunk, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
 
     DeleteRequest() = delete;
     DeleteRequest(DeleteRequest const&) = delete;
     DeleteRequest& operator=(DeleteRequest const&) = delete;
 
-    ~DeleteRequest() final = default;
+    virtual ~DeleteRequest() final = default;
 
     std::string const& database() const { return _database; }
     unsigned int chunk() const { return _chunk; }
 
     /**
-     * @return request-specific extended data reported upon a successful completion
-     *   of the request
+     * @return request-specific extended data reported upon a successful completion of the request
      */
     ReplicaInfo const& responseData() const { return _replicaInfo; }
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param database The name of a database.
-     * @param chunk The number of a chunk to replicate (implies all relevant tables).
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return A pointer to the created object.
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, unsigned int chunk,
-                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
-                              bool keepTracking = true, std::string const& jobId = "",
-                              unsigned int requestExpirationIvalSec = 0);
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
-    void savePersistentState(replica::Lock const& lock) final;
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
-    void awaken(boost::system::error_code const& ec) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual void savePersistentState(replica::Lock const& lock) final;
+    virtual void awaken(boost::system::error_code const& ec) final;
 
 private:
     DeleteRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

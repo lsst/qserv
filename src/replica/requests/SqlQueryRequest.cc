@@ -29,14 +29,12 @@ using namespace std;
 
 namespace lsst::qserv::replica {
 
-SqlQueryRequest::Ptr SqlQueryRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                     string const& workerName, std::string const& query,
-                                                     std::string const& user, std::string const& password,
-                                                     uint64_t maxRows, CallbackType const& onFinish,
-                                                     int priority, bool keepTracking, string const& jobId,
-                                                     unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlQueryRequest(controller, workerName, query, user, password, maxRows, onFinish,
-                                       priority, keepTracking));
+shared_ptr<SqlQueryRequest> SqlQueryRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, std::string const& query,
+        std::string const& user, std::string const& password, uint64_t maxRows, CallbackType const& onFinish,
+        int priority, bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<SqlQueryRequest>(new SqlQueryRequest(controller, workerName, query, user, password,
+                                                               maxRows, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
