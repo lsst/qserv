@@ -43,41 +43,33 @@ namespace lsst::qserv::replica {
  */
 class SqlDeleteDbRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlDeleteDbRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SqlDeleteDbRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param database The name of an existing database to be deleted.
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<SqlDeleteDbRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
 
     SqlDeleteDbRequest() = delete;
     SqlDeleteDbRequest(SqlDeleteDbRequest const&) = delete;
     SqlDeleteDbRequest& operator=(SqlDeleteDbRequest const&) = delete;
 
-    ~SqlDeleteDbRequest() final = default;
+    virtual ~SqlDeleteDbRequest() final = default;
 
     std::string const& database() const { return requestBody.database(); }
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param database The name of an existing database to be deleted.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return A pointer to the created object.
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
-
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlDeleteDbRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
