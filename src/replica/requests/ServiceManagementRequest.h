@@ -102,16 +102,14 @@ public:
     /// Inject the into a namespace of the class
     typedef POLICY Policy;
 
-    typedef std::shared_ptr<ServiceManagementRequest<POLICY>> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<ServiceManagementRequest<POLICY>>)> CallbackType;
 
     ServiceManagementRequest() = delete;
     ServiceManagementRequest(ServiceManagementRequest const&) = delete;
     ServiceManagementRequest& operator=(ServiceManagementRequest const&) = delete;
 
-    ~ServiceManagementRequest() final = default;
+    virtual ~ServiceManagementRequest() final = default;
 
     /**
      * Create a new request with specified parameters.
@@ -128,10 +126,11 @@ public:
      *
      * @return A pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_VERY_HIGH,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0) {
-        auto ptr = ServiceManagementRequest<POLICY>::Ptr(new ServiceManagementRequest<POLICY>(
+    static std::shared_ptr<ServiceManagementRequest<POLICY>> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_VERY_HIGH,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0) {
+        auto ptr = std::shared_ptr<ServiceManagementRequest<POLICY>>(new ServiceManagementRequest<POLICY>(
                 controller, POLICY::requestName(), workerName, POLICY::requestType(), priority, onFinish));
         ptr->start(jobId, requestExpirationIvalSec);
         return ptr;

@@ -51,11 +51,11 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-ReplicationRequest::Ptr ReplicationRequest::createAndStart(
+shared_ptr<ReplicationRequest> ReplicationRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& sourceWorkerName,
         string const& database, unsigned int chunk, CallbackType const& onFinish, int priority,
         bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = ReplicationRequest::Ptr(new ReplicationRequest(
+    auto ptr = shared_ptr<ReplicationRequest>(new ReplicationRequest(
             controller, workerName, sourceWorkerName, database, chunk, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;

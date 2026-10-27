@@ -49,8 +49,6 @@ namespace lsst::qserv::replica {
  */
 class Request : public RequestI {
 public:
-    typedef std::shared_ptr<Request> Ptr;
-
     Request() = delete;
     Request(Request const&) = delete;
     Request& operator=(Request const&) = delete;
