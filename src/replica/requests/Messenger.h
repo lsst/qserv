@@ -51,28 +51,22 @@ namespace lsst::qserv::replica {
  */
 class Messenger : public std::enable_shared_from_this<Messenger> {
 public:
-    typedef std::shared_ptr<Messenger> Ptr;
+    /**
+     * Create a new messenger with specified parameters.
+     *
+     * @param config The Config service of the Replication Framework.
+     * @param io_service The I/O service for communication. The lifespan of the object must exceed
+     *  the one of this instance of the Messenger.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<Messenger> create(std::shared_ptr<Config> const& config,
+                                             boost::asio::io_service& io_service);
 
     Messenger() = delete;
     Messenger(Messenger const&) = delete;
     Messenger& operator=(Messenger const&) = delete;
 
-    ~Messenger() = default;
-
-    /**
-     * Create a new messenger with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * @param config  The Config service of the Replication Framework.
-     * @param io_service  The I/O service for communication. The lifespan of
-     *   the object must exceed the one of this instance
-     *   of the Messenger.
-     * @return  A pointer to the created object.
-     */
-    static Ptr create(std::shared_ptr<Config> const& config, boost::asio::io_service& io_service);
+    virtual ~Messenger() = default;
 
     /**
      * Stop operations
@@ -135,7 +129,7 @@ private:
      * @return  A pointer to the connector.
      * @throw std::invalid_argument  If the worker is unknown.
      */
-    MessengerConnector::Ptr const& _connector(std::string const& workerName);
+    std::shared_ptr<MessengerConnector> const& _connector(std::string const& workerName);
 
     /// @return The context string for the given worker (used for reporting errors and logging).
     static std::string _context(std::string const& workerName);
@@ -149,7 +143,7 @@ private:
     mutable replica::Mutex _mtx;
 
     /// Connection providers for individual workers
-    std::map<std::string, MessengerConnector::Ptr> _workerConnector;
+    std::map<std::string, std::shared_ptr<MessengerConnector>> _workerConnector;
 };
 
 }  // namespace lsst::qserv::replica

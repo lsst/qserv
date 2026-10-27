@@ -61,12 +61,12 @@ ostream& operator<<(ostream& os, DirectorIndexRequestInfo const& info) {
     return os;
 }
 
-DirectorIndexRequest::Ptr DirectorIndexRequest::createAndStart(
+shared_ptr<DirectorIndexRequest> DirectorIndexRequest::createAndStart(
         std::shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         string const& directorTable, unsigned int chunk, bool hasTransactions, TransactionId transactionId,
         CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
         unsigned int requestExpirationIvalSec) {
-    auto ptr = DirectorIndexRequest::Ptr(
+    auto ptr = shared_ptr<DirectorIndexRequest>(
             new DirectorIndexRequest(controller, workerName, database, directorTable, chunk, hasTransactions,
                                      transactionId, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
