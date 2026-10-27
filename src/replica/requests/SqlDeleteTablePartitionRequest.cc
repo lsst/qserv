@@ -33,12 +33,12 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlDeleteTablePartitionRequest::Ptr SqlDeleteTablePartitionRequest::createAndStart(
+shared_ptr<SqlDeleteTablePartitionRequest> SqlDeleteTablePartitionRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, TransactionId transactionId, CallbackType const& onFinish, int priority,
         bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlDeleteTablePartitionRequest(controller, workerName, database, tables, transactionId,
-                                                      onFinish, priority, keepTracking));
+    auto ptr = shared_ptr<SqlDeleteTablePartitionRequest>(new SqlDeleteTablePartitionRequest(
+            controller, workerName, database, tables, transactionId, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
