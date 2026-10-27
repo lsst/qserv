@@ -33,12 +33,12 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlAlterTablesRequest::Ptr SqlAlterTablesRequest::createAndStart(
+shared_ptr<SqlAlterTablesRequest> SqlAlterTablesRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, string const& alterSpec, CallbackType const& onFinish, int priority,
         bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlAlterTablesRequest(controller, workerName, database, tables, alterSpec, onFinish,
-                                             priority, keepTracking));
+    auto ptr = shared_ptr<SqlAlterTablesRequest>(new SqlAlterTablesRequest(
+            controller, workerName, database, tables, alterSpec, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

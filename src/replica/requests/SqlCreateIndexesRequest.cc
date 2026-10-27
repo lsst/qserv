@@ -33,13 +33,14 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlCreateIndexesRequest::Ptr SqlCreateIndexesRequest::createAndStart(
+shared_ptr<SqlCreateIndexesRequest> SqlCreateIndexesRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, SqlIndexSpec const& indexSpec, string const& indexName,
         string const& indexComment, vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish,
         int priority, bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlCreateIndexesRequest(controller, workerName, database, tables, indexSpec, indexName,
-                                               indexComment, indexColumns, onFinish, priority, keepTracking));
+    auto ptr = shared_ptr<SqlCreateIndexesRequest>(
+            new SqlCreateIndexesRequest(controller, workerName, database, tables, indexSpec, indexName,
+                                        indexComment, indexColumns, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

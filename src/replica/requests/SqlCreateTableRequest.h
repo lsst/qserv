@@ -46,28 +46,11 @@ namespace lsst::qserv::replica {
  */
 class SqlCreateTableRequest : public SqlRequest {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<SqlCreateTableRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    // Default construction and copy semantics are prohibited
-
-    SqlCreateTableRequest() = delete;
-    SqlCreateTableRequest(SqlCreateTableRequest const&) = delete;
-    SqlCreateTableRequest& operator=(SqlCreateTableRequest const&) = delete;
-
-    ~SqlCreateTableRequest() final = default;
-
-    std::string const& database() const { return requestBody.database(); }
+    typedef std::function<void(std::shared_ptr<SqlCreateTableRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
      *
      * Class-specific parameters are documented below:
      * @param database The name of an existing database where the new table will be created.
@@ -80,22 +63,27 @@ public:
      * @param columns Column definitions (name,type) of the table.
      * @param charsetName (optional, if not empty) the name of a character set for the new table
      * @param collationName (optional, if not empty) the name of a collation for the new table
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
+     * @see The very base class for the description of the common parameters of all subclasses.
      * @return A pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, std::string const& table,
-                              std::string const& engine, std::string const& partitionByColumn,
-                              std::list<SqlColDef> const& columns, std::string const& charsetName,
-                              std::string const& collationName, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<SqlCreateTableRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, std::string const& table, std::string const& engine,
+            std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
+            std::string const& charsetName, std::string const& collationName,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+
+    SqlCreateTableRequest() = delete;
+    SqlCreateTableRequest(SqlCreateTableRequest const&) = delete;
+    SqlCreateTableRequest& operator=(SqlCreateTableRequest const&) = delete;
+
+    virtual ~SqlCreateTableRequest() final = default;
+
+    std::string const& database() const { return requestBody.database(); }
 
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlCreateTableRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

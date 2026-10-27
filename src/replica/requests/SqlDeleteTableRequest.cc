@@ -33,12 +33,12 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlDeleteTableRequest::Ptr SqlDeleteTableRequest::createAndStart(
+shared_ptr<SqlDeleteTableRequest> SqlDeleteTableRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, CallbackType const& onFinish, int priority, bool keepTracking,
         string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlDeleteTableRequest(controller, workerName, database, tables, onFinish, priority,
-                                             keepTracking));
+    auto ptr = shared_ptr<SqlDeleteTableRequest>(new SqlDeleteTableRequest(
+            controller, workerName, database, tables, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

@@ -49,23 +49,11 @@ namespace lsst::qserv::replica {
  */
 class SqlCreateIndexesRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlCreateIndexesRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    SqlCreateIndexesRequest() = delete;
-    SqlCreateIndexesRequest(SqlCreateIndexesRequest const&) = delete;
-    SqlCreateIndexesRequest& operator=(SqlCreateIndexesRequest const&) = delete;
-
-    ~SqlCreateIndexesRequest() final = default;
+    typedef std::function<void(std::shared_ptr<SqlCreateIndexesRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
      *
      * Class-specific parameters are documented below:
      * @param database The name of an existing database where the tables are residing.
@@ -74,23 +62,25 @@ public:
      * @param indexName The name of the index.
      * @param indexComment An arbitrary comment string documenting the index.
      * @param indexColumns Column definitions (name,length,ordering) for the index.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
+     * @see The very base class for the description of the common parameters of all subclasses.
      * @return A pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, std::vector<std::string> const& tables,
-                              SqlIndexSpec const& indexSpec, std::string const& indexName,
-                              std::string const& indexComment,
-                              std::vector<SqlIndexColumn> const& indexColumns,
-                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
-                              bool keepTracking = true, std::string const& jobId = "",
-                              unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<SqlCreateIndexesRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, std::vector<std::string> const& tables,
+            SqlIndexSpec const& indexSpec, std::string const& indexName, std::string const& indexComment,
+            std::vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
+
+    SqlCreateIndexesRequest() = delete;
+    SqlCreateIndexesRequest(SqlCreateIndexesRequest const&) = delete;
+    SqlCreateIndexesRequest& operator=(SqlCreateIndexesRequest const&) = delete;
+
+    virtual ~SqlCreateIndexesRequest() final = default;
 
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlCreateIndexesRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
