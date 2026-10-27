@@ -33,12 +33,12 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlDropIndexesRequest::Ptr SqlDropIndexesRequest::createAndStart(
+shared_ptr<SqlDropIndexesRequest> SqlDropIndexesRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, string const& indexName, CallbackType const& onFinish, int priority,
         bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlDropIndexesRequest(controller, workerName, database, tables, indexName, onFinish,
-                                             priority, keepTracking));
+    auto ptr = shared_ptr<SqlDropIndexesRequest>(new SqlDropIndexesRequest(
+            controller, workerName, database, tables, indexName, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

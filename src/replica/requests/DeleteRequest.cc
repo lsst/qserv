@@ -51,12 +51,12 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-DeleteRequest::Ptr DeleteRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                 string const& workerName, string const& database,
-                                                 unsigned int chunk, CallbackType const& onFinish,
-                                                 int priority, bool keepTracking, string const& jobId,
-                                                 unsigned int requestExpirationIvalSec) {
-    auto ptr = DeleteRequest::Ptr(
+shared_ptr<DeleteRequest> DeleteRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                        string const& workerName, string const& database,
+                                                        unsigned int chunk, CallbackType const& onFinish,
+                                                        int priority, bool keepTracking, string const& jobId,
+                                                        unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<DeleteRequest>(
             new DeleteRequest(controller, workerName, database, chunk, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;

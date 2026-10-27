@@ -56,8 +56,6 @@ public:
     /// The type of the unique identifier for the request is required by the PriorityQueue.
     using key_type = std::string;
 
-    typedef std::shared_ptr<MessageWrapperBase> Ptr;
-
     MessageWrapperBase() = delete;
     MessageWrapperBase(MessageWrapperBase const&) = delete;
     MessageWrapperBase& operator=(MessageWrapperBase const&) = delete;
@@ -204,20 +202,14 @@ private:
  */
 class MessengerConnector : public std::enable_shared_from_this<MessengerConnector> {
 public:
-    typedef std::shared_ptr<MessengerConnector> Ptr;
-
     MessengerConnector() = delete;
     MessengerConnector(MessengerConnector const&) = delete;
     MessengerConnector& operator=(MessengerConnector const&) = delete;
 
-    ~MessengerConnector() = default;
+    virtual ~MessengerConnector() = default;
 
     /**
      * Create a new connector with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
      *
      * @param config  The configuration service of the Replication Framework.
      * @param io_service  The I/O service for communication. The lifespan of
@@ -225,8 +217,9 @@ public:
      * @param workerName  The name of a worker.
      * @return  A pointer to the created object.
      */
-    static Ptr create(std::shared_ptr<Config> const& config, boost::asio::io_service& io_service,
-                      std::string const& workerName);
+    static std::shared_ptr<MessengerConnector> create(std::shared_ptr<Config> const& config,
+                                                      boost::asio::io_service& io_service,
+                                                      std::string const& workerName);
 
     /**
      * Stop operations.
@@ -283,7 +276,7 @@ private:
      * The actual implementation of the operation 'send'.
      * @param ptr  A pointer to the request wrapper object.
      */
-    void _sendImpl(MessageWrapperBase::Ptr const& ptr);
+    void _sendImpl(std::shared_ptr<MessageWrapperBase> const& ptr);
 
     /// State transitions for the connector object
     enum State {
@@ -475,7 +468,7 @@ private:
 
     /// The currently processed (being sent) request (if any, otherwise
     /// the pointer is set to nullptr).
-    MessageWrapperBase::Ptr _currentRequest;
+    std::shared_ptr<MessageWrapperBase> _currentRequest;
 
     /// The intermediate buffer for messages received from a worker.
     ProtocolBuffer _inBuffer;

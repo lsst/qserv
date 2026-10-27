@@ -45,51 +45,45 @@ namespace lsst::qserv::replica {
  */
 class StopRequest : public Request {
 public:
-    typedef std::shared_ptr<StopRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<StopRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
      *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
      * Class-specific parameters are documented below:
      * @param targetRequestId An identifier of the target request to be stopped.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
+     * @see The very base class for the description of the common parameters of all subclasses.
      * @return A pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& targetRequestId, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<StopRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& targetRequestId, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
 
     StopRequest() = delete;
     StopRequest(StopRequest const&) = delete;
     StopRequest& operator=(StopRequest const&) = delete;
 
-    ~StopRequest() final = default;
+    virtual ~StopRequest() final = default;
 
     std::string const& targetRequestId() const { return _targetRequestId; }
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
-    std::string toString(bool extended = false) const override;
+
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::string toString(bool extended = false) const override;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
-    void savePersistentState(replica::Lock const& lock) final;
-    void awaken(boost::system::error_code const& ec) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual void savePersistentState(replica::Lock const& lock) final;
+    virtual void awaken(boost::system::error_code const& ec) final;
 
 private:
     StopRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
                 std::string const& targetRequestId, CallbackType const& onFinish, int priority,
                 bool keepTracking);
+
     /**
      * Send the serialized content of the buffer to a worker
      * @param lock a lock on RequestI::mtx must be acquired before calling
