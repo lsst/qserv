@@ -52,8 +52,6 @@ namespace lsst::qserv::replica {
  */
 class ServiceManagementRequestBase : public Request {
 public:
-    typedef std::shared_ptr<ServiceManagementRequestBase> Ptr;
-
     ServiceManagementRequestBase() = delete;
     ServiceManagementRequestBase(ServiceManagementRequestBase const&) = delete;
     ServiceManagementRequestBase& operator=(ServiceManagementRequestBase const&) = delete;
@@ -72,7 +70,7 @@ public:
      * The method will also make a call to RequestI::defaultPrinter().
      * @param ptr  An object to be printed.
      */
-    static void extendedPrinter(Ptr const& ptr);
+    static void extendedPrinter(std::shared_ptr<ServiceManagementRequestBase> const& ptr);
 
 protected:
     /**

@@ -52,12 +52,12 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-EchoRequest::Ptr EchoRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                             string const& workerName, string const& data, uint64_t delay,
-                                             CallbackType const& onFinish, int priority, bool keepTracking,
-                                             std::string const& jobId,
-                                             unsigned int requestExpirationIvalSec) {
-    auto ptr = EchoRequest::Ptr(
+shared_ptr<EchoRequest> EchoRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                    string const& workerName, string const& data,
+                                                    uint64_t delay, CallbackType const& onFinish,
+                                                    int priority, bool keepTracking, std::string const& jobId,
+                                                    unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<EchoRequest>(
             new EchoRequest(controller, workerName, data, delay, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;

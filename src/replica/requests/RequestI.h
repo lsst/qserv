@@ -69,8 +69,6 @@ namespace lsst::qserv::replica {
  */
 class RequestI : public std::enable_shared_from_this<RequestI> {
 public:
-    typedef std::shared_ptr<RequestI> Ptr;
-
     /**
      * Type State represents a primary public state of the request
      */
@@ -249,7 +247,7 @@ public:
 
     void print(std::ostream& os = std::cout, bool extended = false) const { os << toString(extended); }
 
-    static void defaultPrinter(Ptr const& ptr) { ptr->print(std::cout, true); }
+    static void defaultPrinter(std::shared_ptr<RequestI> const& ptr) { ptr->print(std::cout, true); }
 
 protected:
     /**

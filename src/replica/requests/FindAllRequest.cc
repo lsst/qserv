@@ -52,13 +52,14 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-FindAllRequest::Ptr FindAllRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                   string const& workerName, string const& database,
-                                                   bool saveReplicaInfo, CallbackType const& onFinish,
-                                                   int priority, bool keepTracking, string const& jobId,
-                                                   unsigned int requestExpirationIvalSec) {
-    auto ptr = FindAllRequest::Ptr(new FindAllRequest(controller, workerName, database, saveReplicaInfo,
-                                                      onFinish, priority, keepTracking));
+shared_ptr<FindAllRequest> FindAllRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                          string const& workerName, string const& database,
+                                                          bool saveReplicaInfo, CallbackType const& onFinish,
+                                                          int priority, bool keepTracking,
+                                                          string const& jobId,
+                                                          unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<FindAllRequest>(new FindAllRequest(
+            controller, workerName, database, saveReplicaInfo, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

@@ -33,15 +33,15 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlCreateTableRequest::Ptr SqlCreateTableRequest::createAndStart(
+shared_ptr<SqlCreateTableRequest> SqlCreateTableRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, std::string const& database,
         std::string const& table, std::string const& engine, string const& partitionByColumn,
         std::list<SqlColDef> const& columns, std::string const& charsetName, std::string const& collationName,
         CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
         unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlCreateTableRequest(controller, workerName, database, table, engine,
-                                             partitionByColumn, columns, charsetName, collationName, onFinish,
-                                             priority, keepTracking));
+    auto ptr = shared_ptr<SqlCreateTableRequest>(
+            new SqlCreateTableRequest(controller, workerName, database, table, engine, partitionByColumn,
+                                      columns, charsetName, collationName, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }

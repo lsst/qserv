@@ -44,43 +44,34 @@ namespace lsst::qserv::replica {
  */
 class SqlDeleteTableRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlDeleteTableRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<SqlDeleteTableRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param database The name of an existing database where the table is residing.
+     * @param tables The names of tables to be deleted.
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return a pointer to the created object
+     */
+    static std::shared_ptr<SqlDeleteTableRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, std::vector<std::string> const& tables,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     SqlDeleteTableRequest() = delete;
     SqlDeleteTableRequest(SqlDeleteTableRequest const&) = delete;
     SqlDeleteTableRequest& operator=(SqlDeleteTableRequest const&) = delete;
 
-    ~SqlDeleteTableRequest() final = default;
+    virtual ~SqlDeleteTableRequest() final = default;
 
     std::string const& database() const { return requestBody.database(); }
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param database The name of an existing database where the table is residing.
-     * @param tables The names of tables to be deleted.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return a pointer to the created object
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, std::vector<std::string> const& tables,
-                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
-                              bool keepTracking = true, std::string const& jobId = "",
-                              unsigned int requestExpirationIvalSec = 0);
-
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlDeleteTableRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

@@ -47,42 +47,33 @@ namespace lsst::qserv::replica {
  */
 class SqlDropIndexesRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlDropIndexesRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    SqlDropIndexesRequest() = delete;
-    SqlDropIndexesRequest(SqlDropIndexesRequest const&) = delete;
-    SqlDropIndexesRequest& operator=(SqlDropIndexesRequest const&) = delete;
-
-    ~SqlDropIndexesRequest() final = default;
+    typedef std::function<void(std::shared_ptr<SqlDropIndexesRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
      *
      * Class-specific parameters are documented below:
      * @param database The name of an existing database where the tables are residing.
      * @param tables The names of tables affected by the operation.
      * @param indexName The name of the index.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
+     * @see The very base class for the description of the common parameters of all subclasses.
      * @return A pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, std::vector<std::string> const& tables,
-                              std::string const& indexName, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<SqlDropIndexesRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, std::vector<std::string> const& tables, std::string const& indexName,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+
+    SqlDropIndexesRequest() = delete;
+    SqlDropIndexesRequest(SqlDropIndexesRequest const&) = delete;
+    SqlDropIndexesRequest& operator=(SqlDropIndexesRequest const&) = delete;
+
+    virtual ~SqlDropIndexesRequest() final = default;
 
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlDropIndexesRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

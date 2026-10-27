@@ -43,11 +43,12 @@ bool const disposeRequiredNo = false;
 
 namespace lsst::qserv::replica {
 
-StopRequest::Ptr StopRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                             string const& workerName, string const& targetRequestId,
-                                             CallbackType const& onFinish, int priority, bool keepTracking,
-                                             string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = StopRequest::Ptr(
+shared_ptr<StopRequest> StopRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                    string const& workerName, string const& targetRequestId,
+                                                    CallbackType const& onFinish, int priority,
+                                                    bool keepTracking, string const& jobId,
+                                                    unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<StopRequest>(
             new StopRequest(controller, workerName, targetRequestId, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;

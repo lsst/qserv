@@ -46,16 +46,29 @@ namespace lsst::qserv::replica {
  */
 class FindAllRequest : public Request {
 public:
-    typedef std::shared_ptr<FindAllRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<FindAllRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param database The name of a database.
+     * @param saveReplicaInfo The (optional) save-replica info in a database.
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<FindAllRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, bool saveReplicaInfo = true, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
 
     FindAllRequest() = delete;
     FindAllRequest(FindAllRequest const&) = delete;
     FindAllRequest& operator=(FindAllRequest const&) = delete;
 
-    ~FindAllRequest() final = default;
+    virtual ~FindAllRequest() final = default;
 
     std::string const& database() const { return _database; }
     bool saveReplicaInfo() const { return _saveReplicaInfo; }
@@ -67,35 +80,13 @@ public:
      */
     ReplicaInfoCollection const& responseData() const;
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param database The name of a database.
-     * @param saveReplicaInfo The (optional) save-replica info in a database.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return A pointer to the created object.
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, bool saveReplicaInfo = true,
-                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
-                              bool keepTracking = true, std::string const& jobId = "",
-                              unsigned int requestExpirationIvalSec = 0);
-
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
-    void savePersistentState(replica::Lock const& lock) final;
-    void awaken(boost::system::error_code const& ec) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual void savePersistentState(replica::Lock const& lock) final;
+    virtual void awaken(boost::system::error_code const& ec) final;
 
 private:
     FindAllRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

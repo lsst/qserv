@@ -47,16 +47,31 @@ namespace lsst::qserv::replica {
  */
 class EchoRequest : public Request {
 public:
-    typedef std::shared_ptr<EchoRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<EchoRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param data The data string to be echoed back by a worker.
+     * @param delay The execution time (milliseconds) of the request at worker.
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<EchoRequest> createAndStart(std::shared_ptr<Controller> const& controller,
+                                                       std::string const& workerName, std::string const& data,
+                                                       uint64_t delay, CallbackType const& onFinish = nullptr,
+                                                       int priority = PRIORITY_NORMAL,
+                                                       bool keepTracking = true,
+                                                       std::string const& jobId = "",
+                                                       unsigned int requestExpirationIvalSec = 0);
 
     EchoRequest() = delete;
     EchoRequest(EchoRequest const&) = delete;
     EchoRequest& operator=(EchoRequest const&) = delete;
 
-    ~EchoRequest() final = default;
+    virtual ~EchoRequest() final = default;
 
     std::string const& data() const { return _data; }
     uint64_t delay() const { return _delay; }
@@ -68,35 +83,13 @@ public:
      */
     std::string const& responseData() const;
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param data The data string to be echoed back by a worker.
-     * @param delay The execution time (milliseconds) of the request at worker.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return A pointer to the created object.
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& data, uint64_t delay, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
-
-    /// @see RequestI::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
-    void savePersistentState(replica::Lock const& lock) final;
-    void awaken(boost::system::error_code const& ec) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual void savePersistentState(replica::Lock const& lock) final;
+    virtual void awaken(boost::system::error_code const& ec) final;
 
 private:
     EchoRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
