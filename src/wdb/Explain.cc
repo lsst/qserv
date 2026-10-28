@@ -28,7 +28,6 @@
 // System headers
 #include <sstream>
 
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -38,7 +37,6 @@
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 
-
 using namespace std;
 
 namespace {
@@ -47,7 +45,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.Explain");
 }  // namespace
 
 namespace lsst::qserv::wdb {
-
 
 MYSQL_RES* Explain::_primeResult(string const& query) {
     bool queryOk = _mysqlConn->queryUnbuffered(query);
@@ -61,9 +58,6 @@ MYSQL_RES* Explain::_primeResult(string const& query) {
 }
 
 bool Explain::runQuery(std::string& errMsg) {
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) + "&&& start");
-
-
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool scanQuery = false;  // explain is not a scan query.
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, scanQuery, nullptr);
@@ -72,8 +66,8 @@ bool Explain::runQuery(std::string& errMsg) {
     if (!connOk) {
         errMsg += "initConnection failed";
         util::Error err(util::Error::WORKER_SQL_CONNECT, 0, errMsg);
-        _multiError.insert(err);
-        return false;
+        _resultElementMsg->multiError.insert(err);
+        return false;  // failure
     }
 
     // Run the query and send the results back.
@@ -93,7 +87,7 @@ bool Explain::_initConnection() {
         LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
         util::Error error(util::Error::WORKER_SQL_CONNECT, util::Error::NONE,
                           "Unable to connect to MySQL; " + localMySqlConfig.toString());
-        _multiError.insert(error);
+        _resultElementMsg->multiError.insert(error);
         return false;
     }
     return true;
@@ -103,26 +97,33 @@ class ChunkResourceRequestExplain {
 public:
     using Ptr = std::shared_ptr<ChunkResourceRequestExplain>;
 
-    ChunkResourceRequestExplain(shared_ptr<ChunkResourceMgr> const& mgr, string const& db,
-            int chunkId, shared_ptr<wbase::Task::DbTblsAndSubchunks> const& dbTblsAndSubchunks)
-    : _mgr(mgr), _db(db), _chunkId(chunkId), _dbTblsAndSubchunks(dbTblsAndSubchunks) {}
+    ChunkResourceRequestExplain(shared_ptr<ChunkResourceMgr> const& mgr, string const& db, int chunkId,
+                                int subchunkId, DbTableSet const& subchunkTables)
+            : _mgr(mgr),
+              _db(db),
+              _chunkId(chunkId),
+              _subchunkId(subchunkId),
+              _subchunkTables(subchunkTables) {}
 
     // Since each Task has only one subchunk, fragment number isn't needed.
     ChunkResource getResourceFragment() {
-        //&&&if (!_task.getFragmentHasSubchunks()) {
-        if (_dbTblsAndSubchunks->subchunksVect.size() <= 0) {
+        // Negative indicates no subchunks.
+        if (_subchunkId < 0) {
             /// Why acquire anything if there are no subchunks in the fragment?
             /// Future: Need to be certain this never happens before removing.
-            return _mgr->acquire(_db, _chunkId, _dbTblsAndSubchunks->dbTbls);
+            return _mgr->acquire(_db, _chunkId, _subchunkTables);
         }
-        return _mgr->acquire(_db, _chunkId, _dbTblsAndSubchunks->dbTbls, _dbTblsAndSubchunks->subchunksVect);
+        IntVector subchunkIdVect;
+        subchunkIdVect.push_back(_subchunkId);
+        return _mgr->acquire(_db, _chunkId, _subchunkTables, subchunkIdVect);
     }
 
 private:
     shared_ptr<ChunkResourceMgr> const _mgr;
     std::string const _db;
     int const _chunkId;
-    std::shared_ptr<wbase::Task::DbTblsAndSubchunks> _dbTblsAndSubchunks;
+    int const _subchunkId;
+    DbTableSet _subchunkTables;
 };
 
 bool Explain::_dispatchChannel(string& errMsg) {
@@ -134,21 +135,20 @@ bool Explain::_dispatchChannel(string& errMsg) {
     ChunkResource::Ptr cr;
     try {
         /// This is fine for a user requested explain, but for an automated czar request, it's expensive.
-        req.reset(new ChunkResourceRequestExplain(_chunkResourceMgr, _db, _chunkId, _dbTblsAndSubchunks));
+        req.reset(new ChunkResourceRequestExplain(_chunkResourceMgr, _db, _chunkId, _subchunkId,
+                                                  _subchunkTables));
         cr.reset(new ChunkResource(req->getResourceFragment()));
         string const& query = "ANALYZE FORMAT=JSON " + _queryString;
-        LOGS(_log, LOG_LVL_DEBUG, "&&& " << cName(__func__) << " sql start");
         MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
-        LOGS(_log, LOG_LVL_DEBUG, "&&& " << cName(__func__) << " sql end");
         needToFreeRes = true;
 
-        string resStr = printRes(query, res);
-        LOGS(_log, LOG_LVL_DEBUG, "&&& " << cName(__func__) << " resStr: " << resStr);
+        _resultElementMsg->explainResult = getJsonRes(query, res);
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " jsRes: " << _resultElementMsg->explainResult.dump());
     } catch (sql::SqlErrorObject const& e) {
         errMsg = e.errMsg() + " " + errMsg;
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " dispatchChannel " << errMsg);
         util::Error worker_err(util::Error::WORKER_SQL, e.errNo(), errMsg);
-        _multiError.insert(worker_err);
+        _resultElementMsg->multiError.insert(worker_err);
         erred = true;
     }
 
@@ -159,24 +159,12 @@ bool Explain::_dispatchChannel(string& errMsg) {
         // either case resources need to be freed.
         _mysqlConn->freeResult();
     }
-
-    // Transmit errors, if needed.
-    if (_multiError.size() > 0) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmitting error explain");
-        erred = true;
-        // Send results. This needs to happen after the error check.
-        // If any errors were found, send an error back.
-        //&&& _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
-        _sendError();
-    }
     return !erred;
 }
 
-void Explain::_sendError() {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Sending error explain &&&&");
-}
-
 std::string Explain::printRes(string const& query, MYSQL_RES* res) const {
+    // This get nicer looking output, but having a json result is desirable for the czar to eventually parse
+    // and use.
     if (res == nullptr) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " res is nullptr");
         return cName(__func__) + " res is nullptr";
@@ -187,18 +175,36 @@ std::string Explain::printRes(string const& query, MYSQL_RES* res) const {
     unsigned int num_fields = mysql_num_fields(res);
     MYSQL_FIELD* fields = mysql_fetch_fields(res);
     while ((row = mysql_fetch_row(res))) {
-        //&&&unsigned long* lengths = mysql_fetch_lengths(res);
-        os << " row[ ";
         for (unsigned int i = 0; i < num_fields; i++) {
             string fieldName = fields[i].name;
             string fieldValue = (row[i] ? row[i] : "NULL");
-            //&&&LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " field: " << fieldName << " value: " << fieldValue);
             os << "{ " << fieldName << "=" << fieldValue << " }";
         }
-        os << " ]";
     }
     return os.str();
 }
 
+nlohmann::json Explain::getJsonRes(std::string const& query, MYSQL_RES* res) const {
+    // This gets json output, but the result is loaded with '\"' and '\n', which is hard to read.
+    nlohmann::json jRes;
+    if (res == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " res is nullptr");
+        jRes["error"] = "res is nullptr";
+        return jRes;
+    }
+    MYSQL_ROW row;
+    unsigned int num_fields = mysql_num_fields(res);
+    MYSQL_FIELD* fields = mysql_fetch_fields(res);
+    while ((row = mysql_fetch_row(res))) {
+        nlohmann::json jRow;
+        for (unsigned int i = 0; i < num_fields; i++) {
+            string fieldName = fields[i].name;
+            string fieldValue = (row[i] ? row[i] : "NULL");
+            jRow[fieldName] = fieldValue;
+        }
+        jRes.push_back(jRow);
+    }
+    return jRes;
+}
 
-}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::wdb

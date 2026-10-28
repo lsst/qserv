@@ -125,6 +125,17 @@ BOOST_AUTO_TEST_CASE(PwHideJson) {
     std::cout << "out1=" << out1 << endl;
 
     BOOST_REQUIRE(out1 == expected1);
+
+    nlohmann::json const nested(
+            {{"outer",
+              {{"password", "nested secret"}, {"items", {{{"pw", "array secret"}}, {{"value", 1}}}}}},
+             {"admin_auth_key", "top-level secret"}});
+    nlohmann::json const expectedNested(
+            {{"outer", {{"password", "-"}, {"items", {{{"pw", "-"}}, {{"value", 1}}}}}},
+             {"admin_auth_key", "-"}});
+    auto const walked = pwHide.hideWalk(nested);
+    BOOST_REQUIRE(walked == expectedNested);
+    BOOST_CHECK(nested.at("outer").at("password") == "nested secret");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
