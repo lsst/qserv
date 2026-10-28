@@ -35,6 +35,7 @@
 #include "global/intTypes.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
+#include "protojson/QueryExplainMsg.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
@@ -45,65 +46,70 @@ class SqlConnMgr;
 
 namespace lsst::qserv::wdb {
 
-/** &&& doc
- *
+/** This class provides a mechanism to run an explain query on a worker and return the results in JSON format.
+ * The results of the query, add/or errors if there are problems, are put in _resultElementMsg and
+ * collected with getResultElementMsg().
+ * To run the query, it may be necessary to create temporary subchunk tables, which makes this
+ * significantly more complicated.
  */
 class Explain {
 public:
     using Ptr = std::shared_ptr<Explain>;
 
-    static Ptr create(ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                      mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                      std::string const& db, int chunkId,
-                      std::shared_ptr<wbase::Task::DbTblsAndSubchunks> dbTblsAndSubchunks,
-                      std::string const& userName, std::string const& queryString) {
-        return Ptr(new Explain(chunkResourceMgr, mySqlConfig, sqlConnMgr, db, chunkId, dbTblsAndSubchunks,
-                               userName, queryString));
+    static Ptr create(ChunkResourceMgr::Ptr const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
+                      std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, QueryId queryId,
+                      std::string const& db, int chunkId, int subchunkId, std::string const& userName,
+                      std::string const& queryString, DbTableSet const& subchunkTables) {
+        return Ptr(new Explain(chunkResourceMgr, mySqlConfig, sqlConnMgr, queryId, db, chunkId, subchunkId,
+                               userName, queryString, subchunkTables));
     }
 
-    Explain(ChunkResourceMgr::Ptr const& chunkResourceMgr,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::string const& db, int chunkId, std::shared_ptr<wbase::Task::DbTblsAndSubchunks> dbTblsAndSubchunks,
-            std::string const& userName, std::string const& queryString)
-    : _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig), _sqlConnMgr(sqlConnMgr),
-      _db(db), _chunkId(chunkId), _dbTblsAndSubchunks(dbTblsAndSubchunks), _userName(userName),
-      _queryString(queryString) {}
-    Explain(Explain const&) = delete;
+    Explain(ChunkResourceMgr::Ptr const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
+            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, QueryId queryId, std::string const& db,
+            int chunkId, int subchunkId, std::string const& userName, std::string const& queryString,
+            DbTableSet const& subchunkTables);
     Explain& operator=(Explain const&) = delete;
 
     std::string cName(const char* funcName) const {
         return "Explain::" + std::string(funcName) + " db=" + _db + " chunkId=" + std::to_string(_chunkId);
     }
 
-    /** &&& doc
+    /** Run the ANALYZE query and return true if successful.
      */
-    bool runQuery(std::string& errMsg);
+    std::tuple<bool, std::string> runQuery();
 
+    /** Returns the result of the explain query run by runQuery().
+     */
+    protojson::QueryExplainResultElementMsg::Ptr getResultElementMsg() const { return _resultElementMsg; }
+
+    /// Returns a reasonably clean string representation of the result of the explain query.
     std::string printRes(std::string const& query, MYSQL_RES* res) const;
+
+    /** Returns the result of the explain query in json format. Columns may vary.
+     * The output tends to result in values with escape characters which is difficult to read,
+     * but json format can be useful for czar parsing the results.
+     */
+    nlohmann::json getJsonRes(std::string const& query, MYSQL_RES* res) const;
 
 private:
     bool _initConnection();
-    bool _dispatchChannel(std::string& errStr);
+    std::tuple<bool, std::string> _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query);
 
-    void _sendError();
-
     ChunkResourceMgr::Ptr _chunkResourceMgr;
-
     mysql::MySqlConfig const _mySqlConfig;
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
-
+    QueryId const _queryId;
     std::string const _db;
     int const _chunkId;
+    int const _subchunkId;
+    std::string const _userName;
+    std::string const _queryString;
+    DbTableSet const _subchunkTables;
 
-    /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
-   std::shared_ptr<wbase::Task::DbTblsAndSubchunks> _dbTblsAndSubchunks;
-
-   std::string const _userName;
-   std::string const _queryString;
-
-    util::MultiError _multiError;
+    protojson::QueryExplainResultElementMsg::Ptr _resultElementMsg{
+            protojson::QueryExplainResultElementMsg::create()};
 };
 
 }  // namespace lsst::qserv::wdb

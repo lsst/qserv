@@ -26,12 +26,14 @@
 #include <vector>
 #include <unordered_map>
 
+// Third-party headers
 #include "nlohmann/json.hpp"
+
+#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "global/clock_defs.h"
 #include "http/MetaModule.h"
-#include "lsst/log/Log.h"
 #include "protojson/ChunkUseCountAnswerMsg.h"
 #include "protojson/UberJobReadyMsg.h"
 

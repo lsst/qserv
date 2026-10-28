@@ -28,6 +28,9 @@
 #include <vector>
 
 // Third party headers
+#include <boost/algorithm/string/replace.hpp>
+
+// LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
@@ -37,6 +40,7 @@
 #include "http/RequestBodyJSON.h"
 #include "mysql/MySqlUtils.h"
 #include "protojson/ChunkUseCountAnswerMsg.h"
+#include "protojson/QueryExplainMsg.h"
 #include "protojson/ResponseMsg.h"
 #include "protojson/UberJobMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
@@ -54,6 +58,7 @@
 #include "wcontrol/WCzarInfoMap.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/ResourceMonitor.h"
+#include "wdb/Explain.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wpublish/QueryStatistics.h"
@@ -97,6 +102,7 @@ json HttpWorkerCzarModule::executeImpl(string const& subModuleName) {
     enforceWorkerId(func);
     if (subModuleName == "/queryjob") return _queryJob();
     if (subModuleName == "/querystatus") return _queryStatus();
+    if (subModuleName == "/queryexplain") return _queryExplain();
     if (subModuleName == "/chunkusecounts") return _chunkUseCounts();
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
@@ -331,6 +337,59 @@ json HttpWorkerCzarModule::_handleChunkUseCounts(std::string const& func) {
     auto const dbChunkCountMap = queriesAndChunks->getDbChunkCountMap();
     auto answer = protojson::ChunkUseCountAnswerMsg::create(dbChunkCountMap);
     return answer->toJson();
+}
+
+json HttpWorkerCzarModule::_queryExplain() {
+    debug(__func__);
+    checkApiVersion(__func__, 62);
+    // At this point, API version, correct worker, and auth have been checked.
+    return _handleQueryExplain(__func__);
+}
+
+json HttpWorkerCzarModule::_handleQueryExplain(string const& func) {
+    auto explainResult = protojson::QueryExplainResultMsg::create();
+    json jsRet;
+
+    auto foremanPtr = foreman();
+
+    try {
+        auto const& jsReq = body().objJson;
+
+        auto explainMsg = protojson::QueryExplainMsg::createFromJson(jsReq);
+        if (!explainMsg) {
+            throw std::runtime_error("Failed to create QueryExplainMsg from JSON");
+        }
+
+        // Build and run the explain queries.
+        explainResult->queryId = explainMsg->queryId;
+        explainResult->dbName = explainMsg->dbName;
+        explainResult->chunkId = explainMsg->chunkId;
+        explainResult->subchunkId = explainMsg->subchunkId;
+        explainResult->explainSuccess = true;
+        for (string const& query : explainMsg->queries) {
+            string qs = query;
+            boost::algorithm::replace_all(qs, CHUNK_TAG, to_string(explainMsg->chunkId));
+            boost::algorithm::replace_all(qs, SUBCHUNK_TAG, to_string(explainMsg->subchunkId));
+            string const userName = wbase::Task::defaultUser;
+            auto explain = wdb::Explain::create(
+                    foremanPtr->chunkResourceMgr(), foremanPtr->mySqlConfig(), foremanPtr->sqlConnMgr(),
+                    explainMsg->queryId, explainMsg->dbName, explainMsg->chunkId, explainMsg->subchunkId,
+                    userName, qs, explainMsg->subchunkTables);
+
+            auto const [success, errMsg] = explain->runQuery();
+            explainResult->resultElements.push_back(explain->getResultElementMsg());
+            if (!success) {
+                LOGS(_log, LOG_LVL_ERROR, "explain->runQuery failed errMsg=" << errMsg);
+                explainResult->explainSuccess = false;
+                explainResult->note += errMsg + " ";
+            }
+        }
+    } catch (exception const& exp) {
+        // Put the error in the note.
+        explainResult->explainSuccess = false;
+        explainResult->note += string("QueryExplain error ") + exp.what() + " ";
+    }
+    return explainResult->toJson();
 }
 
 }  // namespace lsst::qserv::wcomms

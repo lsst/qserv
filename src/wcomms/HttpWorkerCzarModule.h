@@ -115,6 +115,13 @@ private:
     /// Return a json object containing how many tasks need to use or are using each database+chunkId
     /// combination. Only counts > 0 are included.
     nlohmann::json _handleChunkUseCounts(std::string const& func);
+
+    /// Verify some aspects of the query and call _handleQueryExplain.
+    nlohmann::json _queryExplain();
+
+    /// Analyze the query and return a json object containing information about how the query will be
+    /// executed.
+    nlohmann::json _handleQueryExplain(std::string const& func);
 };
 
 }  // namespace lsst::qserv::wcomms

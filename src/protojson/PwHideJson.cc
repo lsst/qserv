@@ -34,7 +34,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.PwHideJson");
 
 namespace lsst::qserv::protojson {
 
-// TODO Really need to make this recursive.
+// hideWalk is preferred as it's recursive.
 nlohmann::json PwHideJson::hide(nlohmann::json const& in) const {
     try {
         nlohmann::json js(in);
@@ -54,9 +54,30 @@ nlohmann::json PwHideJson::hide(nlohmann::json const& in) const {
     }
 }
 
+nlohmann::json PwHideJson::hideWalk(nlohmann::json const& in) const {
+    nlohmann::json js(in);
+    auto walk = [this](auto&& self, nlohmann::json& value) -> void {
+        if (value.is_object()) {
+            for (auto iter = value.begin(); iter != value.end(); ++iter) {
+                if (keySet.find(iter.key()) != keySet.end()) {
+                    *iter = mask;
+                } else {
+                    self(self, *iter);
+                }
+            }
+        } else if (value.is_array()) {
+            for (auto& element : value) {
+                self(self, element);
+            }
+        }
+    };
+    walk(walk, js);
+    return js;
+}
+
 nlohmann::json pwHide(nlohmann::json const& in) {
     PwHideJson phj;
-    return phj.hide(in);
+    return phj.hideWalk(in);
 }
 
 }  // namespace lsst::qserv::protojson

@@ -34,9 +34,16 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "global/intTypes.h"
+#include "util/MultiError.h"
 
 // Forward decl
+namespace lsst::qserv::protojson {
+class QueryExplainResultMsg;
+class WorkerContactInfo;
+}  // namespace lsst::qserv::protojson
+
 namespace lsst::qserv::qproc {
+class ChunkSpec;
 class QuerySession;
 }  // namespace lsst::qserv::qproc
 
@@ -53,12 +60,15 @@ public:
      *  @param userQueryId Unique string identifying query
      *  @param resultDb   Name of the database that will contain results.
      *  @param jsonFormat If true, output a single-column JSON document
+     *  @param czarId    CzarId of this czar
      */
     UserQueryExplain(std::shared_ptr<qproc::QuerySession> const& qSession, std::string const& userQueryId,
-                     std::string const& resultDb, bool jsonFormat);
+                     std::string const& resultDb, bool jsonFormat, CzarId czarId);
 
     UserQueryExplain(UserQueryExplain const&) = delete;
     UserQueryExplain& operator=(UserQueryExplain const&) = delete;
+
+    std::string cName(const char* fName) const;
 
     /// @return a non-empty string describing the current error state
     std::string getError() const override;
@@ -90,8 +100,20 @@ private:
     /// Gather query analysis info as JSON, one attribute per key.
     nlohmann::json _getQueryInfo() const;
 
+    /// Send the explain queries to an appropriate worker.
+    std::shared_ptr<protojson::QueryExplainResultMsg> _sendExplainQueryToWorker();
+
+    /** Locate an appropriate worker for the this query.
+     * @param respMsg The response message to populate with error info if no worker can be found.
+     * @param dbName The database name to use for the query.
+     * @param chunkId The chunk ID to use for the query.
+     */
+    std::shared_ptr<protojson::WorkerContactInfo> _getWorkerContactInfo(
+            std::shared_ptr<protojson::QueryExplainResultMsg> const& respMsg, std::string const& dbName,
+            int32_t chunkId, std::string const& fragment);
+
     /// Create and populate the result table. May throw; callers must not let that escape submit().
-    void _populateResultTable();
+    void _populateResultTable(std::shared_ptr<protojson::QueryExplainResultMsg> const& workerExplain);
 
     std::shared_ptr<qproc::QuerySession> _qSession;
     bool const _jsonFormat;
@@ -99,6 +121,7 @@ private:
     std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::string _resultTableName;
     std::string _resultDb;
+    CzarId _czarId;
 };
 
 }  // namespace lsst::qserv::ccontrol

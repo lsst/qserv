@@ -235,7 +235,7 @@ std::shared_ptr<UserQuery> _makeUserQueryExplain(std::string const& innerQuery, 
         return std::make_shared<UserQueryInvalid>(std::string("EXPLAIN analysis failed: ") + exc.what());
     }
 
-    return std::make_shared<UserQueryExplain>(qs, userQueryId, resultDb, jsonFormat);
+    return std::make_shared<UserQueryExplain>(qs, userQueryId, resultDb, jsonFormat, sharedResources->czarId);
 }
 
 /**
