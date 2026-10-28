@@ -71,16 +71,19 @@ void SqlRequest::extendedPrinter(Ptr const& ptr) {
 }
 
 SqlRequest::SqlRequest(shared_ptr<Controller> const& controller, std::string const& requestName,
-                       string const& workerName, uint64_t maxRows, int priority, bool keepTracking)
-        : Request(controller, requestName, workerName, priority, keepTracking, ::disposeRequired) {
+                       protocol::SqlRequestType type, string const& workerName, uint64_t maxRows,
+                       int priority, bool keepTracking)
+        : Request(controller, requestName, workerName, priority, keepTracking, ::disposeRequired),
+          requestType(type) {
     // Partial initialization of the request body's content. Other members
     // will be set in the request type-specific subclasses.
+    requestBody.set_type(protocol::toUnsignedInt(type));
     requestBody.set_max_rows(maxRows);
 }
 
 list<pair<string, string>> SqlRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
-    result.emplace_back("type", ProtocolRequestSql_Type_Name(requestBody.type()));
+    result.emplace_back("type", protocol::toString(requestType));
     result.emplace_back("max_rows", to_string(requestBody.max_rows()));
     result.emplace_back("query", requestBody.query());
     result.emplace_back("user", requestBody.user());

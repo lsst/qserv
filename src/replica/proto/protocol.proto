@@ -205,24 +205,7 @@ message ProtocolRequestSqlIndexColumn {
 // This message is sent once after the header for the 'SQL' request types
 message ProtocolRequestSql {
 
-    enum Type {
-        QUERY = 0;
-        CREATE_DATABASE = 1;
-        DROP_DATABASE = 2;
-        ENABLE_DATABASE = 3;    // in Qserv
-        DISABLE_DATABASE = 4;   // in Qserv
-        GRANT_ACCESS = 5;
-        CREATE_TABLE = 6;
-        DROP_TABLE = 7;
-        REMOVE_TABLE_PARTITIONING = 8;
-        DROP_TABLE_PARTITION = 9;
-        GET_TABLE_INDEX = 10;
-        CREATE_TABLE_INDEX = 11;
-        DROP_TABLE_INDEX = 12;
-        ALTER_TABLE = 13;
-        TABLE_ROW_STATS = 14;
-    }
-    required Type type = 6;
+    required uint32 type = 6;
 
     /// A limit for the maximum number of rows to be returned by a request.
     /// If the limit is exceeded then extended error code protocol::StatusExt::LARGE_RESULT

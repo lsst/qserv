@@ -28,6 +28,8 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/Performance.h"
 #include "replica/util/Mutex.h"
 
@@ -212,7 +214,8 @@ Connection::Ptr WorkerSqlRequest::_connector() const {
     // on a type of the request. For the sake of greater security, arbitrary
     // queries require a client to explicitly provide the credentials.
     // Otherwise, using credentials from the worker's configuration.
-    bool const clientCredentials = _request.type() == ProtocolRequestSql::QUERY;
+    bool const clientCredentials =
+            protocol::toSqlRequestType(_request.type()) == protocol::SqlRequestType::QUERY;
     auto connectionParams = serviceProvider()->config()->qservWorkerDbParams();
     if (clientCredentials) {
         connectionParams.user = _request.user();
@@ -224,36 +227,37 @@ Connection::Ptr WorkerSqlRequest::_connector() const {
 vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
     QueryGenerator const g(conn);
     vector<Query> queries;
-    switch (_request.type()) {
-        case ProtocolRequestSql::QUERY:
+    protocol::SqlRequestType const requestType = protocol::toSqlRequestType(_request.type());
+    switch (requestType) {
+        case protocol::SqlRequestType::QUERY:
             queries.emplace_back(Query(_request.query()));
             break;
-        case ProtocolRequestSql::CREATE_DATABASE: {
+        case protocol::SqlRequestType::CREATE_DATABASE: {
             bool const ifNotExists = true;
             string const query = g.createDb(_request.database(), ifNotExists);
             queries.emplace_back(Query(query));
             break;
         }
-        case ProtocolRequestSql::DROP_DATABASE: {
+        case protocol::SqlRequestType::DROP_DATABASE: {
             bool const ifExists = true;
             string const query = g.dropDb(_request.database(), ifExists);
             queries.emplace_back(Query(query));
             break;
         }
-        case ProtocolRequestSql::ENABLE_DATABASE: {
+        case protocol::SqlRequestType::ENABLE_DATABASE: {
             // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
             // if such entry already exists in the table.
             string const query = g.replace("qservw_worker", "Dbs", _request.database());
             queries.emplace_back(Query(query));
             break;
         }
-        case ProtocolRequestSql::DISABLE_DATABASE: {
+        case protocol::SqlRequestType::DISABLE_DATABASE: {
             string const where = g.where(g.eq("db", _request.database()));
             queries.emplace_back(Query(g.delete_(g.id("qservw_worker", "Chunks")) + where));
             queries.emplace_back(Query(g.delete_(g.id("qservw_worker", "Dbs")) + where));
             break;
         }
-        case ProtocolRequestSql::GRANT_ACCESS: {
+        case protocol::SqlRequestType::GRANT_ACCESS: {
             string const query = g.grant("ALL", _request.database(), _request.user(), "localhost");
             queries.emplace_back(Query(query));
             break;
@@ -270,8 +274,9 @@ vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
 Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table) const {
     QueryGenerator const g(conn);
     SqlId const databaseTable = g.id(_request.database(), table);
-    switch (_request.type()) {
-        case ProtocolRequestSql::CREATE_TABLE: {
+    protocol::SqlRequestType const requestType = protocol::toSqlRequestType(_request.type());
+    switch (requestType) {
+        case protocol::SqlRequestType::CREATE_TABLE: {
             list<SqlColDef> columns;
             for (int index = 0, num_columns = _request.columns_size(); index < num_columns; ++index) {
                 auto const column = _request.columns(index);
@@ -293,22 +298,22 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
             }
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::DROP_TABLE: {
+        case protocol::SqlRequestType::DROP_TABLE: {
             bool const ifExists = true;
             string const query = g.dropTable(databaseTable, ifExists);
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::DROP_TABLE_PARTITION: {
+        case protocol::SqlRequestType::DROP_TABLE_PARTITION: {
             bool const ifExists = true;
             string const query =
                     g.alterTable(databaseTable) + g.dropPartition(_request.transaction_id(), ifExists);
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: {
+        case protocol::SqlRequestType::REMOVE_TABLE_PARTITIONING: {
             string const query = g.alterTable(databaseTable) + g.removePartitioning();
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::CREATE_TABLE_INDEX: {
+        case protocol::SqlRequestType::CREATE_TABLE_INDEX: {
             string spec;
             if (_request.index_spec() != ProtocolRequestSql::DEFAULT) {
                 spec = ProtocolRequestSql_IndexSpec_Name(_request.index_spec());
@@ -323,19 +328,19 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
                                                _request.index_comment());
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::DROP_TABLE_INDEX: {
+        case protocol::SqlRequestType::DROP_TABLE_INDEX: {
             bool const ifExists = true;
             string const query = g.dropIndex(databaseTable, _request.index_name(), ifExists);
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::GET_TABLE_INDEX: {
+        case protocol::SqlRequestType::GET_TABLE_INDEX: {
             return Query(g.showIndexes(databaseTable));
         }
-        case ProtocolRequestSql::ALTER_TABLE: {
+        case protocol::SqlRequestType::ALTER_TABLE: {
             string const query = g.alterTable(databaseTable, _request.alter_spec());
             return Query(query, databaseTable.str);
         }
-        case ProtocolRequestSql::TABLE_ROW_STATS: {
+        case protocol::SqlRequestType::TABLE_ROW_STATS: {
             // The transaction identifier column is not required to be present in
             // the legacy catalogs (ingested w/o super-transactions), or in (the narrow) tables
             // in which the column was removed to save disk space. The query generator
@@ -359,9 +364,8 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
             return Query(query);
         }
         default:
-            throw invalid_argument(
-                    "WorkerSqlRequest::" + string(__func__) +
-                    "  not the table-scope request type: " + ProtocolRequestSql_Type_Name(_request.type()));
+            throw invalid_argument("WorkerSqlRequest::" + string(__func__) +
+                                   "  not the table-scope request type: " + protocol::toString(requestType));
     }
 }
 

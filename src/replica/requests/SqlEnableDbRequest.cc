@@ -22,13 +22,12 @@
 // Class header
 #include "replica/requests/SqlEnableDbRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlEnableDbRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
@@ -49,17 +48,14 @@ SqlEnableDbRequest::Ptr SqlEnableDbRequest::createAndStart(shared_ptr<Controller
 SqlEnableDbRequest::SqlEnableDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        std::string const& database, CallbackType const& onFinish,
                                        int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_ENABLE_DATABASE", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_ENABLE_DATABASE", protocol::SqlRequestType::ENABLE_DATABASE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::ENABLE_DATABASE);
     requestBody.set_database(database);
 }
 
 void SqlEnableDbRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlEnableDbRequest>(lock, _onFinish);
 }
 
