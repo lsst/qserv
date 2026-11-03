@@ -209,9 +209,12 @@ json WorkerHttpRequest::toJson(bool includeResultIfFinished) const {
             break;
     }
 
-    // No thread synchronization is needed to read the data of a request in the final state
-    // of SUCCESS because the request and its result are expected to be immutable by design.
-    bool const resultIsAvailable = (includeResultIfFinished && status == protocol::Status::SUCCESS);
+    // No thread synchronization is needed to read the data of a request in a final state
+    // because the request and its result are expected to be immutable by design.
+    bool const resultIsAvailable =
+            includeResultIfFinished &&
+            (status == protocol::Status::SUCCESS ||
+             (status == protocol::Status::FAILED && extendedStatus == protocol::StatusExt::MULTIPLE));
 
     json req = _hdr.toJson();
     req["params"] = _params.toJson();

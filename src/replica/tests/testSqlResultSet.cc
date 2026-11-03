@@ -189,12 +189,8 @@ BOOST_AUTO_TEST_CASE(SqlResultSetFromJson) {
     resultSetJson = json::object();
     resultSetJson["scope"] = "db.empty";
     resultSetJson["result_set"] = json::object();
-    resultSetJson["result_set"]["status_ext"] = protocol::StatusExt::MYSQL_ERROR;
+    resultSetJson["result_set"]["status_ext"] = protocol::StatusExt::NOT_PARTITIONED_TABLE;
     resultSetJson["result_set"]["error"] = "query failed";
-    resultSetJson["result_set"]["char_set_name"] = "utf8mb4";
-    resultSetJson["result_set"]["has_result"] = 0;
-    resultSetJson["result_set"]["fields"] = json::array();
-    resultSetJson["result_set"]["rows"] = json::array();
 
     resultSetsJson.push_back(resultSetJson);
 
@@ -246,14 +242,16 @@ BOOST_AUTO_TEST_CASE(SqlResultSetFromJson) {
 
     auto const& errorResult = result.queryResultSet.at("db.empty");
     BOOST_CHECK(!errorResult.hasResult);
-    BOOST_CHECK(errorResult.extendedStatus == protocol::StatusExt::MYSQL_ERROR);
+    BOOST_CHECK(errorResult.extendedStatus == protocol::StatusExt::NOT_PARTITIONED_TABLE);
     BOOST_CHECK_EQUAL(errorResult.error, "query failed");
+    BOOST_CHECK(errorResult.charSetName.empty());
     BOOST_CHECK(errorResult.fields.empty());
     BOOST_CHECK(errorResult.rows.empty());
 
     BOOST_CHECK(result.hasErrors());
-    BOOST_CHECK_EQUAL(result.firstError(), "db.empty:MYSQL_ERROR:query failed");
-    BOOST_CHECK((result.allErrors() == vector<string>{"db.empty:MYSQL_ERROR:query failed"}));
+    BOOST_CHECK(result.allErrorsOf(protocol::StatusExt::NOT_PARTITIONED_TABLE));
+    BOOST_CHECK_EQUAL(result.firstError(), "db.empty:NOT_PARTITIONED_TABLE:query failed");
+    BOOST_CHECK((result.allErrors() == vector<string>{"db.empty:NOT_PARTITIONED_TABLE:query failed"}));
 
     LOGS_INFO("SqlResultSet JSON initialization test ends");
 }
