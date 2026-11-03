@@ -197,13 +197,17 @@ SqlResultSet::ResultSet::ResultSet(nlohmann::json const& result,
                                    http::BinaryEncodingMode binaryEncodingMode) {
     extendedStatus = protocol::toStatusExt(result.at("status_ext").get<unsigned int>());
     error = result.at("error").get<string>();
-    charSetName = result.at("char_set_name").get<string>();
-    hasResult = result.at("has_result").get<int>() != 0;
-    for (auto const& fieldJson : result.at("fields")) {
-        fields.emplace_back(fieldJson);
+    charSetName = result.value("char_set_name", string());
+    hasResult = result.value("has_result", 0) != 0;
+    if (result.contains("fields")) {
+        for (auto const& fieldJson : result.at("fields")) {
+            fields.emplace_back(fieldJson);
+        }
     }
-    for (auto const& rowJson : result.at("rows")) {
-        rows.emplace_back(rowJson, binaryEncodingMode);
+    if (result.contains("rows")) {
+        for (auto const& rowJson : result.at("rows")) {
+            rows.emplace_back(rowJson, binaryEncodingMode);
+        }
     }
 }
 

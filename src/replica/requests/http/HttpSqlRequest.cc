@@ -117,9 +117,8 @@ void HttpSqlRequest::analyze(shared_ptr<http::AsyncReq> req, string error) {
     if (!success) return;
 
     // Parse the message and extract request status and metadata. Any failure will be interpreted
-    // as a client error. Note that the result of the request is contained in the "result" field
-    // of the response. The result is extracted only if the request successfully finished
-    // with protocol::Status::SUCCESS.
+    // as a client error. The result is extracted for successful requests and failed batches, which
+    // may contain per-table errors needed by the caller.
     protocol::Status status;
     try {
         json const& resp = message.at("resp");
@@ -131,17 +130,24 @@ void HttpSqlRequest::analyze(shared_ptr<http::AsyncReq> req, string error) {
         finish(lock, CLIENT_ERROR);
         return;
     }
-    switch (status) {
-        case protocol::Status::SUCCESS:
-            try {
-                _responseData.set(message.at("resp").at("result"), _binaryEncodingMode);
+    bool const resultIsAvailable =
+            status == protocol::Status::SUCCESS ||
+            (status == protocol::Status::FAILED && extendedServerStatus() == protocol::StatusExt::MULTIPLE);
+    if (resultIsAvailable) {
+        try {
+            _responseData.set(message.at("resp").at("result"), _binaryEncodingMode);
+            if (status == protocol::Status::SUCCESS) {
                 _responseData.performanceSec =
                         (util::TimeUtils::now() - performance(lock).c_create_time) / 1000.;
-            } catch (exception const& ex) {
-                LOGS(_log, LOG_LVL_ERROR, context() << __func__ << " failed to parse result: " << ex.what());
-                finish(lock, CLIENT_ERROR);
-                return;
             }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_ERROR, context() << __func__ << " failed to parse result: " << ex.what());
+            finish(lock, CLIENT_ERROR);
+            return;
+        }
+    }
+    switch (status) {
+        case protocol::Status::SUCCESS:
             finish(lock, SUCCESS);
             break;
         case protocol::Status::CREATED:

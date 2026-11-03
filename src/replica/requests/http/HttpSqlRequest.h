@@ -58,8 +58,8 @@ namespace lsst::qserv::replica {
  * the controller-worker protocol and they are executed by the the worker-side
  * framework.
  *
- * In case of a successful completion of a request an object of this request class
- * will receive a result set (if any) of the query.
+ * Successful requests and failed batch requests with per-table errors return a
+ * result set (if any) to an object of this request class.
  */
 class HttpSqlRequest : public HttpRequest {
 public:
@@ -79,8 +79,8 @@ public:
     std::uint64_t maxRows() const { return _maxRows; }
 
     /**
-     * @note This operation will return a sensible result only if the operation
-     *  finishes with status FINISHED::SUCCESS
+     * @note Failed batch requests with extended status MULTIPLE may also contain
+     *  per-table results and errors.
      * @return a reference to a result obtained from a remote service.
      */
     SqlResultSet const& responseData() const;
