@@ -11,7 +11,7 @@ current — but the code always wins. Please update them alongside code changes.
 | [worker.md](worker.md) | Worker internals: task building, shared-scan scheduling, subchunk handling, result files, worker↔czar status protocol |
 | [replication-ingest.md](replication-ingest.md) | The replication/ingest control plane: controller, registry, replica workers, ingest transactions, director index |
 | [metadata-and-state.md](metadata-and-state.md) | Who stores what: CSS, QMeta, worker inventory, replication DB, director index, smig migrations |
-| [deployment.md](deployment.md) | Images, compose, Helm chart, qserv-deployments/Argo CD, **the PVC hazard** |
+| [deployment.md](deployment.md) | Images, compose, Helm chart, qserv-deployments/Argo CD, MariaDB major-version upgrades, **the PVC hazard** |
 | [build-and-test.md](build-and-test.md) | Containerized build, test layers, CI, release versioning |
 
 ## What Qserv is
