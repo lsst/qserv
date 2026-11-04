@@ -216,10 +216,10 @@ public:
     // -- Record input/output ----
 
     /// Set the input record to the first line in `[begin, end)` and return a
-    /// pointer to the first character of the following line or `end`. The
-    /// input line must remain live until the next call to `readRecord()`
-    /// or editor destruction, whichever comes first. Raw input is never
-    /// modified.
+    /// pointer to the first character of the following line or `end`. Returns
+    /// `nullptr` if the remaining input contains only line terminators. The
+    /// input line must remain live until the next call to `readRecord()` or
+    /// editor destruction, whichever comes first. Raw input is never modified.
     char const* readRecord(char const* begin, char const* end);
 
     /// Write the combination of the current input fields and any edits

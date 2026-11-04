@@ -411,13 +411,23 @@ char const* Editor::readRecord(char const* const begin, char const* const end) {
                 "Calling readRecord() is illegal unless at "
                 "least one CSV input field has been defined.");
     }
+
+    char const* recordBegin = begin;
+    while (recordBegin < end && (*recordBegin == '\n' || *recordBegin == '\r')) {
+        char const lineEnding = *recordBegin++;
+        if (lineEnding == '\r' && recordBegin < end && *recordBegin == '\n') {
+            ++recordBegin;
+        }
+    }
+    if (recordBegin == end) return nullptr;
+
     bool quoted = false;
     bool escaped = false;
     bool decode = false;
     Field* f = _fields.get();
     Field* fend = f + _numInputFields;
-    f->inputValue = begin;
-    char const* cur = begin;
+    f->inputValue = recordBegin;
+    char const* cur = recordBegin;
     for (; cur < end; ++cur) {
         char const c = *cur;
         if (c == '\n' || c == '\r') {
@@ -493,7 +503,7 @@ char const* Editor::readRecord(char const* const begin, char const* const end) {
     if (f + 1 != fend) {
         throw std::runtime_error(
                 "CSV record contains less than the expected "
-                "number of fields.");
+                "number of fields");
     }
     ptrdiff_t sz = cur - f->inputValue;
     if (sz > MAX_FIELD_SIZE) {

@@ -122,7 +122,7 @@ void ObjectIndex::open(string const& url, csv::Dialect const& dialect) {
         editor.setNull(idField);
         editor.setNull(idChunkIdField);
         editor.setNull(idSubChunkIdField);
-        editor.readRecord(line.data(), line.data() + line.size());
+        if (editor.readRecord(line.data(), line.data() + line.size()) == nullptr) continue;
         string const id = editor.get(idField, true);
         int32_t const chunkId = editor.get<int32_t>(idChunkIdField);
         int32_t const subChunkId = editor.get<int32_t>(idSubChunkIdField);

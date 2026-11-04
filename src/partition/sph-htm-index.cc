@@ -153,6 +153,7 @@ void Worker::map(char const* const begin, char const* const end, Worker::Silo& s
     char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
+        if (cur == nullptr) break;
         k.id = _editor.get<int64_t>(_idField);
         sc.first = _editor.get<double>(_pos.first);
         sc.second = _editor.get<double>(_pos.second);
