@@ -170,7 +170,21 @@ BOOST_AUTO_TEST_CASE(EditorTest) {
 
     char const* blankLines = "\r\n\n\r";
     char const* blankLinesEnd = blankLines + strlen(blankLines);
-    BOOST_CHECK(ed.readRecord(blankLines, blankLinesEnd) == blankLinesEnd);
+    BOOST_CHECK(ed.readRecord(blankLines, blankLinesEnd) == nullptr);
+
+    char const* trailingBlankLines = "10000|3.1415926\r\n\r\n";
+    char const* trailingBlankLinesEnd = trailingBlankLines + strlen(trailingBlankLines);
+    char const* cur = trailingBlankLines;
+    Editor trailingLinesEditor(d, d, inames, inames);
+    string output;
+    char buf[MAX_LINE_SIZE];
+    while (cur < trailingBlankLinesEnd) {
+        cur = trailingLinesEditor.readRecord(cur, trailingBlankLinesEnd);
+        if (cur == nullptr) break;
+        char* const outEnd = trailingLinesEditor.writeRecord(buf);
+        output.append(buf, outEnd);
+    }
+    BOOST_CHECK_EQUAL(output, "10000|3.1415926\n");
 
     char const* r = "10000|3.1415926\r\n";
     char const* e = r + strlen(r);
@@ -185,7 +199,6 @@ BOOST_AUTO_TEST_CASE(EditorTest) {
     BOOST_CHECK_EQUAL(ed.get<long long>(0), 10000);
     BOOST_CHECK_EQUAL(ed.get<float>(1), 3.1415926f);
     BOOST_CHECK_EQUAL(ed.get<double>("bar"), 3.1415926);
-    char buf[8];
     buf[0] = '\0';
     BOOST_CHECK(ed.writeRecord(buf) == buf + 1);
     BOOST_CHECK_EQUAL(buf[0], '\n');

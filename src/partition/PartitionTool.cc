@@ -135,6 +135,7 @@ void PartitionTool::Worker::map(char const* const begin, char const* const end,
     char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
+        if (cur == nullptr) break;
         if (_pos.first != -1) {
             // RA/DEC partitioning for the director or child tables. Allowing overlaps and
             // the "secondary" index generation (if requested).
