@@ -337,6 +337,7 @@ void Worker::map(char const* const begin, char const* const end, Worker::Silo& s
     char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
+        if (cur == nullptr) break;
         // Extract positions.
         std::pair<double, double> sc;
         for (PosIter p = _pos.begin(), pe = _pos.end(); p != pe; ++p) {
