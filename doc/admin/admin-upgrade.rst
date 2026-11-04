@@ -28,3 +28,11 @@ To upgrade your Qserv installation to MariaDB 11.4.4, follow these steps:
 
 Experiments with the production databases at USDF (SLAC) have shown that the upgrade process is safe and reliable.
 However, it is still recommended to make a backup of your data before proceeding with the upgrade.
+
+.. note::
+
+   On Kubernetes deployments made with the Qserv Helm chart, this manual per-container
+   procedure is superseded by the chart's ``mode: mariadb-upgrade``, which runs the
+   upgrade in place on each MariaDB pod (with its own data volume already attached) and
+   records a machine-readable completion marker on each volume. See the
+   *MariaDB major-version upgrades* section of ``doc/architecture/deployment.md``.

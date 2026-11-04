@@ -8,7 +8,17 @@ mariadbImagePullPolicy: IfNotPresent
 sslProxyImagePullPolicy: IfNotPresent
 ingestHelperPullPolicy: IfNotPresent
 
-mode: full  # full | db-only
+# full            - the whole system
+# db-only         - MariaDB server containers only (maintenance)
+# mariadb-upgrade - MariaDB server containers only, running mariadb-upgrade in place on each data volume
+mode: full
+
+mariadbUpgrade:
+  # Re-run the upgrade on volumes whose completion marker already records a result for the running server
+  # version. Only consulted in "mariadb-upgrade" mode. Markers from an earlier server version never need
+  # this -- they are ignored automatically. Use it to retry after investigating a recorded failure.
+  force: false
+
 podManagementPolicy: Parallel  # Parallel | OrderedReady
 
 czars:
