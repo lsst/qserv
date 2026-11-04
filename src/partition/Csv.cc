@@ -419,7 +419,7 @@ char const* Editor::readRecord(char const* const begin, char const* const end) {
             ++recordBegin;
         }
     }
-    if (recordBegin == end) return end;
+    if (recordBegin == end) return nullptr;
 
     bool quoted = false;
     bool escaped = false;

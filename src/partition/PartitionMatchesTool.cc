@@ -296,6 +296,7 @@ void PartitionMatchesTool::Worker::_mapByObjectIndex(char const* const begin, ch
     char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
+        if (cur == nullptr) break;
         bool null1 = _editor.isNull(_id1Field);
         if (!null1) {
             id1 = _editor.get(_id1Field, true);
@@ -362,6 +363,7 @@ void PartitionMatchesTool::Worker::_mapByRaDec(char const* const begin, char con
     char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
+        if (cur == nullptr) break;
         ChunkLocation loc1, loc2;
         bool const null1 = _editor.isNull(_pos1.first) || _editor.isNull(_pos1.second);
         bool const null2 = _editor.isNull(_pos2.first) || _editor.isNull(_pos2.second);

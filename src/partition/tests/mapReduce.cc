@@ -140,6 +140,7 @@ public:
         Key k;
         while (beg < end) {
             beg = _editor.readRecord(beg, end);
+            if (beg == nullptr) break;
             k.line = _editor.get<uint32_t>(0);
             silo.add(k, _editor);
             _lines->markMapped(k.line);
