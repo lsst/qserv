@@ -60,6 +60,12 @@ spec:
                 secretKeyRef:
                   name: czar-secrets
                   key: mariadb-root-password
+          {{- if include "qserv.mariadbUpgrade" . }}
+          command: ["bash", "-c"]
+          args:
+            - |
+              {{- include "qserv.mariadbUpgradeScript" . | nindent 14 }}
+          {{- end }}
           startupProbe:
             exec:
               command:
@@ -88,6 +94,12 @@ spec:
                   mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
             periodSeconds: 10
             timeoutSeconds: 3
+            {{- if include "qserv.mariadbUpgrade" . }}
+            # Be patient while mariadb-upgrade runs: a heavy MyISAM REPAIR TABLE could
+            # starve a few consecutive pings, and killing the container mid-repair is
+            # far worse than a late restart.
+            failureThreshold: 30
+            {{- end }}
           volumeMounts:
             - name: mariadb-config
               mountPath: /etc/mysql/conf.d/99-qserv-czar.cnf
