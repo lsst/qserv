@@ -2436,3 +2436,44 @@ BOOST_AUTO_TEST_SUITE_END()
 //  WHERE ABS(o1.decl-o2.decl) < 0.001
 //      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001
 //      AND o1.id != o2.id;
+
+BOOST_FIXTURE_TEST_SUITE(JoinRendering, QueryAnaFixture)
+
+BOOST_AUTO_TEST_CASE(CommaAfterJoin) {
+    // ON and USING in comma groups
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST",
+                                            {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+                                             {"Source", {"objectIdSourceTest"}},
+                                             {"Filter", {"filterId"}}}}}));
+    for (std::string const join : {"JOIN", "LEFT JOIN"}) {
+        BOOST_TEST_CONTEXT(join) {
+            auto qs = queryAnaHelper.buildQuerySession(
+                    qsTest, "SELECT o.objectIdObjTest FROM Object o " + join +
+                                    " Source s ON o.objectIdObjTest=s.objectIdSourceTest, "
+                                    "Filter JOIN Filter f USING(filterId), Object p "
+                                    "WHERE o.objectIdObjTest=p.objectIdObjTest");
+            BOOST_REQUIRE(qs->getError().empty());
+            BOOST_REQUIRE(qs->getPreFlightStmt() != nullptr);
+            for (auto const& [suffix, sql] : std::vector<std::pair<std::string, std::string>>{
+                         {"", qs->getPreFlightStmt()->getQueryTemplate().sqlFragment()},
+                         {"_100", queryAnaHelper.buildFirstParallelQuery()}}) {
+                BOOST_TEST_CONTEXT(sql) {
+                    std::string const expected =
+                            "`LSST`.`Object" + suffix + "` AS `o` " +
+                            (join == "LEFT JOIN" ? "LEFT OUTER JOIN" : "JOIN") + " `LSST`.`Source" + suffix +
+                            "` AS `s` ON `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`," +
+                            "`LSST`.`Filter` AS `LSST.Filter` JOIN `LSST`.`Filter` AS `f` "
+                            "USING(`filterId`)," +
+                            "`LSST`.`Object" + suffix + "` AS `p`";
+                    auto const from = sql.find(" FROM ");
+                    BOOST_REQUIRE(from != std::string::npos);
+                    auto const fromClause = sql.substr(from + 6);
+                    BOOST_CHECK_EQUAL(fromClause.substr(0, fromClause.find(" WHERE ")), expected);
+                }
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()

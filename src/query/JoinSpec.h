@@ -23,7 +23,7 @@
 /**
  * @file
  *
- * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
+ * @brief Specification of JOIN conditions with ON or USING.
  *
  * @author Daniel L. Wang, SLAC
  */
@@ -86,6 +86,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, JoinSpec const* js);
 
 private:
+    void _validate() const;
+
     std::shared_ptr<ColumnRef> _usingColumn;
     std::shared_ptr<BoolTerm> _onTerm;
 };
