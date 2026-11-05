@@ -34,6 +34,7 @@
 // System headers
 #include <algorithm>
 #include <sstream>
+#include <utility>
 #include <stdexcept>
 
 // Qserv headers
@@ -91,20 +92,8 @@ public:
 /// the same action may be used in the parallel and merging phases.
 class AccumulateOp : public AggOp {
 public:
-    typedef enum { MIN, MAX, SUM } Type;
-    explicit AccumulateOp(AggOp::Mgr& mgr, Type t) : AggOp(mgr) {
-        switch (t) {
-            case MIN:
-                accName = "MIN";
-                break;
-            case MAX:
-                accName = "MAX";
-                break;
-            case SUM:
-                accName = "SUM";
-                break;
-        }
-    }
+    /// @param accName_ the aggregate's SQL name, used for both phases
+    explicit AccumulateOp(AggOp::Mgr& mgr, std::string accName_) : AggOp(mgr), accName(std::move(accName_)) {}
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
         AggRecord::Ptr arp = std::make_shared<AggRecord>();
@@ -176,9 +165,12 @@ AggOp::Mgr::Mgr() : _hasAggregate(false) {
     // Load the map
     _map["COUNT"].reset(new CountAggOp(*this));
     _map["AVG"].reset(new AvgAggOp(*this));
-    _map["MAX"].reset(new AccumulateOp(*this, AccumulateOp::MAX));
-    _map["MIN"].reset(new AccumulateOp(*this, AccumulateOp::MIN));
-    _map["SUM"].reset(new AccumulateOp(*this, AccumulateOp::SUM));
+    _map["MAX"].reset(new AccumulateOp(*this, "MAX"));
+    _map["MIN"].reset(new AccumulateOp(*this, "MIN"));
+    _map["SUM"].reset(new AccumulateOp(*this, "SUM"));
+    _map["BIT_AND"].reset(new AccumulateOp(*this, "BIT_AND"));
+    _map["BIT_OR"].reset(new AccumulateOp(*this, "BIT_OR"));
+    _map["BIT_XOR"].reset(new AccumulateOp(*this, "BIT_XOR"));
     _seq = 0;  // Note: accessor return ++_seq
 }
 
