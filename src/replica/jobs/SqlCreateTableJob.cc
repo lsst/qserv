@@ -28,7 +28,11 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlCreateTableRequest.h"
+#else
 #include "replica/requests/SqlCreateTableRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -37,31 +41,30 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTableJob");
-
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlCreateTableJob::typeName() { return "SqlCreateTableJob"; }
 
-SqlCreateTableJob::Ptr SqlCreateTableJob::create(string const& database, string const& table,
-                                                 string const& engine, string const& partitionByColumn,
-                                                 list<SqlColDef> const& columns, string const& charsetName,
-                                                 string const& collationName, bool allWorkers,
-                                                 Controller::Ptr const& controller, string const& parentJobId,
-                                                 CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlCreateTableJob(database, table, engine, partitionByColumn, columns, charsetName,
-                                     collationName, allWorkers, controller, parentJobId, onFinish, priority));
+shared_ptr<SqlCreateTableJob> SqlCreateTableJob::create(
+        string const& database, string const& table, string const& engine, string const& partitionByColumn,
+        list<SqlColDef> const& columns, string const& charsetName, string const& collationName,
+        bool allWorkers, shared_ptr<Controller> const& controller, string const& parentJobId,
+        CallbackType const& onFinish, int priority) {
+    return shared_ptr<SqlCreateTableJob>(
+            new SqlCreateTableJob(database, table, engine, partitionByColumn, columns, charsetName,
+                                  collationName, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 SqlCreateTableJob::SqlCreateTableJob(string const& database, string const& table, string const& engine,
                                      string const& partitionByColumn, list<SqlColDef> const& columns,
                                      string const& charsetName, string const& collationName, bool allWorkers,
-                                     Controller::Ptr const& controller, string const& parentJobId,
+                                     shared_ptr<Controller> const& controller, string const& parentJobId,
                                      CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_CREATE_TABLE", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_CREATE_TABLE", priority),
           _database(database),
           _table(table),
           _engine(engine),
@@ -84,20 +87,37 @@ list<pair<string, string>> SqlCreateTableJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlCreateTableJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                        size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already
-    // launched earlier
-    list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlCreateTableJob::launchRequests(replica::Lock const& lock,
+                                                                   string const& worker,
+                                                                   size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
+list<shared_ptr<SqlRequest>> SqlCreateTableJob::launchRequests(replica::Lock const& lock,
+                                                               string const& worker,
+                                                               size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
+#endif
+    // Launch exactly one request per worker unless it was already launched earlier
+    if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
         bool const keepTracking = true;
-        requests.push_back(SqlCreateTableRequest::createAndStart(
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlCreateTableRequest::createAndStart(
                 controller(), worker, database(), table(), engine(), partitionByColumn(), columns(),
                 charsetName(), collationName(),
-                [self = shared_from_base<SqlCreateTableJob>()](SqlCreateTableRequest::Ptr const& request) {
+                [self = shared_from_base<SqlCreateTableJob>()](
+                        shared_ptr<HttpSqlCreateTableRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#else
+        requests.push_back(SqlCreateTableRequest::createAndStart(
+                controller(), worker, database(), table(), engine(), partitionByColumn(), columns(),
+                charsetName(), collationName(),
+                [self = shared_from_base<SqlCreateTableJob>()](
+                        shared_ptr<SqlCreateTableRequest> const& request) { self->onRequestFinish(request); },
+                priority(), keepTracking, id()));
+#endif
         _workers.insert(worker);
     }
     return requests;

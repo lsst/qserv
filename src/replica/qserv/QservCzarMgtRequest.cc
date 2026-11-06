@@ -33,8 +33,8 @@ using namespace std;
 
 namespace lsst::qserv::replica {
 
-QservCzarMgtRequest::QservCzarMgtRequest(ServiceProvider::Ptr const& serviceProvider, string const& type,
-                                         string const& czarName)
+QservCzarMgtRequest::QservCzarMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
+                                         string const& type, string const& czarName)
         : QservMgtRequest(serviceProvider, type, "czar", czarName), _czarName(czarName) {}
 
 http::AsyncReq::GetHostPort QservCzarMgtRequest::getHostPortTracker() const {

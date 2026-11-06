@@ -102,7 +102,7 @@ std::map<Status, const std::string> responseStringsByCode = {
         {STATUS_NOT_IMPL, "Not Implemented"},
         {STATUS_BAD_GATEWAY, "Bad Gateway"},
         {STATUS_SERVICE_UNAVAIL, "Service Unavailable"},
-        {STATUS_GSATEWAY_TIMEOUT, "Gateway Timeout"},
+        {STATUS_GATEWAY_TIMEOUT, "Gateway Timeout"},
         {STATUS_UNDSUPPORT_VERSION, "HTTP Version Not Supported"},
         {STATUS_VARIANT_NEGOTIATES, "Variant Also Negotiates"},
         {STATUS_NO_STORAGE, "Insufficient Storage"},

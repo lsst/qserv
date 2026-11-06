@@ -22,12 +22,17 @@
 #define LSST_QSERV_REPLICA_WORKERECHOREQUEST_H
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <string>
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerRequest.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -39,8 +44,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerEchoRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerEchoRequest> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -61,18 +64,20 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestEcho const& request);
+    static std::shared_ptr<WorkerEchoRequest> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                     std::string const& worker, std::string const& id,
+                                                     int priority, ExpirationCallbackType const& onExpired,
+                                                     unsigned int requestExpirationIvalSec,
+                                                     ProtocolRequestEcho const& request);
 
     WorkerEchoRequest() = delete;
     WorkerEchoRequest(WorkerEchoRequest const&) = delete;
     WorkerEchoRequest& operator=(WorkerEchoRequest const&) = delete;
 
-    ~WorkerEchoRequest() override = default;
+    virtual ~WorkerEchoRequest() override = default;
 
     std::string const& data() const { return _request.data(); }
-    uint64_t delay() const { return _request.delay(); }
+    std::uint64_t delay() const { return _request.delay(); }
 
     /**
      * Extract request status into the Protobuf response object.
@@ -80,10 +85,10 @@ public:
      */
     void setInfo(ProtocolResponseEcho& response) const;
 
-    bool execute() override;
+    virtual bool execute() override;
 
 protected:
-    WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    WorkerEchoRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                       std::string const& id, int priority, ExpirationCallbackType const& onExpired,
                       unsigned int requestExpirationIvalSec, ProtocolRequestEcho const& request);
 
@@ -91,7 +96,7 @@ protected:
     ProtocolRequestEcho const _request;
 
     /// The amount of the initial delay which is still left
-    uint64_t _delayLeft;
+    std::uint64_t _delayLeft;
 };
 
 }  // namespace lsst::qserv::replica

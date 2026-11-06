@@ -42,18 +42,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerEchoRequest");
 
 namespace lsst::qserv::replica {
 
-WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                 string const& worker, string const& id, int priority,
-                                                 ExpirationCallbackType const& onExpired,
-                                                 unsigned int requestExpirationIvalSec,
-                                                 ProtocolRequestEcho const& request) {
-    auto ptr = WorkerEchoRequest::Ptr(new WorkerEchoRequest(serviceProvider, worker, id, priority, onExpired,
-                                                            requestExpirationIvalSec, request));
+shared_ptr<WorkerEchoRequest> WorkerEchoRequest::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                        string const& worker, string const& id, int priority,
+                                                        ExpirationCallbackType const& onExpired,
+                                                        unsigned int requestExpirationIvalSec,
+                                                        ProtocolRequestEcho const& request) {
+    auto ptr = shared_ptr<WorkerEchoRequest>(new WorkerEchoRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+WorkerEchoRequest::WorkerEchoRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
                                      string const& id, int priority, ExpirationCallbackType const& onExpired,
                                      unsigned int requestExpirationIvalSec,
                                      ProtocolRequestEcho const& request)
@@ -84,7 +84,7 @@ bool WorkerEchoRequest::execute() {
 
     // Done if have reached or exceeded the initial delay
     if (0 == _delayLeft) {
-        setStatus(lock, ProtocolStatus::SUCCESS);
+        setStatus(lock, protocol::Status::SUCCESS);
         return true;
     }
     return false;

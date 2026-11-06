@@ -27,7 +27,7 @@
  */
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <ctime>
 #include <memory>
 #include <stdexcept>
@@ -39,12 +39,10 @@
 // Third party headers
 #include "boost/asio.hpp"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // Forward declarations
 namespace lsst::qserv::replica {
 class ProtocolBuffer;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -64,9 +62,6 @@ public:
  */
 class FileClient : public std::enable_shared_from_this<FileClient> {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<FileClient> Ptr;
-
     /**
      * Open a file and return a smart pointer to an object of this class.
      * If the operation is successful then a valid pointer will be returned
@@ -79,10 +74,11 @@ public:
      * @param databaseName the name of a database the file belongs to
      * @param fileName the file to read or examine
      */
-    static Ptr open(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
-                    uint16_t workerPort, std::string const& databaseName, std::string const& fileName) {
-        return instance(serviceProvider, workerHost, workerPort, databaseName, fileName,
-                        true /* readContent */);
+    static std::shared_ptr<FileClient> open(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                            std::string const& workerHost, std::uint16_t workerPort,
+                                            std::string const& databaseName, std::string const& fileName) {
+        bool const readContent = true;
+        return instance(serviceProvider, workerHost, workerPort, databaseName, fileName, readContent);
     }
 
     /**
@@ -103,8 +99,9 @@ public:
      * @param databaseName the name of a database the file belongs to
      * @param fileName the file to read or examine
      */
-    static Ptr stat(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
-                    uint16_t workerPort, std::string const& databaseName, std::string const& fileName) {
+    static std::shared_ptr<FileClient> stat(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                            std::string const& workerHost, std::uint16_t workerPort,
+                                            std::string const& databaseName, std::string const& fileName) {
         return instance(serviceProvider, workerHost, workerPort, databaseName, fileName,
                         false /* do NOT readContent */);
     }
@@ -115,18 +112,16 @@ public:
     FileClient(FileClient const&) = delete;
     FileClient& operator=(FileClient const&) = delete;
 
-    ~FileClient() = default;
-
-    // Trivial get methods
+    virtual ~FileClient() = default;
 
     std::string const& workerHost() const { return _workerHost; }
-    uint16_t workerPort() const { return _workerPort; }
+    std::uint16_t workerPort() const { return _workerPort; }
     std::string const& workerHostPort() const { return _workerHostPort; }
     std::string const& database() const;
     std::string const& file() const;
 
     /// @return the size of a file (as reported by a server)
-    size_t size() const { return _size; }
+    std::size_t size() const { return _size; }
 
     /// @return the last modification time (mtime) of the file
     std::time_t mtime() const { return _mtime; }
@@ -143,7 +138,7 @@ public:
      *   of bytes which can be read at a single call to the method)
      * @return the actual number of bytes read or 0 if the end of file reached
      */
-    size_t read(uint8_t* buf, size_t bufSize);
+    std::size_t read(std::uint8_t* buf, std::size_t bufSize);
 
 private:
     /**
@@ -153,18 +148,17 @@ private:
      *
      * @param readContent the mode in which the file will be used
      *
-     * Other parameters are explained in the comments for the public factory
-     * methods:
+     * Other parameters are explained in the comments for the public factory methods:
      * @see FileClient::open()
      * @see FileClient::stat()
      */
-    static Ptr instance(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
-                        uint16_t workerPort, std::string const& databaseName, std::string const& fileName,
-                        bool readContent);
+    static std::shared_ptr<FileClient> instance(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                std::string const& workerHost, std::uint16_t workerPort,
+                                                std::string const& databaseName, std::string const& fileName,
+                                                bool readContent);
 
-    /// @see FileClient::instance()
-    FileClient(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
-               uint16_t workerPort, std::string const& databaseName, std::string const& fileName,
+    FileClient(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerHost,
+               std::uint16_t workerPort, std::string const& databaseName, std::string const& fileName,
                bool readContent);
 
     /**
@@ -176,7 +170,7 @@ private:
     // Input parameters
 
     std::string const _workerHost;
-    uint16_t const _workerPort;
+    std::uint16_t const _workerPort;
     std::string const _fileName;
     bool const _readContent;
 
@@ -198,7 +192,7 @@ private:
     boost::asio::ip::tcp::socket _socket;
 
     /// The size of the file in bytes (to be determined after contacting a server)
-    size_t _size;
+    std::size_t _size;
 
     /// The last modification time (mtime) of the file
     std::time_t _mtime;

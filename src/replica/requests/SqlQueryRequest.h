@@ -44,27 +44,11 @@ namespace lsst::qserv::replica {
  */
 class SqlQueryRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlQueryRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    SqlQueryRequest() = delete;
-    SqlQueryRequest(SqlQueryRequest const&) = delete;
-    SqlQueryRequest& operator=(SqlQueryRequest const&) = delete;
-
-    ~SqlQueryRequest() final = default;
-
-    std::string const& query() const { return requestBody.query(); }
-    std::string const& user() const { return requestBody.user(); }
-    std::string const& password() const { return requestBody.password(); }
+    typedef std::function<void(std::shared_ptr<SqlQueryRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
      *
      * Class-specific parameters are documented below:
      * @param query The query to be executed.
@@ -75,20 +59,28 @@ public:
      *   any explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
+     * @see The very base class for the description of the common parameters of all subclasses.
      *
      * @return A pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& query, std::string const& user, std::string const& password,
-                              uint64_t maxRows, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<SqlQueryRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& query, std::string const& user, std::string const& password, uint64_t maxRows,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+
+    SqlQueryRequest() = delete;
+    SqlQueryRequest(SqlQueryRequest const&) = delete;
+    SqlQueryRequest& operator=(SqlQueryRequest const&) = delete;
+
+    virtual ~SqlQueryRequest() final = default;
+
+    std::string const& query() const { return requestBody.query(); }
+    std::string const& user() const { return requestBody.user(); }
+    std::string const& password() const { return requestBody.password(); }
 
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlQueryRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

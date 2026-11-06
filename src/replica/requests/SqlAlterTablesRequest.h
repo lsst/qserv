@@ -47,16 +47,8 @@ namespace lsst::qserv::replica {
  */
 class SqlAlterTablesRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlAlterTablesRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    SqlAlterTablesRequest() = delete;
-    SqlAlterTablesRequest(SqlAlterTablesRequest const&) = delete;
-    SqlAlterTablesRequest& operator=(SqlAlterTablesRequest const&) = delete;
-
-    ~SqlAlterTablesRequest() final = default;
+    typedef std::function<void(std::shared_ptr<SqlAlterTablesRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
@@ -65,20 +57,23 @@ public:
      * @param database The name of an existing database where the tables are residing.
      * @param tables The names of tables affected by the operation.
      * @param alterSpec A specification of what to change following 'ALTER TABLE <table>'.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
+     * @see The very base class for the description of the common parameters of all subclasses.
      * @return A smart pointer to the created object.
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, std::vector<std::string> const& tables,
-                              std::string const& alterSpec, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<SqlAlterTablesRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, std::vector<std::string> const& tables, std::string const& alterSpec,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+
+    SqlAlterTablesRequest() = delete;
+    SqlAlterTablesRequest(SqlAlterTablesRequest const&) = delete;
+    SqlAlterTablesRequest& operator=(SqlAlterTablesRequest const&) = delete;
+
+    virtual ~SqlAlterTablesRequest() final = default;
 
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlAlterTablesRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,

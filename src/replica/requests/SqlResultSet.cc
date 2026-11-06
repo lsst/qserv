@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "replica/mysql/DatabaseMySQLRow.h"
+#include "util/String.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -133,6 +134,20 @@ SqlResultSet::ResultSet::Field::Field(ProtocolResponseSqlField const& field)
           decimals(field.decimals()),
           type(field.type()) {}
 
+SqlResultSet::ResultSet::Field::Field(nlohmann::json const& field)
+        : name(field.at("name").get<string>()),
+          orgName(field.at("org_name").get<string>()),
+          table(field.at("table").get<string>()),
+          orgTable(field.at("org_table").get<string>()),
+          db(field.at("db").get<string>()),
+          catalog(field.at("catalog").get<string>()),
+          def(field.at("def").get<string>()),
+          length(field.at("length").get<uint32_t>()),
+          maxLength(field.at("max_length").get<uint32_t>()),
+          flags(field.at("flags").get<uint32_t>()),
+          decimals(field.at("decimals").get<uint32_t>()),
+          type(field.at("type").get<int32_t>()) {}
+
 SqlResultSet::ResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
     for (int i = 0; i < row.cells_size(); ++i) {
         cells.push_back(row.cells(i));
@@ -140,8 +155,33 @@ SqlResultSet::ResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
     }
 }
 
+SqlResultSet::ResultSet::Row::Row(nlohmann::json const& row, http::BinaryEncodingMode binaryEncodingMode) {
+    for (auto const& cellJson : row.at("cells")) {
+        switch (binaryEncodingMode) {
+            case http::BinaryEncodingMode::ARRAY: {
+                // An array of unsigned 8-bit numbers is expected here.
+                u8string const inStr = cellJson.get<u8string>();
+                cells.emplace_back(reinterpret_cast<char const*>(inStr.data()), inStr.size());
+                break;
+            }
+            case http::BinaryEncodingMode::B64:
+                cells.push_back(util::String::fromBase64(cellJson.get<string>()));
+                break;
+            case http::BinaryEncodingMode::HEX:
+                cells.push_back(util::String::fromHex(cellJson.get<string>()));
+                break;
+            case http::BinaryEncodingMode::NONE:
+                cells.push_back(cellJson.get<string>());
+                break;
+        }
+    }
+    for (auto const& nullJson : row.at("nulls")) {
+        nulls.push_back(nullJson.get<uint8_t>());
+    }
+}
+
 SqlResultSet::ResultSet::ResultSet(ProtocolResponseSqlResultSet const& result) {
-    extendedStatus = result.status_ext();
+    extendedStatus = protocol::toStatusExt(result.status_ext());
     error = result.error();
     charSetName = result.char_set_name();
     hasResult = result.has_result();
@@ -153,10 +193,24 @@ SqlResultSet::ResultSet::ResultSet(ProtocolResponseSqlResultSet const& result) {
     }
 }
 
+SqlResultSet::ResultSet::ResultSet(nlohmann::json const& result,
+                                   http::BinaryEncodingMode binaryEncodingMode) {
+    extendedStatus = protocol::toStatusExt(result.at("status_ext").get<unsigned int>());
+    error = result.at("error").get<string>();
+    charSetName = result.at("char_set_name").get<string>();
+    hasResult = result.at("has_result").get<int>() != 0;
+    for (auto const& fieldJson : result.at("fields")) {
+        fields.emplace_back(fieldJson);
+    }
+    for (auto const& rowJson : result.at("rows")) {
+        rows.emplace_back(rowJson, binaryEncodingMode);
+    }
+}
+
 json SqlResultSet::ResultSet::toJson() const {
     json resultJson = json::object();
 
-    resultJson["extended_status"] = status2string(extendedStatus);
+    resultJson["status_ext"] = protocol::toString(extendedStatus);
     resultJson["error"] = error;
     resultJson["char_set_name"] = charSetName;
     resultJson["has_result"] = hasResult;
@@ -165,18 +219,18 @@ json SqlResultSet::ResultSet::toJson() const {
         auto const& field = fields[columnIdx];
         auto&& fieldsJson = resultJson["fields"][columnIdx];
         addField(fieldsJson, "name", field.name, "The name of the column");
-        addField(fieldsJson, "orgName", field.orgName, "The original name of the column");
+        addField(fieldsJson, "org_name", field.orgName, "The original name of the column");
         addField(fieldsJson, "table", field.table, "The name of the table");
-        addField(fieldsJson, "orgTable", field.orgTable, "The original name of the table");
+        addField(fieldsJson, "org_table", field.orgTable, "The original name of the table");
         addField(fieldsJson, "db", field.db, "The name of the database (schema)");
         addField(fieldsJson, "catalog", field.catalog, "The catalog name (always 'def')");
         addField(fieldsJson, "def", field.def, "default value");
         addField(fieldsJson, "length", field.length, "The length (width) of the column definition");
-        addField(fieldsJson, "maxLength", field.maxLength, "The maximum length of the column value");
+        addField(fieldsJson, "max_length", field.maxLength, "The maximum length of the column value");
         addField(fieldsJson, "flags", field.flags, "Flags");
         addField(fieldsJson, "decimals", field.decimals, "Number of decimals");
         addField(fieldsJson, "type", field.type, "Field type (see MySQL headers for enum enum_field_types)");
-        addField(fieldsJson, "typeName", field.type2string(),
+        addField(fieldsJson, "type_name", field.type2string(),
                  "Field type name (see MySQL headers for enum enum_field_types)");
     }
     for (auto&& row : rows) {
@@ -230,6 +284,14 @@ void SqlResultSet::set(ProtocolResponseSql const& message) {
     }
 }
 
+void SqlResultSet::set(json const& message, http::BinaryEncodingMode binaryEncodingMode) {
+    queryResultSet.clear();
+    for (json const& resultSetMessage : message) {
+        queryResultSet[resultSetMessage.at("scope").get<string>()] =
+                ResultSet(resultSetMessage.at("result_set"), binaryEncodingMode);
+    }
+}
+
 json SqlResultSet::toJson() const {
     json resultJson = json::array();
 
@@ -246,23 +308,23 @@ json SqlResultSet::toJson() const {
 
 bool SqlResultSet::hasErrors() const {
     return any_of(queryResultSet.cbegin(), queryResultSet.cend(),
-                  [](auto const& elem) { return elem.second.extendedStatus != ProtocolStatusExt::NONE; });
+                  [](auto const& elem) { return elem.second.extendedStatus != protocol::StatusExt::NONE; });
 }
 
-bool SqlResultSet::allErrorsOf(ProtocolStatusExt status) const {
+bool SqlResultSet::allErrorsOf(protocol::StatusExt status) const {
     return not any_of(queryResultSet.cbegin(), queryResultSet.cend(), [status](auto const& elem) {
-        return !((elem.second.extendedStatus == ProtocolStatusExt::NONE) ||
+        return !((elem.second.extendedStatus == protocol::StatusExt::NONE) ||
                  (elem.second.extendedStatus == status));
     });
 }
 
 string SqlResultSet::firstError() const {
     auto const itr = find_if(queryResultSet.cbegin(), queryResultSet.cend(), [](auto const& elem) {
-        return elem.second.extendedStatus != ProtocolStatusExt::NONE;
+        return elem.second.extendedStatus != protocol::StatusExt::NONE;
     });
-    return itr == queryResultSet.cend()
-                   ? string()
-                   : itr->first + ":" + status2string(itr->second.extendedStatus) + ":" + itr->second.error;
+    return itr == queryResultSet.cend() ? string()
+                                        : itr->first + ":" + protocol::toString(itr->second.extendedStatus) +
+                                                  ":" + itr->second.error;
 }
 
 vector<string> SqlResultSet::allErrors() const {
@@ -270,8 +332,8 @@ vector<string> SqlResultSet::allErrors() const {
     for (auto&& itr : queryResultSet) {
         auto&& scope = itr.first;
         auto&& result = itr.second;
-        if (result.extendedStatus != ProtocolStatusExt::NONE) {
-            errors.push_back(scope + ":" + status2string(result.extendedStatus) + ":" + result.error);
+        if (result.extendedStatus != protocol::StatusExt::NONE) {
+            errors.push_back(scope + ":" + protocol::toString(result.extendedStatus) + ":" + result.error);
         }
     }
     return errors;
@@ -309,7 +371,7 @@ ostream& operator<<(ostream& os, SqlResultSet const& info) {
             os << ",";
         }
         os << "{scope:'" << scope << "',"
-           << "extendedStatus:" << status2string(result.extendedStatus) << ","
+           << "extendedStatus:" << protocol::toString(result.extendedStatus) << ","
            << "error:'" << result.error << "',"
            << "charSetName:'" << result.charSetName << "',"
            << "hasResult:" << bool2str(result.hasResult) << ","

@@ -33,25 +33,29 @@
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/SqlCreateIndexesJob.h"
 #include "replica/jobs/SqlDropIndexesJob.h"
 #include "replica/jobs/SqlGetIndexesJob.h"
 #include "replica/requests/SqlResultSet.h"
+#include "replica/services/ServiceProvider.h"
 
 using namespace std;
 using namespace nlohmann;
 
 namespace lsst::qserv::replica {
 
-void HttpSqlIndexModule::process(Controller::Ptr const& controller, string const& taskName,
-                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName, http::AuthType const authType) {
+void HttpSqlIndexModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                 shared_ptr<qhttp::Request> const& req,
+                                 shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                 http::AuthType const authType) {
     HttpSqlIndexModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpSqlIndexModule::HttpSqlIndexModule(Controller::Ptr const& controller, string const& taskName,
-                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpSqlIndexModule::HttpSqlIndexModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                       shared_ptr<qhttp::Request> const& req,
+                                       shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
@@ -108,7 +112,7 @@ json HttpSqlIndexModule::_createIndexes() {
     string const tableName = body().required<string>("table");
     string const indexName = body().required<string>("index");
     string const comment = body().optional<string>("comment", string());
-    SqlRequestParams::IndexSpec const spec = SqlRequestParams::IndexSpec(
+    SqlIndexSpec const spec = SqlIndexSpec(
             body().optional<string>("spec", "DEFAULT", {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"}));
     json const columnsJson = body().required<json>("columns");
     bool const overlap = body().optional<int>("overlap", 0) != 0;

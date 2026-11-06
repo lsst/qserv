@@ -22,24 +22,23 @@
 // Class header
 #include "replica/requests/SqlDeleteTableRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteTableRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlDeleteTableRequest::Ptr SqlDeleteTableRequest::createAndStart(
+shared_ptr<SqlDeleteTableRequest> SqlDeleteTableRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, CallbackType const& onFinish, int priority, bool keepTracking,
         string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlDeleteTableRequest(controller, workerName, database, tables, onFinish, priority,
-                                             keepTracking));
+    auto ptr = shared_ptr<SqlDeleteTableRequest>(new SqlDeleteTableRequest(
+            controller, workerName, database, tables, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -48,10 +47,10 @@ SqlDeleteTableRequest::SqlDeleteTableRequest(shared_ptr<Controller> const& contr
                                              string const& workerName, string const& database,
                                              vector<string> const& tables, CallbackType const& onFinish,
                                              int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_DROP_TABLE", workerName, ::unlimitedMaxRows, priority, keepTracking),
+        : SqlRequest(controller, "SQL_DROP_TABLE", protocol::SqlRequestType::DROP_TABLE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DROP_TABLE);
     requestBody.set_database(database);
     for (auto&& table : tables) {
         requestBody.add_tables(table);
@@ -60,8 +59,6 @@ SqlDeleteTableRequest::SqlDeleteTableRequest(shared_ptr<Controller> const& contr
 }
 
 void SqlDeleteTableRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlDeleteTableRequest>(lock, _onFinish);
 }
 

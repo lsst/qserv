@@ -38,23 +38,23 @@ using namespace nlohmann;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetReplicasQservMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& workerName, string const& databaseFamily,
-        bool inUseOnly, GetReplicasQservMgtRequest::CallbackType const& onFinish) {
-    return GetReplicasQservMgtRequest::Ptr(
+shared_ptr<GetReplicasQservMgtRequest> GetReplicasQservMgtRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
+        string const& databaseFamily, bool inUseOnly,
+        GetReplicasQservMgtRequest::CallbackType const& onFinish) {
+    return shared_ptr<GetReplicasQservMgtRequest>(
             new GetReplicasQservMgtRequest(serviceProvider, workerName, databaseFamily, inUseOnly, onFinish));
 }
 
 GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
-        ServiceProvider::Ptr const& serviceProvider, string const& workerName, string const& databaseFamily,
-        bool inUseOnly, GetReplicasQservMgtRequest::CallbackType const& onFinish)
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
+        string const& databaseFamily, bool inUseOnly,
+        GetReplicasQservMgtRequest::CallbackType const& onFinish)
         : QservWorkerMgtRequest(serviceProvider, "QSERV_GET_REPLICAS", workerName),
           _databaseFamily(databaseFamily),
           _inUseOnly(inUseOnly),

@@ -48,10 +48,8 @@ namespace lsst::qserv::replica {
  */
 class AddReplicaQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<AddReplicaQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<AddReplicaQservMgtRequest>)> CallbackType;
 
     AddReplicaQservMgtRequest() = delete;
     AddReplicaQservMgtRequest(AddReplicaQservMgtRequest const&) = delete;
@@ -72,28 +70,21 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
-                      unsigned int chunk, std::vector<std::string> const& databases,
-                      CallbackType const& onFinish = nullptr);
+    static std::shared_ptr<AddReplicaQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
+            unsigned int chunk, std::vector<std::string> const& databases,
+            CallbackType const& onFinish = nullptr);
 
-    /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
-
-    /// @return names of databases
     std::vector<std::string> const& databases() const { return _databases; }
 
-    /// @see QservMgtRequest::extendedPersistentState()
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see AddReplicaQservMgtRequest::create()
     AddReplicaQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                               std::string const& workerName, unsigned int chunk,
                               std::vector<std::string> const& databases, CallbackType const& onFinish);

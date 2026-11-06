@@ -23,6 +23,7 @@
 #include "replica/jobs/SqlJobResult.h"
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/util/Common.h"
 
 // System headers
@@ -58,7 +59,7 @@ void SqlJobResult::iterate(OnResultVisitCallback const& onResultVisitCallback) c
 json SqlJobResult::toJson() const {
     json result = json::object();
     iterate([&result](Worker const& worker, Scope const& scope, SqlResultSet::ResultSet const& resultSet) {
-        result["completed"][worker][scope] = resultSet.extendedStatus == ProtocolStatusExt::NONE ? 1 : 0;
+        result["completed"][worker][scope] = resultSet.extendedStatus == protocol::StatusExt::NONE ? 1 : 0;
         result["error"][worker][scope] = resultSet.error;
     });
     return result;
@@ -73,10 +74,10 @@ util::ColumnTablePrinter SqlJobResult::toColumnTable(string const& caption, stri
     vector<string> errors;
 
     iterate([&](Worker const& worker, Scope const& scope, SqlResultSet::ResultSet const& resultSet) {
-        if (reportAll or resultSet.extendedStatus != ProtocolStatusExt::NONE) {
+        if (reportAll or resultSet.extendedStatus != protocol::StatusExt::NONE) {
             workers.push_back(worker);
             scopes.push_back(scope);
-            statuses.push_back(status2string(resultSet.extendedStatus));
+            statuses.push_back(protocol::toString(resultSet.extendedStatus));
             errors.push_back(resultSet.error);
         }
     });
@@ -104,7 +105,7 @@ util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(string const& captio
             size_t numFailed = 0;
             for (auto&& queryResultSetItr : workerResultSet.queryResultSet) {
                 auto&& resultSet = queryResultSetItr.second;
-                if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
+                if (resultSet.extendedStatus == protocol::StatusExt::NONE) {
                     numSucceeded++;
                 } else {
                     numFailed++;
