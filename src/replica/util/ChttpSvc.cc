@@ -46,13 +46,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ChttpSvc");
 
 namespace lsst::qserv::replica {
 
+std::size_t const ChttpSvc::DEFAULT_PAYLOAD_MAX_LENGTH = 4 * 1024 * 1024 * 1024ULL;
+
 ChttpSvc::ChttpSvc(std::string const& context, shared_ptr<ServiceProvider> const& serviceProvider,
-                   uint16_t port, size_t maxQueuedRequests, size_t numThreads)
+                   uint16_t port, size_t maxQueuedRequests, size_t numThreads, size_t payloadMaxLength)
         : _context(context),
           _serviceProvider(serviceProvider),
           _port(port),
           _maxQueuedRequests(maxQueuedRequests),
-          _numThreads(numThreads) {
+          _numThreads(numThreads),
+          _payloadMaxLength(payloadMaxLength) {
     _createAndConfigure();
 }
 
@@ -68,7 +71,7 @@ void ChttpSvc::run() {
 void ChttpSvc::_createAndConfigure() {
     _server = make_unique<httplib::Server>();
     throwIf<runtime_error>(!_server->is_valid(), _context + "Failed to create the server");
-
+    _server->set_payload_max_length(_payloadMaxLength);
     _server->new_task_queue = [&] { return new httplib::ThreadPool(_numThreads, _maxQueuedRequests); };
     if (_port == 0) {
         _port = _server->bind_to_any_port(_bindAddr, _port);
