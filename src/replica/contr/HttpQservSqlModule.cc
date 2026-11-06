@@ -27,22 +27,28 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlQueryRequest.h"
+#else
 #include "replica/requests/SqlQueryRequest.h"
+#endif
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-void HttpQservSqlModule::process(Controller::Ptr const& controller, string const& taskName,
-                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName, http::AuthType const authType) {
+void HttpQservSqlModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                 shared_ptr<qhttp::Request> const& req,
+                                 shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                 http::AuthType const authType) {
     HttpQservSqlModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpQservSqlModule::HttpQservSqlModule(Controller::Ptr const& controller, string const& taskName,
-                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpQservSqlModule::HttpQservSqlModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                       shared_ptr<qhttp::Request> const& req,
+                                       shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpQservSqlModule::executeImpl(string const& subModuleName) {
@@ -66,14 +72,19 @@ json HttpQservSqlModule::_execute() {
     debug(__func__, "user=" + user);
     debug(__func__, "maxRows=" + to_string(maxRows));
 
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    auto const request =
+            HttpSqlQueryRequest::createAndStart(controller(), worker, query, user, password, maxRows);
+#else
     auto const request =
             SqlQueryRequest::createAndStart(controller(), worker, query, user, password, maxRows);
+#endif
     request->wait();
 
     json result;
     result["result_set"] = request->responseData().toJson();
 
-    if (request->extendedState() != Request::SUCCESS) {
+    if (request->extendedState() != RequestI::SUCCESS) {
         throw http::Error(__func__, "Query failed. See details in the result set", result);
     }
     return result;

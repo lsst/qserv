@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -45,12 +46,13 @@ bool const disposeRequiredNo = false;
 
 namespace lsst::qserv::replica {
 
-StatusRequest::Ptr StatusRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                 string const& workerName, string const& targetRequestId,
-                                                 CallbackType const& onFinish, int priority,
-                                                 bool keepTracking, string const& jobId,
-                                                 unsigned int requestExpirationIvalSec) {
-    auto ptr = StatusRequest::Ptr(
+shared_ptr<StatusRequest> StatusRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                        string const& workerName,
+                                                        string const& targetRequestId,
+                                                        CallbackType const& onFinish, int priority,
+                                                        bool keepTracking, string const& jobId,
+                                                        unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<StatusRequest>(
             new StatusRequest(controller, workerName, targetRequestId, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
@@ -65,10 +67,10 @@ StatusRequest::StatusRequest(shared_ptr<Controller> const& controller, string co
 
 string StatusRequest::toString(bool extended) const {
     ostringstream oss;
-    oss << Request::toString(extended) << "  targetRequestId: " + targetRequestId() << "\n";
+    oss << RequestI::toString(extended) << "  targetRequestId: " + targetRequestId() << "\n";
     if ((state() == State::FINISHED) && (extendedState() == ExtendedState::SUCCESS)) {
-        oss << "  targetStatus: " << ProtocolStatus_Name(targetRequestStatus()) << "\n";
-        oss << "  targetStatusExt: " << ProtocolStatusExt_Name(targetRequestExtendedStatus()) << "\n";
+        oss << "  targetStatus: " << protocol::toString(targetRequestStatus()) << "\n";
+        oss << "  targetStatusExt: " << protocol::toString(targetRequestExtendedStatus()) << "\n";
         oss << "  targetPerformance: " << targetRequestPerformance() << "\n";
     } else {
         oss << "  targetStatus: N/A\n";
@@ -78,12 +80,12 @@ string StatusRequest::toString(bool extended) const {
     return oss.str();
 }
 
-ProtocolStatus StatusRequest::targetRequestStatus() const {
+protocol::Status StatusRequest::targetRequestStatus() const {
     _assertIsSucceeded();
     return _targetStatus;
 }
 
-ProtocolStatusExt StatusRequest::targetRequestExtendedStatus() const {
+protocol::StatusExt StatusRequest::targetRequestExtendedStatus() const {
     _assertIsSucceeded();
     return _targetExtendedServerStatus;
 }
@@ -120,7 +122,7 @@ void StatusRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Send the same message again.
@@ -145,7 +147,7 @@ void StatusRequest::_analyze(bool success, ProtocolResponseStatus message) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);
@@ -153,49 +155,50 @@ void StatusRequest::_analyze(bool success, ProtocolResponseStatus message) {
     }
 
     // Always get the latest status reported by the remote server
-    setExtendedServerStatus(lock, message.status_ext());
+    setExtendedServerStatus(lock, protocol::toStatusExt(message.status_ext()));
 
     // Always update performance counters obtained from the worker service.
     mutablePerformance().update(message.performance());
 
     // Extract status of the target request if available
     if (message.has_target_status()) {
-        _targetStatus = message.target_status();
+        _targetStatus = protocol::toStatus(message.target_status());
     }
     if (message.has_target_status_ext()) {
-        _targetExtendedServerStatus = message.target_status_ext();
+        _targetExtendedServerStatus = protocol::toStatusExt(message.target_status_ext());
     }
     if (message.has_target_performance()) {
         _targetPerformance.update(message.target_performance());
     }
-    switch (message.status()) {
-        case ProtocolStatus::SUCCESS:
+    auto const status = protocol::toStatus(message.status());
+    switch (status) {
+        case protocol::Status::SUCCESS:
             finish(lock, SUCCESS);
             break;
-        case ProtocolStatus::CREATED:
+        case protocol::Status::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-        case ProtocolStatus::QUEUED:
+        case protocol::Status::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-        case ProtocolStatus::IN_PROGRESS:
+        case protocol::Status::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-        case ProtocolStatus::IS_CANCELLING:
+        case protocol::Status::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-        case ProtocolStatus::BAD:
+        case protocol::Status::BAD:
             finish(lock, SERVER_BAD);
             break;
-        case ProtocolStatus::FAILED:
+        case protocol::Status::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-        case ProtocolStatus::CANCELLED:
+        case protocol::Status::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
         default:
             throw logic_error("StatusRequest::" + string(__func__) + "  unknown status '" +
-                              ProtocolStatus_Name(message.status()) + "' received from server");
+                              protocol::toString(status) + "' received from server");
     }
 }
 

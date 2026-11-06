@@ -33,7 +33,11 @@
 #include "http/Method.h"
 #include "replica/config/ConfigCzar.h"
 #include "replica/config/ConfigWorker.h"
-#include "replica/services/ServiceProvider.h"
+
+// For declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -47,14 +51,12 @@ namespace lsst::qserv::replica {
  */
 class Registry : public std::enable_shared_from_this<Registry> {
 public:
-    typedef std::shared_ptr<Registry> Ptr;
-
     /**
      * Create an instance of the service.
      * @param serviceProvider For configuration, etc. services.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider);
+    static std::shared_ptr<Registry> create(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     Registry() = delete;
     Registry(Registry const&) = delete;
@@ -85,8 +87,7 @@ public:
     std::vector<ConfigCzar> czars() const;
 
 private:
-    /// @see Registry::create()
-    Registry(ServiceProvider::Ptr const& serviceProvider);
+    Registry(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     /**
      * Send a request to the server.
@@ -105,7 +106,7 @@ private:
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
 
     /// Base URL for communications with the Registry server
     std::string _baseUrl;

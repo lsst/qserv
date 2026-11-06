@@ -28,8 +28,15 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpCreateReplicaRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
+#include "replica/requests/ReplicationRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ErrorReporting.h"
@@ -39,7 +46,6 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-using namespace lsst::qserv::replica;
 
 namespace {
 
@@ -51,17 +57,20 @@ namespace lsst::qserv::replica {
 
 string CreateReplicaJob::typeName() { return "CreateReplicaJob"; }
 
-CreateReplicaJob::Ptr CreateReplicaJob::create(string const& databaseFamily, unsigned int chunk,
-                                               string const& sourceWorker, string const& destinationWorker,
-                                               Controller::Ptr const& controller, string const& parentJobId,
-                                               CallbackType const& onFinish, int priority) {
-    return CreateReplicaJob::Ptr(new CreateReplicaJob(databaseFamily, chunk, sourceWorker, destinationWorker,
-                                                      controller, parentJobId, onFinish, priority));
+shared_ptr<CreateReplicaJob> CreateReplicaJob::create(string const& databaseFamily, unsigned int chunk,
+                                                      string const& sourceWorker,
+                                                      string const& destinationWorker,
+                                                      shared_ptr<Controller> const& controller,
+                                                      string const& parentJobId, CallbackType const& onFinish,
+                                                      int priority) {
+    return shared_ptr<CreateReplicaJob>(new CreateReplicaJob(databaseFamily, chunk, sourceWorker,
+                                                             destinationWorker, controller, parentJobId,
+                                                             onFinish, priority));
 }
 
 CreateReplicaJob::CreateReplicaJob(string const& databaseFamily, unsigned int chunk,
                                    string const& sourceWorker, string const& destinationWorker,
-                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   shared_ptr<Controller> const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "CREATE_REPLICA", priority),
           _databaseFamily(databaseFamily),
@@ -159,13 +168,6 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
 
     // Get all databases for which this chunk is in the COMPLETE state on
     // at the source worker.
-    //
-    // Alternative options would be:
-    // 1. launching requests for all databases of the family and then see
-    //    filter them on a result status (something like FILE_ROPEN)
-    //
-    // 2. launching FindRequest for each member of the database family to
-    //    see if the chunk is available on a source node.
     vector<ReplicaInfo> sourceReplicas;
     try {
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
@@ -204,12 +206,21 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
     // only because some catalogs may not have a full coverage
     bool const keepTracking = true;
     for (auto&& replica : sourceReplicas) {
-        _requests.push_back(ReplicationRequest::createAndStart(
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        _requests.push_back(HttpCreateReplicaRequest::createAndStart(
                 controller(), destinationWorker(), sourceWorker(), replica.database(), chunk(),
-                [self = shared_from_base<CreateReplicaJob>()](ReplicationRequest::Ptr ptr) {
+                [self = shared_from_base<CreateReplicaJob>()](shared_ptr<HttpCreateReplicaRequest> ptr) {
                     self->_onRequestFinish(ptr);
                 },
                 priority(), keepTracking, id()));
+#else
+        _requests.push_back(ReplicationRequest::createAndStart(
+                controller(), destinationWorker(), sourceWorker(), replica.database(), chunk(),
+                [self = shared_from_base<CreateReplicaJob>()](shared_ptr<ReplicationRequest> ptr) {
+                    self->_onRequestFinish(ptr);
+                },
+                priority(), keepTracking, id()));
+#endif
     }
 }
 
@@ -226,9 +237,15 @@ void CreateReplicaJob::cancelImpl(replica::Lock const& lock) {
     bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), destinationWorker(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), destinationWorker(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
+        }
     }
     _requests.clear();
 }
@@ -238,18 +255,30 @@ void CreateReplicaJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
 
-void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void CreateReplicaJob::_onRequestFinish(shared_ptr<HttpCreateReplicaRequest> const& request) {
+#else
+void CreateReplicaJob::_onRequestFinish(shared_ptr<ReplicationRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << string(__func__) << "(ReplicationeRequest)"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+         context() << string(__func__) << "(HttpCreateReplicaRequest)"
+#else
+         context() << string(__func__) << "(ReplicationRequest)"
+#endif
                    << "  database=" << request->database() << "  destinationWorker=" << destinationWorker()
                    << "  sourceWorker=" << sourceWorker() << "  chunk=" << chunk());
 
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicationeRequest)");
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    replica::Lock lock(_mtx, context() + string(__func__) + "(HttpCreateReplicaRequest)");
+#else
+    replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicationRequest)");
     if (state() == State::FINISHED) return;
+#endif
 
     ++_numRequestsFinished;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         ++_numRequestsSuccess;
         _replicaData.replicas.push_back(request->responseData());
         _replicaData.chunks[chunk()][request->database()][destinationWorker()] = request->responseData();
@@ -270,7 +299,7 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
             for (auto&& databaseEntry : _replicaData.chunks[chunk()]) {
                 databases.push_back(databaseEntry.first);
             }
-            ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
+            auto const serviceProvider = controller()->serviceProvider();
             if (serviceProvider->config()->get<unsigned int>("xrootd", "auto-notify") != 0) {
                 _qservAddReplica(lock, chunk(), databases, destinationWorker());
             }
@@ -290,7 +319,7 @@ void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int 
                    << "  worker=" << worker);
     controller()->qservMgtServices()->addReplica(
             chunk, databases, worker,
-            [self = shared_from_this(), onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
+            [self = shared_from_this(), onFinish](shared_ptr<AddReplicaQservMgtRequest> request) {
                 LOGS(_log, LOG_LVL_DEBUG,
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
                                      << "  chunk=" << request->chunk()

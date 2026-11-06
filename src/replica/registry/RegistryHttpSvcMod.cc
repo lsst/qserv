@@ -28,6 +28,7 @@
 #include "qhttp/Request.h"
 #include "replica/config/Config.h"
 #include "replica/registry/RegistryServices.h"
+#include "replica/services/ServiceProvider.h"
 #include "util/common.h"
 #include "util/TimeUtils.h"
 
@@ -63,15 +64,15 @@ bool isSecurityContextKey(string const& key) {
 
 namespace lsst::qserv::replica {
 
-void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
-                                 shared_ptr<qhttp::Request> const& req,
+void RegistryHttpSvcMod::process(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                 RegistryServices& services, shared_ptr<qhttp::Request> const& req,
                                  shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
                                  http::AuthType const authType) {
     RegistryHttpSvcMod module(serviceProvider, services, req, resp);
     module.execute(subModuleName, authType);
 }
 
-RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
+RegistryHttpSvcMod::RegistryHttpSvcMod(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                        RegistryServices& services, shared_ptr<qhttp::Request> const& req,
                                        shared_ptr<qhttp::Response> const& resp)
         : http::QhttpModule(serviceProvider->config()->httpAuthContext(), req, resp),
@@ -127,7 +128,7 @@ json RegistryHttpSvcMod::_addWorker(string const& kind) {
     json workerEntry = json::object({{kind, json::object({{"host-addr", hostAddr},
                                                           {"host-addr-peer", hostAddrPeer},
                                                           {"update-time-ms", updateTimeMs}})}});
-    for (auto&& [key, val] : worker.items()) {
+    for (auto const& [key, val] : worker.items()) {
         if (!::isSecurityContextKey(key)) workerEntry[kind][key] = val;
     }
     _services.updateWorker(name, workerEntry);
@@ -161,7 +162,7 @@ json RegistryHttpSvcMod::_addCzar() {
     // Note that the merged payload is cleaned from any security-related contents.
     json czarEntry = json::object(
             {{"host-addr", hostAddr}, {"host-addr-peer", hostAddrPeer}, {"update-time-ms", updateTimeMs}});
-    for (auto&& [key, val] : czar.items()) {
+    for (auto const& [key, val] : czar.items()) {
         if (!::isSecurityContextKey(key)) czarEntry[key] = val;
     }
     _services.updateCzar(name, czarEntry);
@@ -195,7 +196,7 @@ json RegistryHttpSvcMod::_addController() {
     // Note that the merged payload is cleaned from any security-related contents.
     json controllerEntry = json::object(
             {{"host-addr", hostAddr}, {"host-addr-peer", hostAddrPeer}, {"update-time-ms", updateTimeMs}});
-    for (auto&& [key, val] : controller.items()) {
+    for (auto const& [key, val] : controller.items()) {
         if (!::isSecurityContextKey(key)) controllerEntry[key] = val;
     }
     _services.updateController(name, controllerEntry);

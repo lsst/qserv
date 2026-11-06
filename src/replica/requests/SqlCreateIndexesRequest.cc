@@ -22,39 +22,40 @@
 // Class header
 #include "replica/requests/SqlCreateIndexesRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateIndexesRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlCreateIndexesRequest::Ptr SqlCreateIndexesRequest::createAndStart(
+shared_ptr<SqlCreateIndexesRequest> SqlCreateIndexesRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
-        vector<string> const& tables, SqlRequestParams::IndexSpec const& indexSpec, string const& indexName,
+        vector<string> const& tables, SqlIndexSpec const& indexSpec, string const& indexName,
         string const& indexComment, vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish,
         int priority, bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlCreateIndexesRequest(controller, workerName, database, tables, indexSpec, indexName,
-                                               indexComment, indexColumns, onFinish, priority, keepTracking));
+    auto ptr = shared_ptr<SqlCreateIndexesRequest>(
+            new SqlCreateIndexesRequest(controller, workerName, database, tables, indexSpec, indexName,
+                                        indexComment, indexColumns, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
 
-SqlCreateIndexesRequest::SqlCreateIndexesRequest(
-        shared_ptr<Controller> const& controller, string const& workerName, string const& database,
-        vector<string> const& tables, SqlRequestParams::IndexSpec const& indexSpec, string const& indexName,
-        string const& indexComment, vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish,
-        int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_CREATE_TABLE_INDEXES", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+SqlCreateIndexesRequest::SqlCreateIndexesRequest(shared_ptr<Controller> const& controller,
+                                                 string const& workerName, string const& database,
+                                                 vector<string> const& tables, SqlIndexSpec const& indexSpec,
+                                                 string const& indexName, string const& indexComment,
+                                                 vector<SqlIndexColumn> const& indexColumns,
+                                                 CallbackType const& onFinish, int priority,
+                                                 bool keepTracking)
+        : SqlRequest(controller, "SQL_CREATE_TABLE_INDEXES", protocol::SqlRequestType::CREATE_TABLE_INDEX,
+                     workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::CREATE_TABLE_INDEX);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -74,8 +75,6 @@ SqlCreateIndexesRequest::SqlCreateIndexesRequest(
 }
 
 void SqlCreateIndexesRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlCreateIndexesRequest>(lock, _onFinish);
 }
 

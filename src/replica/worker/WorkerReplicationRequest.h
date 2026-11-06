@@ -22,11 +22,12 @@
 #define LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
 
 // System headers
+#include <cstddef>
 #include <cstdio>
-#include <cstdint>
 #include <ctime>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,7 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class FileClient;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -48,8 +50,6 @@ namespace lsst::qserv::replica {
  */
 class WorkerReplicationRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerReplicationRequest> Ptr;
-
     /**
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
@@ -71,22 +71,23 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
+    static std::shared_ptr<WorkerReplicationRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+            unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequest() = delete;
     WorkerReplicationRequest(WorkerReplicationRequest const&) = delete;
     WorkerReplicationRequest& operator=(WorkerReplicationRequest const&) = delete;
 
     /// Non-trivial destructor is needed to relese resources
-    ~WorkerReplicationRequest() override;
+    virtual ~WorkerReplicationRequest() override;
 
     std::string const& database() const { return _request.database(); }
     unsigned int chunk() const { return _request.chunk(); }
     std::string const& sourceWorker() const { return _request.worker(); }
     std::string const& sourceWorkerHost() const { return _request.worker_host(); }
-    uint16_t sourceWorkerPort() const { return _request.worker_port(); }
+    std::uint16_t sourceWorkerPort() const { return _request.worker_port(); }
     std::string const& sourceWorkerHostPort() const { return _sourceWorkerHostPort; }
     std::string const& sourceWorkerDataDir() const { return _request.worker_data_dir(); }
 
@@ -96,12 +97,13 @@ public:
      */
     void setInfo(ProtocolResponseReplicate& response) const;
 
-    bool execute() override;
+    virtual bool execute() override;
 
 private:
-    WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                             std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                             unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
+    WorkerReplicationRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                             std::string const& worker, std::string const& id, int priority,
+                             ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+                             ProtocolRequestReplicate const& request);
 
     /**
      * Open files associated with the current state of iterator _fileItr.
@@ -172,17 +174,17 @@ private:
     /// The FileDescr structure encapsulates various parameters of a file
     struct FileDescr {
         /// The input file size as reported by a remote server
-        size_t inSizeBytes = 0;
+        std::size_t inSizeBytes = 0;
 
         /// The actual number of bytes read so far (changes as the operation
         /// is progressing)
-        size_t outSizeBytes = 0;
+        std::size_t outSizeBytes = 0;
 
-        /// The last modification time of the file (seconds since UNISX Epoch)
+        /// The last modification time of the file (seconds since UNIX Epoch)
         std::time_t mtime = 0;
 
         /// Control sum computed locally while copying the file
-        uint64_t cs = 0;
+        std::uint64_t cs = 0;
 
         /// The absolute path of a temporary file at a local directory.
         std::filesystem::path tmpFile;
@@ -192,10 +194,10 @@ private:
         std::filesystem::path outFile;
 
         /// When the file transfer started
-        uint64_t beginTransferTime = 0;
+        std::uint64_t beginTransferTime = 0;
 
         /// When the file transfer ended
-        uint64_t endTransferTime = 0;
+        std::uint64_t endTransferTime = 0;
     };
 
     /// Cached file descriptions mapping from short file names into
@@ -203,10 +205,10 @@ private:
     std::map<std::string, FileDescr> _file2descr;
 
     /// The buffer for storing file payload read from a remote file service
-    uint8_t* _buf;
+    std::uint8_t* _buf;
 
     /// The size of the buffer
-    size_t _bufSize;
+    std::size_t _bufSize;
 };
 
 }  // namespace lsst::qserv::replica

@@ -28,7 +28,11 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlQueryRequest.h"
+#else
 #include "replica/requests/SqlQueryRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -37,24 +41,24 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlQueryJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string SqlQueryJob::typeName() { return "SqlQueryJob"; }
 
-SqlQueryJob::Ptr SqlQueryJob::create(string const& query, string const& user, string const& password,
-                                     uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
-                                     string const& parentJobId, CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlQueryJob(query, user, password, maxRows, allWorkers, controller, parentJobId, onFinish,
-                               priority));
+shared_ptr<SqlQueryJob> SqlQueryJob::create(string const& query, string const& user, string const& password,
+                                            uint64_t maxRows, bool allWorkers,
+                                            shared_ptr<Controller> const& controller,
+                                            string const& parentJobId, CallbackType const& onFinish,
+                                            int priority) {
+    return shared_ptr<SqlQueryJob>(new SqlQueryJob(query, user, password, maxRows, allWorkers, controller,
+                                                   parentJobId, onFinish, priority));
 }
 
 SqlQueryJob::SqlQueryJob(string const& query, string const& user, string const& password, uint64_t maxRows,
-                         bool allWorkers, Controller::Ptr const& controller, string const& parentJobId,
+                         bool allWorkers, shared_ptr<Controller> const& controller, string const& parentJobId,
                          CallbackType const& onFinish, int priority)
         : SqlJob(maxRows, allWorkers, controller, parentJobId, "SQL_QUERY", priority),
           _query(query),
@@ -71,20 +75,33 @@ list<pair<string, string>> SqlQueryJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlQueryJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                  size_t maxRequestsPerWorker) {
-    // Launch exactly one request per worker unless it was already
-    // launched earlier
-    list<SqlRequest::Ptr> requests;
-    if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
-        requests.push_back(SqlQueryRequest::createAndStart(
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlQueryJob::launchRequests(replica::Lock const& lock, string const& worker,
+                                                             size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
+list<shared_ptr<SqlRequest>> SqlQueryJob::launchRequests(replica::Lock const& lock, string const& worker,
+                                                         size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
+#endif
+    // Launch exactly one request per worker unless it was already launched earlier
+    if (!_workers.count(worker) && maxRequestsPerWorker != 0) {
+        bool const keepTracking = true;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlQueryRequest::createAndStart(
                 controller(), worker, query(), user(), password(), maxRows(),
-                [self = shared_from_base<SqlQueryJob>()](SqlQueryRequest::Ptr const& request) {
+                [self = shared_from_base<SqlQueryJob>()](shared_ptr<HttpSqlQueryRequest> const& request) {
                     self->onRequestFinish(request);
                 },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+                priority(), keepTracking, id()));
+#else
+        requests.push_back(SqlQueryRequest::createAndStart(
+                controller(), worker, query(), user(), password(), maxRows(),
+                [self = shared_from_base<SqlQueryJob>()](shared_ptr<SqlQueryRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#endif
         _workers.insert(worker);
     }
     return requests;

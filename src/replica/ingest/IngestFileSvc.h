@@ -29,16 +29,19 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/ingest/TransactionContrib.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
+
+namespace lsst::qserv::replica::database::mysql {
+class Warning;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
-
-// Forward declarations
-namespace database::mysql {
-class Warning;
-}  // namespace database::mysql
 
 /**
  * Class IngestFileSvc is used in the server-side implementations of
@@ -56,14 +59,13 @@ public:
     virtual ~IngestFileSvc();
 
 protected:
-    /// @see IngestFileSvc::create()
-    IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    IngestFileSvc(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
 
-    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
     std::string const& workerName() const { return _workerName; }
     unsigned int numWarnings() const { return _numWarnings; }
     std::list<database::mysql::Warning> const& warnings() const { return _warnings; }
-    uint64_t numRowsLoaded() const { return _numRowsLoaded; }
+    std::uint64_t numRowsLoaded() const { return _numRowsLoaded; }
 
     /**
      * Open a file.
@@ -92,7 +94,7 @@ protected:
      * @param buf A pointer to a row to be written.
      * @param size The length of the row, including the line terminator.
      */
-    void writeRowIntoFile(char const* buf, size_t size);
+    void writeRowIntoFile(char const* buf, std::size_t size);
 
     /// Load the content of the current file into a database table
     /// @param maxNumWarnings The optional limit for the number of MySQL warnings
@@ -110,7 +112,7 @@ protected:
 private:
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _workerName;
 
     // Parameters defining a scope of the operation are set/computed when opening a file.
@@ -125,16 +127,14 @@ private:
     TableInfo _table;
 
     std::string _transactionIdField;  ///< The terminated field to be prepend at each row
-
     std::ofstream _file;
-
-    size_t _totalNumRows = 0;  ///< The number of rows received and recorded
+    std::size_t _totalNumRows = 0;  ///< The number of rows received and recorded
 
     // MySQL warnings (if any) captured after loading the contribution into the table.
     unsigned int _numWarnings = 0;
     std::list<database::mysql::Warning> _warnings;
 
-    uint64_t _numRowsLoaded = 0;  ///< The number of rows actually ingested into Qserv.
+    std::uint64_t _numRowsLoaded = 0;  ///< The number of rows actually ingested into Qserv.
 };
 
 }  // namespace lsst::qserv::replica

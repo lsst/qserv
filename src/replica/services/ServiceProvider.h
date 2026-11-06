@@ -52,21 +52,19 @@ namespace lsst::qserv::replica {
  */
 class ServiceProvider : public std::enable_shared_from_this<ServiceProvider> {
 public:
-    typedef std::shared_ptr<ServiceProvider> Ptr;
-
-    ServiceProvider() = delete;
-    ServiceProvider(ServiceProvider const&) = delete;
-    ServiceProvider& operator=(ServiceProvider const&) = delete;
-
     /**
      * Static factory for creating objects of the class
      *
      * @param config  The configuration object used by the service provider. It must be already
      *  initialized and reloaded with the latest values for Qserv or the Replication/Ingest system.
      */
-    static ServiceProvider::Ptr create(std::shared_ptr<Config> const& config);
+    static std::shared_ptr<ServiceProvider> create(std::shared_ptr<Config> const& config);
 
-    ~ServiceProvider() = default;
+    ServiceProvider() = delete;
+    ServiceProvider(ServiceProvider const&) = delete;
+    ServiceProvider& operator=(ServiceProvider const&) = delete;
+
+    virtual ~ServiceProvider() = default;
 
     /// @return reference to the I/O service for ASYNC requests
     boost::asio::io_service& io_service() { return _io_service; }
