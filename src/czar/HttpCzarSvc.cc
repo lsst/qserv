@@ -54,6 +54,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.HttpCzarSvc");
 
 string const serviceName = "CZAR-FRONTEND ";
 
+/**
+ * Default maximum payload length for the body of the HTTP requests.
+ */
+size_t const DEFAULT_PAYLOAD_MAX_LENGTH = 4 * 1024 * 1024 * 1024ULL;
+
 template <typename T>
 void throwIf(bool condition, string const& message) {
     if (condition) throw T(message);
@@ -116,7 +121,7 @@ void HttpCzarSvc::_createAndConfigure() {
     _svr = make_unique<httplib::SSLServer>(_httpCzarConfig.sslCertFile.data(),
                                            _httpCzarConfig.sslPrivateKeyFile.data());
     ::throwIf<runtime_error>(!_svr->is_valid(), context + "Failed to create the server");
-
+    _svr->set_payload_max_length(DEFAULT_PAYLOAD_MAX_LENGTH);
     _svr->new_task_queue = [&] {
         return new httplib::ThreadPool(_httpCzarConfig.numThreads, _httpCzarConfig.maxQueuedRequests);
     };

@@ -47,7 +47,7 @@ void FileUploadModule::execute(string const& subModuleName, http::AuthType const
         if (!_req.is_multipart_form_data()) {
             throw AuthError(context() + "the request is not a multipart form data");
         }
-        unique_ptr<httplib::MultipartFormData> currentFile;
+        unique_ptr<httplib::FormData> currentFile;
         auto const processEndOfEntry = [&]() {
             if (currentFile != nullptr) {
                 if (!currentFile->filename.empty()) {
@@ -58,13 +58,13 @@ void FileUploadModule::execute(string const& subModuleName, http::AuthType const
             }
         };
         _contentReader(
-                [&](httplib::MultipartFormData const& file) -> bool {
+                [&](httplib::FormData const& file) -> bool {
                     processEndOfEntry();
                     if (!file.filename.empty()) {
                         enforceAuthorization(authType);
                         onStartOfFile(file.name, file.filename, file.content_type);
                     }
-                    currentFile.reset(new httplib::MultipartFormData(file));
+                    currentFile.reset(new httplib::FormData(file));
                     return true;
                 },
                 [&](char const* data, size_t length) -> bool {
