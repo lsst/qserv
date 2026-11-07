@@ -47,6 +47,12 @@ namespace lsst::qserv::replica {
  */
 class ChttpSvc : public std::enable_shared_from_this<ChttpSvc> {
 public:
+    /**
+     * Default maximum payload length for the body of the HTTP requests.
+     * Derived classes may override this value if needed.
+     */
+    static std::size_t const DEFAULT_PAYLOAD_MAX_LENGTH;
+
     ChttpSvc() = delete;
     ChttpSvc(ChttpSvc const&) = delete;
     ChttpSvc& operator=(ChttpSvc const&) = delete;
@@ -76,7 +82,8 @@ protected:
      * @throws std::runtime_error If the server can't be created.
      */
     ChttpSvc(std::string const& context, std::shared_ptr<ServiceProvider> const& serviceProvider,
-             std::uint16_t port, std::size_t maxQueuedRequests, std::size_t numThreads);
+             std::uint16_t port, std::size_t maxQueuedRequests, std::size_t numThreads,
+             std::size_t payloadMaxLength = DEFAULT_PAYLOAD_MAX_LENGTH);
 
     std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
@@ -100,6 +107,7 @@ private:
     int _port;
     std::size_t const _maxQueuedRequests = 0;  // 0 means unlimited
     std::size_t const _numThreads;
+    std::size_t const _payloadMaxLength;
     std::string const _bindAddr = "0.0.0.0";
     std::unique_ptr<httplib::Server> _server;
 };
