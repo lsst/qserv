@@ -295,6 +295,11 @@ void AsyncReq::_connected(boost::system::error_code const& ec) {
         _restart(lock);
         return;
     }
+
+    // Enable TCP keep-alive
+    asio::socket_base::keep_alive option(true);
+    _socket.set_option(option);
+
     boost::beast::http::async_write(
             _socket, _req,
             [self = shared_from_this()](boost::system::error_code const& ec, size_t bytesSent) {
