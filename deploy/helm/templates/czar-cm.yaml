@@ -88,6 +88,7 @@ data:
     #largeResultConcurrentMerges = 3
     largeResultConcurrentMerges = 6
     qMetaSecsBetweenChunkCompletionUpdates = 10
+    matchEquiJoinRewrite = 0
 
     [qdisppool]
     poolSize = 800
