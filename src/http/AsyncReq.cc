@@ -72,8 +72,10 @@ string AsyncReq::state2str(State state) {
             return "IN_PROGRESS";
         case State::FINISHED:
             return "FINISHED";
-        case State::FAILED:
-            return "FAILED";
+        case State::FAILED_TX:
+            return "FAILED_TX";
+        case State::FAILED_RX:
+            return "FAILED_RX";
         case State::BODY_LIMIT_ERROR:
             return "BODY_LIMIT_ERROR";
         case State::CANCELLED:
@@ -178,7 +180,7 @@ void AsyncReq::start() {
                     [self = shared_from_this()](boost::system::error_code const& ec) { self->_expired(ec); });
         }
     } catch (exception const& ex) {
-        _finish(lock, State::FAILED, ex.what());
+        _finish(lock, State::FAILED_TX, ex.what());
         throw;
     }
 }
@@ -338,13 +340,15 @@ void AsyncReq::_received(boost::system::error_code const& ec, size_t bytesReceiv
         if (ec == boost::beast::http::error::body_limit) {
             newState = State::BODY_LIMIT_ERROR;
         } else {
-            _logError(CONTEXT_ + "failed to receive server response", ec);
-            _finish(lock, State::FAILED,
+            _logError(CONTEXT_ + "failed to receive server response", ec, bytesReceived);
+            _finish(lock, State::FAILED_RX,
                     CONTEXT_ + "failed to receive server response, ec: " + to_string(ec.value()) + " [" +
-                            ec.message() + "]");
+                            ec.message() + "] bytesReceived: " + to_string(bytesReceived) +
+                            " socket.is_open: " + to_string(_socket.is_open()));
             return;
         }
     }
+
     // Response header will be valid in both states: FINISHED and BODY_LIMIT_ERROR.
     _extractCacheHeader(lock);
     _finish(lock, newState);
@@ -414,6 +418,14 @@ void AsyncReq::_logError(string const& prefix, boost::system::error_code const& 
     LOGS(_log, LOG_LVL_WARN,
          prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
                 << " target: " << _target << " ec: " << ec.value() << " [" << ec.message() << "]");
+}
+
+void AsyncReq::_logError(string const& prefix, boost::system::error_code const& ec,
+                         size_t bytesReceived) const {
+    LOGS(_log, LOG_LVL_WARN,
+         prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
+                << " target: " << _target << " ec: " << ec.value() << " [" << ec.message() << "]"
+                << " bytesReceived: " << bytesReceived << " socket.is_open: " << _socket.is_open());
 }
 
 void AsyncReq::_logError(string const& prefix, string const& message) const {

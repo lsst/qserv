@@ -279,7 +279,10 @@ void QservMgtRequest::_processResponse() {
                 finish(lock, ExtendedState::SERVER_BAD_RESPONSE, msg);
             }
             break;
-        case http::AsyncReq::State::FAILED:
+        case http::AsyncReq::State::FAILED_TX:
+            finish(lock, ExtendedState::SERVER_ERROR, _httpRequest->errorMessage());
+            break;
+        case http::AsyncReq::State::FAILED_RX:
             finish(lock, ExtendedState::SERVER_ERROR, _httpRequest->errorMessage());
             break;
         case http::AsyncReq::State::BODY_LIMIT_ERROR:
