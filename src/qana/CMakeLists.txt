@@ -4,6 +4,7 @@ target_sources(qana PRIVATE
     AggregatePlugin.cc
     ColumnVertexMap.cc
     DuplSelectExprPlugin.cc
+    MatchEquiJoinRewrite.cc
     MatchTablePlugin.cc
     PostPlugin.cc
     QservRestrictorPlugin.cc
@@ -18,6 +19,10 @@ target_sources(qana PRIVATE
 
 target_link_libraries(qana PUBLIC
     log
+)
+
+target_link_libraries(qana PRIVATE
+    cconfig
 )
 
 install (TARGETS qana)
