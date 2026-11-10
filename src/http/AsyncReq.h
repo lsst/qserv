@@ -157,9 +157,11 @@ namespace lsst::qserv::http {
  *   the server's host and/or port won't be resolved, or if the connection attempts
  *   will be failing, or if attempts to send a request will be failing. A short delay
  *   will be introduced after each unsuccessfull attempt. The request will go into
- *   the FAILED state if 1) there will be a failure in receiving server's response,
- *   2) in case of incorrect data received from the server, or 3) the result is too
- *   large.
+ *   the FAILED_RX state if there will be a failure in receiving server's response.
+ *   In case if the response's body is larger than the allowed limit, the state will
+ *   case the response's body is larger than the allowed limit, the state will
+ *   be BODY_LIMIT_ERROR. The request will go into FAILED_TX state if there will be
+ *   a failure in delivering the request to the server.
  *
  * @note If the request was created using an alternative technique that require passing
  *   the AsyncReq::GetHostPort function then the function will get called before
@@ -191,8 +193,8 @@ public:
         IN_PROGRESS,       ///< The request is still in progress
         FINISHED,          ///< Final state: the request was deliver to the server and
                            ///  a valid server response was received.
-        FAILED,            ///< Final state: failed to deliver the request to the server or
-                           ///  receive a valid server response.
+        FAILED_TX,         ///< Final state: failed to deliver the request to the server.
+        FAILED_RX,         ///< Final state: failed to receive a valid server response.
         BODY_LIMIT_ERROR,  ///< Final state: the operation failed because the response's body
                            ///  is larger than requested.
         CANCELLED,         ///< Final state: the request was explicitly cancelled before
@@ -299,7 +301,7 @@ public:
      *
      * Upon successful completion of the method the object's state will be set
      * to State::IN_PROGRESS. Should any problem ocurres with initiating request
-     * processing the object's state will be set to State::FAILED and an exception
+     * processing the object's state will be set to State::FAILED_TX and an exception
      * will be thrown.
      *
      * @throw std::logic_error If the operation already started or finished.
@@ -373,6 +375,10 @@ private:
 
     /// Log a error along with the request's parameters in the specified context (overload for Boost)
     void _logError(std::string const& prefix, boost::system::error_code const& ec) const;
+
+    /// Log a error along with the request's parameters in the specified context (overload for Boost)
+    void _logError(std::string const& prefix, boost::system::error_code const& ec,
+                   std::size_t bytesReceived) const;
 
     /// Log a error along with the request's parameters in the specified context (overload for messages)
     void _logError(std::string const& prefix, std::string const& message) const;
