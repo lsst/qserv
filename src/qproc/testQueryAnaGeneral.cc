@@ -37,6 +37,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -52,6 +53,7 @@
 #include "ccontrol/HyriseAdapter.h"
 #include "ccontrol/ParseException.h"
 #include "css/CssAccess.h"
+#include "qana/MatchEquiJoinRewrite.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
 #include "qproc/QuerySession.h"
@@ -66,6 +68,7 @@
 #include "tests/QueryAnaFixture.h"
 
 using lsst::qserv::ccontrol::HyriseAdapter;
+using lsst::qserv::qana::forceMatchEquiJoinRewrite;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
@@ -2016,6 +2019,9 @@ BOOST_AUTO_TEST_CASE(Case01_1052) {
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1081) {
+    // This test checks the sub-chunk plan for a ref-match equi-join, so we explicitly disable the
+    // optimization here. See testQueryAnaMatchEquiJoin for the optimized case.
+    forceMatchEquiJoinRewrite(false);
     // The original statement uses "LEFT JOIN SimRefObject"
     // rather than "INNER JOIN SimRefObject", but we currently cannot
     // evaluate left joins involving overlap.
@@ -2077,6 +2083,7 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     BOOST_CHECK_EQUAL(first->subChunkIds[0], 100000);
     BOOST_CHECK_EQUAL(first->subChunkIds[1], 100010);
     BOOST_CHECK_EQUAL(first->subChunkIds[2], 100020);
+    forceMatchEquiJoinRewrite(std::nullopt);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1083) {

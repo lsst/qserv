@@ -97,6 +97,11 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                 "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv may not "
                 "start with an underscore."),
 
+        ParseErrorQueryInfo(
+                "SELECT objectId FROM Object AS _qserv_overlap_dup;",
+                "ParseException:Error parsing query, near \"_qserv_overlap_dup\", Identifiers in Qserv "
+                "may not start with an underscore."),
+
         ParseErrorQueryInfo("SELECT _ra FROM Object;",
                             "ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv may not "
                             "start with an underscore."),

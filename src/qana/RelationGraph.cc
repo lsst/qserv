@@ -39,6 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qana/MatchEquiJoinRewrite.h"
 #include "qana/QueryNotEvaluableError.h"
 #include "qana/TableInfoPool.h"
 
@@ -1112,6 +1113,10 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping)
         // of much use in practice, they are a vector for DOS attacks, so
         // perhaps we should reconsider.
         outputs.push_back(_query->clone());
+        return;
+    }
+    // Use the chunk-level ref-match equi-join plan if it is enabled and the query is eligible.
+    if (tryRewritingMatchEquiJoin(*_query, _vertices, overlapRefs, outputs)) {
         return;
     }
     if (overlapRefs.size() > MAX_TABLE_REFS_WITH_OVERLAP) {
