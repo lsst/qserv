@@ -26,9 +26,11 @@
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
+#include <future>
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 // Third party headers
 #include "boost/asio.hpp"
@@ -210,6 +212,40 @@ BOOST_FIXTURE_TEST_CASE(simple, AsyncReqFixture) {
     BOOST_CHECK_EQUAL(req->target(), target);
     BOOST_CHECK_EQUAL(req->method(), method);
     req->start();
+}
+
+BOOST_FIXTURE_TEST_CASE(failed_receive, AsyncReqFixture) {
+    LOGS_INFO("failed_receive");
+
+    asio::ip::tcp::acceptor acceptor(io_service,
+                                     asio::ip::tcp::endpoint(asio::ip::address_v4::loopback(), 0));
+    uint16_t const port = acceptor.local_endpoint().port();
+    thread serverThread([this, &acceptor]() {
+        asio::ip::tcp::socket socket(io_service);
+        acceptor.accept(socket);
+        string const partialResponse = "HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\nabc";
+        asio::write(socket, asio::buffer(partialResponse));
+        boost::system::error_code ec;
+        socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+        socket.close(ec);
+    });
+
+    auto const url = "http://127.0.0.1:" + to_string(port) + "/truncated";
+    promise<pair<http::AsyncReq::State, string>> completionPromise;
+    auto completionFuture = completionPromise.get_future();
+    req = http::AsyncReq::create(
+            io_service,
+            [this, &completionPromise](auto const& completedRequest) {
+                cancelAbortTimer();
+                completionPromise.set_value({completedRequest->state(), completedRequest->errorMessage()});
+            },
+            http::Method::GET, url);
+    req->start();
+    serverThread.join();
+    BOOST_REQUIRE(completionFuture.wait_for(2s) == future_status::ready);
+    auto const [state, error] = completionFuture.get();
+    BOOST_CHECK(state == http::AsyncReq::State::FAILED_RX);
+    BOOST_CHECK(!error.empty());
 }
 
 #if 0
