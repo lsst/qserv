@@ -122,6 +122,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
         }
         infoPtr->fk.first = m.dirColName1;
         infoPtr->fk.second = m.dirColName2;
+        infoPtr->flagCol = m.flagColName;
         if (infoPtr->director.first->partitioningId != infoPtr->director.second->partitioningId) {
             throw InvalidTableError("Match table " + db_ + "." + table +
                                     " relates two director tables with"
