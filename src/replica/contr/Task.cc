@@ -103,7 +103,14 @@ void Task::_startImpl() {
         logOnStartEvent();
         onStart();
         util::BlockPost blockPost(1000 * _waitIntervalSec, 1000 * _waitIntervalSec + 1);
-        while (!stopRequested() and onRun()) {
+        while (!stopRequested()) {
+            try {
+                if (!onRun()) break;
+            } catch (TaskStopped const&) {
+                throw;
+            } catch (exception const& ex) {
+                error("ignore exception: " + string(ex.what()));
+            }
             blockPost.wait();
         }
         debug("stopped");
