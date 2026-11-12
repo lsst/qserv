@@ -30,6 +30,7 @@
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <utility>
 
 // Third party headers
@@ -207,6 +208,12 @@ BOOST_FIXTURE_TEST_CASE(simple, AsyncReqFixture) {
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Length"), "0");
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Type"), "text/html");
                 BOOST_CHECK_EQUAL(req->responseBodySize(), 0U);
+                BOOST_CHECK_EQUAL(req->errorCountResolves(), 0U);
+                BOOST_CHECK_EQUAL(req->errorCountConnects(), 0U);
+                BOOST_CHECK_EQUAL(req->errorCountSends(), 0U);
+                BOOST_CHECK_EQUAL(req->errorCountReceives(), 0U);
+                BOOST_CHECK_GT(req->dataTx(), 0U);
+                BOOST_CHECK_GT(req->dataRx(), 0U);
             },
             method, url, data, headers);
     BOOST_CHECK_EQUAL(req->target(), target);
@@ -231,21 +238,34 @@ BOOST_FIXTURE_TEST_CASE(failed_receive, AsyncReqFixture) {
     });
 
     auto const url = "http://127.0.0.1:" + to_string(port) + "/truncated";
-    promise<pair<http::AsyncReq::State, string>> completionPromise;
+    using CompletionStats =
+            tuple<http::AsyncReq::State, string, size_t, size_t, size_t, size_t, size_t, size_t>;
+    promise<CompletionStats> completionPromise;
     auto completionFuture = completionPromise.get_future();
     req = http::AsyncReq::create(
             io_service,
             [this, &completionPromise](auto const& completedRequest) {
                 cancelAbortTimer();
-                completionPromise.set_value({completedRequest->state(), completedRequest->errorMessage()});
+                completionPromise.set_value(
+                        {completedRequest->state(), completedRequest->errorMessage(),
+                         completedRequest->errorCountResolves(), completedRequest->errorCountConnects(),
+                         completedRequest->errorCountSends(), completedRequest->errorCountReceives(),
+                         completedRequest->dataTx(), completedRequest->dataRx()});
             },
             http::Method::GET, url);
     req->start();
     serverThread.join();
     BOOST_REQUIRE(completionFuture.wait_for(2s) == future_status::ready);
-    auto const [state, error] = completionFuture.get();
+    auto const [state, error, errorCountResolves, errorCountConnects, errorCountSends, errorCountReceives,
+                dataTx, dataRx] = completionFuture.get();
     BOOST_CHECK(state == http::AsyncReq::State::FAILED_RX);
     BOOST_CHECK(!error.empty());
+    BOOST_CHECK_EQUAL(errorCountResolves, 0U);
+    BOOST_CHECK_EQUAL(errorCountConnects, 0U);
+    BOOST_CHECK_EQUAL(errorCountSends, 0U);
+    BOOST_CHECK_EQUAL(errorCountReceives, 1U);
+    BOOST_CHECK_GT(dataTx, 0U);
+    BOOST_CHECK_GT(dataRx, 0U);
 }
 
 #if 0
