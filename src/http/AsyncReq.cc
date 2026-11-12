@@ -266,6 +266,7 @@ void AsyncReq::_resolve(lock_guard<mutex> const& lock) {
             _hostPort.host, to_string(_hostPort.port == 0 ? 80 : _hostPort.port),
             [self = shared_from_this()](boost::system::error_code const& ec,
                                         asio::ip::tcp::resolver::results_type const& results) {
+                if (ec.value() != 0) self->_errorCountResolves++;
                 self->_resolved(ec, results);
             });
 }
@@ -281,10 +282,12 @@ void AsyncReq::_resolved(boost::system::error_code const& ec,
         _restart(lock);
         return;
     }
-    asio::async_connect(
-            _socket, results,
-            [self = shared_from_this()](boost::system::error_code const& ec,
-                                        const asio::ip::tcp::endpoint& endpoint) { self->_connected(ec); });
+    asio::async_connect(_socket, results,
+                        [self = shared_from_this()](boost::system::error_code const& ec,
+                                                    const asio::ip::tcp::endpoint& endpoint) {
+                            if (ec.value() != 0) self->_errorCountConnects++;
+                            self->_connected(ec);
+                        });
 }
 
 void AsyncReq::_connected(boost::system::error_code const& ec) {
@@ -305,6 +308,8 @@ void AsyncReq::_connected(boost::system::error_code const& ec) {
     boost::beast::http::async_write(
             _socket, _req,
             [self = shared_from_this()](boost::system::error_code const& ec, size_t bytesSent) {
+                if (ec.value() != 0) self->_errorCountSends++;
+                self->_dataTx += bytesSent;
                 self->_sent(ec, bytesSent);
             });
 }
@@ -325,6 +330,8 @@ void AsyncReq::_sent(boost::system::error_code const& ec, size_t bytesSent) {
     boost::beast::http::async_read(
             _socket, _buffer, _res,
             [self = shared_from_this()](boost::system::error_code const& ec, size_t bytesReceived) {
+                if (ec.value() != 0) self->_errorCountReceives++;
+                self->_dataRx += bytesReceived;
                 self->_received(ec, bytesReceived);
             });
 }
