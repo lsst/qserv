@@ -34,6 +34,8 @@
 #define LSST_QSERV_QUERY_TYPES_H_
 
 // System headers
+#include <functional>
+#include <memory>
 #include <vector>
 
 namespace lsst::qserv::query {

@@ -200,6 +200,9 @@ public:
     /// Return the sleep time (in milliseconds) between messages sent to active workers.
     int getMonitorSleepTimeMilliSec() const { return _monitorSleepTimeMilliSec->getVal(); }
 
+    /// @return true if ref-match equi-joins should use chunk-level optimization
+    bool getMatchEquiJoinRewrite() const { return _matchEquiJoinRewrite->getVal(); }
+
     /// Return true if family map chunk distribution should depend on chunk size.
     bool getFamilyMapUsingChunkSize() const { return _familyMapUsingChunkSize->getVal(); }
 
@@ -381,6 +384,8 @@ private:
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnQueryFinish", notReq, 1);
     CVTBoolPtr _notifyWorkersOnCzarRestart =
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnCzarRestart", notReq, 1);
+    CVTBoolPtr _matchEquiJoinRewrite =
+            util::ConfigValTBool::create(_configValMap, "tuning", "matchEquiJoinRewrite", notReq, 0);
     CVTIntPtr _czarStatsUpdateIvalSec =
             util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
     CVTUIntPtr _jobMaxAttempts =
