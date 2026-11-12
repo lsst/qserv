@@ -32,20 +32,23 @@
 
 namespace lsst::qserv::protojson {
 
-/// Return a new json object where the top level values of keys in `keySet` are
-/// replaced with the `mask` (default "-").
+/// Return a new json value where values of keys in `keySet` are replaced with
+/// the `mask` (default "-").
 class PwHideJson {
 public:
     PwHideJson() = default;
 
     /// Return a copy of `in` where top level secret keys are set to mask.
-    /// TODO: make recursive
     nlohmann::json hide(nlohmann::json const& in) const;
+
+    /// Return a copy of `in` where secret keys are set to mask at any depth.
+    nlohmann::json hideWalk(nlohmann::json const& in) const;
 
     std::set<std::string> keySet{"auth_key", "password", "pw", "passwd", "admin_auth_key"};
     std::string mask{"-"};
 };
 
+/// Return a new json value where values of keys in `keySet` are replaced with "-".
 nlohmann::json pwHide(nlohmann::json const& in);
 
 }  // namespace lsst::qserv::protojson

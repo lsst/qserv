@@ -1080,6 +1080,7 @@ void Executive::buildAndSendUberJobs() {
         }
         // Add this job to the appropriate UberJob, making the UberJob if needed.
         string workerId = targetWorker->getWorkerId();
+        // Use a reference to set the map entry, if needed.
         WInfoAndUJPtr::Ptr& wInfUJ = workerJobMap[workerId];
         if (wInfUJ == nullptr) {
             wInfUJ = make_shared<WInfoAndUJPtr>();

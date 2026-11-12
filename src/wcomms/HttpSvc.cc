@@ -148,6 +148,12 @@ uint16_t HttpSvc::start() {
                                                 http::AuthType::REQUIRED);
               }}});
     _httpServerPtr->addHandlers(
+            {{"POST", "/queryexplain",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpWorkerCzarModule::process(::serviceName, self->_foreman, req, resp, "/queryexplain",
+                                                http::AuthType::REQUIRED);
+              }}});
+    _httpServerPtr->addHandlers(
             {{"GET", "/chunkusecounts",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpWorkerCzarModule::process(::serviceName, self->_foreman, req, resp, "/chunkusecounts");

@@ -497,7 +497,7 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
         cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(), chunkSpec.subChunks.end());
     }
 
-    // For a unit test, and only for unit tests, replace the CHUNK_TAG string with the chunk id number.
+    // For a unit test, and only for unit tests replace the CHUNK_TAG string with the chunk id number.
     if (fillInChunkIdTag) {
         string chunkIdStr = to_string(chunkSpec.chunkId);
         // Need to make a chunk specific template to fill in the chunk id values.

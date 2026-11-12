@@ -181,6 +181,10 @@ public:
     ChunkSpecVector::iterator cQueryBegin() { return _chunks.begin(); }
     ChunkSpecVector::iterator cQueryEnd() { return _chunks.end(); }
     int getChunksSize() const { return _chunks.size(); }
+    ChunkSpecVector getChunksCopy() const {
+        ChunkSpecVector copy = _chunks;
+        return copy;
+    }
 
     // For test harnesses.
     struct Test {

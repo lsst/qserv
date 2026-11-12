@@ -59,6 +59,7 @@
 #include "wbase/UberJobData.h"
 #include "wbase/UserQueryInfo.h"
 #include "wconfig/WorkerConfig.h"
+#include "wdb/Explain.h"
 #include "wdb/QueryRunner.h"
 #include "wpublish/QueriesAndChunks.h"
 

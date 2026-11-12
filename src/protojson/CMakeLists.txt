@@ -3,6 +3,7 @@ add_library(protojson SHARED)
 target_sources(protojson PRIVATE
     ChunkUseCountAnswerMsg.cc
     PwHideJson.cc
+    QueryExplainMsg.cc
     ResponseMsg.cc
     ScanTableInfo.cc
     UberJobErrorMsg.cc
@@ -54,4 +55,5 @@ protojson_tests(
     testUberJobReadyMsg
     testUberJobMsg
     testScanTableInfo
+    testQueryExplainMsg
 )

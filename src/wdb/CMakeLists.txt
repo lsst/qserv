@@ -2,6 +2,7 @@ add_library(wdb SHARED)
 
 target_sources(wdb PRIVATE
     ChunkResource.cc
+    Explain.cc
     QueryRunner.cc
     SQLBackend.cc
 )
