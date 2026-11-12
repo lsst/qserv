@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(FirstDirectorOverlap) {
                                                        {"RefObjMatch", {"objectId", "refObjectId"}},
                                                        {"SimRefObject", {"refObjectId"}}}}}));
     auto spec = buildChunk100QuerySpec(stmt);
-    auto const& templates = spec->queries->getTemplates();
+    auto const& templates = spec->queries;
     BOOST_REQUIRE_EQUAL(templates.size(), 2u);
     BOOST_CHECK_EQUAL(templates[0], expected_100_chunk);
     BOOST_CHECK_EQUAL(templates[1], expected_100_chunk_overlap);
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(SecondDirectorOverlap) {
                                                        {"RefObjMatch", {"objectId", "refObjectId"}},
                                                        {"SimRefObject", {"refObjectId", "refRa"}}}}}));
     auto spec = buildChunk100QuerySpec(stmt);
-    auto const& templates = spec->queries->getTemplates();
+    auto const& templates = spec->queries;
     BOOST_REQUIRE_EQUAL(templates.size(), 2u);
     BOOST_CHECK_EQUAL(templates[1], expected_100_chunk_overlap);
     BOOST_CHECK(spec->subChunkIds.empty());
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(WithNearNeighbor) {
                                              {"RefObjMatch", {"objectId", "refObjectId"}},
                                              {"SimRefObject", {"refObjectId", "refRa", "refDecl"}}}}}));
     auto spec = buildChunk100QuerySpec(stmt);
-    auto const& templates = spec->queries->getTemplates();
+    auto const& templates = spec->queries;
     BOOST_REQUIRE_EQUAL(templates.size(), 2u);
     BOOST_CHECK_NE(templates[1].find("`SimRefObjectFullOverlap_100_%S\007S%`"), std::string::npos);
     BOOST_CHECK_EQUAL(templates[1].find("_qserv_overlap_dup"), std::string::npos);
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(SelectStar) {
                                                        {"SimRefObject", {"refObjectId"}}}}}));
     auto spec = buildChunk100QuerySpec(stmt);
     BOOST_CHECK(!spec->subChunkIds.empty());
-    for (auto const& qt : spec->queries->getTemplates()) {
+    for (auto const& qt : spec->queries) {
         BOOST_CHECK_EQUAL(qt.find("_qserv_overlap_dup"), std::string::npos);
     }
 }
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(OneDirectorNoOverlap) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
             {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test"}}, {"RefObjMatch", {"objectId"}}}}}));
     auto spec = buildChunk100QuerySpec(stmt);
-    auto const& templates = spec->queries->getTemplates();
+    auto const& templates = spec->queries;
     BOOST_REQUIRE_EQUAL(templates.size(), 1u);
     BOOST_CHECK_EQUAL(templates[0].find("Overlap"), std::string::npos);
     BOOST_CHECK(spec->subChunkIds.empty());
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(OverlapSubChunkReferences) {
             forceMatchEquiJoinRewrite(true);
             auto enabled = buildChunk100QuerySpec(stmt);
             BOOST_CHECK(!enabled->subChunkIds.empty());
-            BOOST_CHECK(enabled->queries->getTemplates() == disabled->queries->getTemplates());
+            BOOST_CHECK(enabled->queries == disabled->queries);
         }
     }
 }
@@ -233,8 +233,8 @@ BOOST_AUTO_TEST_CASE(AnchorSubChunkStillOptimized) {
             "JOIN RefObjMatch m ON o.objectIdObjTest=m.objectId "
             "JOIN SimRefObject t ON t.refObjectId=m.refObjectId WHERE o.subChunkId=20");
     BOOST_CHECK(spec->subChunkIds.empty());
-    BOOST_REQUIRE_EQUAL(spec->queries->getTemplates().size(), 2u);
-    BOOST_CHECK_NE(spec->queries->getTemplates()[1].find("_qserv_overlap_dup"), std::string::npos);
+    BOOST_REQUIRE_EQUAL(spec->queries.size(), 2u);
+    BOOST_CHECK_NE(spec->queries[1].find("_qserv_overlap_dup"), std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(OuterJoinsRejected) {
