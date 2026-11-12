@@ -53,5 +53,6 @@ qproc_tests(
     testQueryAnaDuplSelectExpr
     testQueryAnaGeneral
     testQueryAnaIn
+    testQueryAnaMatchEquiJoin
     testQueryAnaOrderBy
 )

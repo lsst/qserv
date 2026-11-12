@@ -224,6 +224,9 @@ struct MatchTableInfo : TableInfo {
     /// `fk` is the pair of names for the foreign key columns referencing
     /// `director.first->pk` and `director.second->pk`.
     std::pair<std::string, std::string> fk;
+    /// `flagCol` is the name of the partitioning flags column. Bit 0 is set if the row is stored in the
+    /// chunk of `director.first`, bit 1 if it is stored in the chunk of `director.second`. Empty if unknown.
+    std::string flagCol;
     double angSep;  ///< allowed angular separation between objects in director tables
 
     MatchTableInfo(std::string const& db, std::string const& t, double sep)

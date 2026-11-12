@@ -82,6 +82,8 @@ xrootdSpread = 0
 # This is per user query and important milestones ignore this limit.
 qMetaSecsBetweenChunkCompletionUpdates = 59
 
+# Set to 1 to enable chunk-level optimization for ref-match equi-joins
+matchEquiJoinRewrite = 1
 
 # If not 0 then broadcast query completion/cancellation events to all workers
 # so that they would do proper garbage collection and resource recycling.

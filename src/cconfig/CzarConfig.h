@@ -194,6 +194,9 @@ public:
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
+    /// @return true if ref-match equi-joins should use chunk-level optimization
+    bool getMatchEquiJoinRewrite() const { return _matchEquiJoinRewrite->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -367,6 +370,8 @@ private:
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnQueryFinish", notReq, 1);
     CVTBoolPtr _notifyWorkersOnCzarRestart =
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnCzarRestart", notReq, 1);
+    CVTBoolPtr _matchEquiJoinRewrite =
+            util::ConfigValTBool::create(_configValMap, "tuning", "matchEquiJoinRewrite", notReq, 0);
     CVTIntPtr _czarStatsUpdateIvalSec =
             util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
 
