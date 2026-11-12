@@ -24,6 +24,7 @@
 // System headers
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <functional>
 #include <initializer_list>
 #include <memory>
@@ -104,7 +105,7 @@ namespace lsst::qserv::http {
  *       AsyncReq::HostPort{"host-c", 8082},
  *       AsyncReq::HostPort{"host-d", 8083}
  *   };
- *   size_t next = 0;
+ *   std::size_t next = 0;
  *   AsyncReq::GetHostPort const getHostPort = [&hostPort, &next]() -> AsyncReq::HostPort {
  *       return hostPort[next++ % hostPort.size()];
  *   };
@@ -267,7 +268,7 @@ public:
     HostPort const& hostPort() const { return _hostPort; }
     std::string const& target() const { return _target; }
     std::string const& data() const { return _data; }
-    size_t maxResponseBodySize() const { return _maxResponseBodySize; }
+    std::size_t maxResponseBodySize() const { return _maxResponseBodySize; }
     unsigned int expirationIval() const { return _expirationIvalSec; }
 
     /// @return The current state of the request.
@@ -282,7 +283,7 @@ public:
      * @param bytes The number of bytes.
      * @throw std::logic_error If the method was called afer staring the request.
      */
-    void setMaxResponseBodySize(size_t bytes);
+    void setMaxResponseBodySize(std::size_t bytes);
 
     /**
      * @brief Set a timeout to wait before the completion of a request.
@@ -339,7 +340,16 @@ public:
 
     /// @return The size (in bytes) of the response's body.
     /// @throw std::logic_error If the operation didn't start or it was still in progress.
-    size_t responseBodySize() const;
+    std::size_t responseBodySize() const;
+
+    // Statistics
+
+    std::size_t errorCountResolves() const { return _errorCountResolves; }
+    std::size_t errorCountConnects() const { return _errorCountConnects; }
+    std::size_t errorCountSends() const { return _errorCountSends; }
+    std::size_t errorCountReceives() const { return _errorCountReceives; }
+    std::size_t dataTx() const { return _dataTx; }
+    std::size_t dataRx() const { return _dataRx; }
 
 private:
     /// @see AsyncReq::create()
@@ -366,8 +376,8 @@ private:
     void _resolved(boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::results_type const& results);
     void _connected(boost::system::error_code const& ec);
-    void _sent(boost::system::error_code const& ec, size_t bytesSent);
-    void _received(boost::system::error_code const& ec, size_t bytesReceived);
+    void _sent(boost::system::error_code const& ec, std::size_t bytesSent);
+    void _received(boost::system::error_code const& ec, std::size_t bytesReceived);
     void _expired(boost::system::error_code const& ec);
 
     /// Extract the header from the response message and cache it.
@@ -405,7 +415,7 @@ private:
     std::string const _target;
     std::string const _data;
     std::unordered_map<std::string, std::string> const _headers;
-    size_t _maxResponseBodySize = 0;
+    std::size_t _maxResponseBodySize = 0;
 
     /// This timer is used (if configured) to limit the total run time
     /// of a request. The timer starts when the request is started. And it's
@@ -445,6 +455,14 @@ private:
 
     /// Parsed and cached response header
     std::unordered_map<std::string, std::string> _responseHeader;
+
+    // Statistics counters
+    std::atomic<std::size_t> _errorCountResolves{0};
+    std::atomic<std::size_t> _errorCountConnects{0};
+    std::atomic<std::size_t> _errorCountSends{0};
+    std::atomic<std::size_t> _errorCountReceives{0};
+    std::atomic<std::size_t> _dataTx{0};
+    std::atomic<std::size_t> _dataRx{0};
 
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.
