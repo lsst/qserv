@@ -57,3 +57,9 @@ Updating Parameters
 To update the ``scanRate`` parameter for a table, use the following API call:
 
 - :ref:`ingest-shared-scan-set` (API)
+
+Inspecting query classification
+-------------------------------
+
+Use :ref:`query-explain` to inspect ``scan_interactive``, ``scan_rating``, and ``scan_tables``
+for a query.

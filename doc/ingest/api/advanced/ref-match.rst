@@ -23,7 +23,7 @@ the same database *family* (partitioned using the same values for the parameters
 This requirement is enforced by the table registration service of the Replication/Ingest system. From the system's perspective,
 these tables are not different from any other *partitioned* tables. The only changes made to the table registration interface
 to specifically support *ref-match* tables are redefining (extending) the syntax of the attribute ``director_table`` and adding
-four optional attributes allowed in the JSON configurations of the tables as presented below:
+four attributes in the JSON configurations of the tables as presented below:
 
 ``director_table`` : *string*
   A table referenced here must be the **first** *director* table that must be registered in Qserv before the *ref-match* table.
@@ -40,21 +40,23 @@ four optional attributes allowed in the JSON configurations of the tables as pre
   If the database name is provided, the database should already be known to the Replication/Ingest system.
 
 ``director_key`` : *string*
-  A non-empty string specifying the name of the primary key column of the referenced *director* table must be provided here.
-  This column should also be present in the table schema.
+  A non-empty string specifying the name of the column in this ref-match table that contains the referenced director's key values.
+  This column must also be present in the table schema.
+  As an example, directors A and B may both have a column ``id``, while the match table uses ``aId`` and ``bId``. Configure
+  ``"director_key": "aId"`` and ``"director_key2": "bId"`` for the match table.
 
 ``director_table2`` : *string*
   This is the **second** *director* table referenced by the *ref-match* table. The values for this attribute must adhere to the same
   requirements and restrictions as those specified for the ``director_table`` attribute.
 
 ``director_key2`` : *string*
-  A non-empty string specifying the name of the primary key column of the **second** referenced *director* table must be provided here.
-  This column should also be present in the table schema. Note that the name should be different from the one specified in
+  A non-empty string specifying the name of the column that contains referenced key values for the **second** referenced *director* table.
+  This column must also be present in the table schema. Note that the name must be different from the one specified in
   the ``director_key`` attribute.
 
 ``flag`` : *string*
-  The name of a column that stores flags created by the special partitioning tool ``sph-partition-matches``. This column should
-  also be present in the table schema. Usually, the column has the SQL type ``UNSIGNED INT``.
+  The name of a column that stores flags created by the special partitioning tool ``sph-partition-matches``. This column must
+  also be present in the table schema. Usually, the column has the SQL type ``INT UNSIGNED``.
 
 ``ang_sep`` : *double*
   The maximum angular separation (within the spatial coordinate system) between the matched objects. The value of this parameter
@@ -81,7 +83,7 @@ Here is an example of the JSON configuration for a *ref-match* table:
         "schema": [
             {"name" : "objectId", "type" : "BIGINT UNSIGNED"},
             {"name" : "deepSourceId", "type" : "BIGINT UNSIGNED"},
-            {"name" : "flag", "type" : "INT UNSIGNED"},
+            {"name" : "flags", "type" : "INT UNSIGNED"},
             {"name" : "chunkId", "type" : "INT UNSIGNED"},
             {"name" : "subChunkId", "type" : "INT UNSIGNED"}
         ],
