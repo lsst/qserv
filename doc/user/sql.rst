@@ -9,17 +9,16 @@ Introduction
 ============
 
 LSST Query Services (Qserv) provides access to the LSST Database Catalogs. Users can query the catalogs using
-standard SQL query language with a few restrictions described below. Why restricting it? We are intercepting
-all queries, rewriting them and executing each large query as many sub-queries in parallel. Introducing these
-restrictions greatly simplifies parsing incoming queries.
+standard SQL query language with a few restrictions described below. These restrictions make it possible for
+Qserv to rewrite general SQL queries into distributed equivalents that operate in parallel over a cluster of
+compute resources.
 
-Our parser uses an open-source grammar built from the `SQL92 <https://en.wikipedia.org/wiki/SQL-92>`_ specification.
-It does not include anything beyond SQL92, with minor exceptions (e.g., ``!=`` is allowed as well as ``<>``).
+Qserv supports a subset of SQL with MySQL/MariaDB syntax. A query must also be executable using
+the catalog's partitioning and Qserv's distributed execution rules; accepting a query's syntax
+does not guarantee that Qserv can execute it. The simplest way to look at it is to treat it as a MySQL database
+server, modulo restrictions and extensions described in this document.
 
-The simplest way to look at it is to treat it as a MySQL database server, modulo restrictions and extensions
-described in this document.
-
-If you run into any syntax that this Manual fails to document, please report it to the Qserv developers.
+If you run into any syntax that this manual fails to document, please report it to the Qserv developers.
 
 Selected Design Aspects
 =======================
@@ -73,7 +72,7 @@ which contains information about astronomical objects (galaxies, stars), one row
         sourceId BIGINT PRIMARY KEY, -- unique identifier
         objectId BIGINT,             -- pointer to corresponding object
                                      -- Note, there maybe many sources per object
-        ra DOUBLE                    -- spatial location (right ascension)
+        ra DOUBLE,                   -- spatial location (right ascension)
         decl DOUBLE                  -- spatial location (declination)
     )
 
@@ -169,62 +168,117 @@ Example:
 
     SELECT objectId FROM Object WHERE qserv_areaspec_box(0, 0, 3, 10)
 
-Note that as discussed in the "Restrictions" section below, spatial constraints **must** be expressed through
-the ``qserv_areaspec_*`` functions.
+Qserv can also identify spatial constraints written with SciSQL functions. For example, if
+``ra`` and ``decl`` are the table's configured partitioning coordinates, either of these
+queries allows Qserv to restrict the chunks it searches:
+
+.. code-block:: sql
+
+    SELECT objectId FROM Object
+    WHERE scisql_angSep(ra, decl, 55.5, -30.2) < 0.05
+
+    SELECT objectId FROM Object
+    WHERE scisql_s2PtInCircle(ra, decl, 55.5, -30.2, 0.05) = 1
+
+Coordinates and the angular radius in these examples are in degrees. The center and radius
+must be numeric constants. The coordinate columns must match the table's configured partitioning columns.
+A filter on other coordinates will work, but will not apply chunk pruning optimizations.
+
+For SciSQL area detection, put a single region predicate in the top-level ``AND``
+conditions of ``WHERE``. Negated predicates, predicates inside ``OR``, and multiple detected
+SciSQL region predicates do not provide this single-region optimization. Use :ref:`query-explain`
+to check ``area_restrictors`` and ``chunks_matched`` rather than assuming that a spatial
+expression reduces chunk coverage.
+
+Aggregates and expressions
+--------------------------
+
+Qserv supports ``COUNT``, ``SUM``, ``AVG``, ``MIN``, ``MAX``, and the integer bitwise aggregates
+``BIT_AND``, ``BIT_OR``, and ``BIT_XOR`` across chunks. Scalar functions and arithmetic can
+surround aggregates, and aggregate arguments can themselves be expressions. Both can be nested
+to any depth. For example:
+
+.. code-block:: sql
+
+    SELECT ROUND(AVG(flux), 2) AS meanFlux,
+           MAX(flux) - MIN(flux) AS fluxRange,
+           ROUND(100.0 * COUNT(flux) / COUNT(*), 1) AS pctWithFlux,
+           MAX(ABS(decl)) AS maxAbsDecl,
+           BIT_OR(flags & 255) AS combinedFlags
+    FROM Object
+
+These expressions are evaluated using the combined results from all selected chunks.
+
+Outside the aggregate, the surrounding expression can use other aggregates and constants, but
+not columns. For example, ``MAX(flux) - flux`` and ``COUNT(*) + objectId`` are rejected.
+In that situation, select the column and the aggregate as separate items instead.
+
+``DISTINCT`` inside aggregate arguments (for example, ``COUNT(DISTINCT objectId)``) is not
+supported. An aggregate cannot contain another aggregate (for example, ``MAX(SUM(flux))``), and aggregates
+cannot appear in ``WHERE``. For grouped filtering, use ``HAVING`` and include the aggregate
+expression in the select list, preferably with an alias:
+
+.. code-block:: sql
+
+    SELECT objectId, COUNT(*) AS n
+    FROM Source
+    GROUP BY objectId
+    HAVING n > 1
+
+An aggregate expression in ``HAVING`` must match an entry or alias in the select list.
+
+Spatial joins
+-------------
+
+Near-neighbor joins can use either ``scisql_angSep(...) < radius`` or
+``scisql_s2PtInCircle(..., radius) = 1``. For example:
+
+.. code-block:: sql
+
+    SELECT a.objectId AS id1, b.objectId AS id2
+    FROM Object AS a JOIN Object AS b
+      ON scisql_s2PtInCircle(a.ra, a.decl, b.ra, b.decl, 0.01) = 1
+
+The radius is a constant in degrees, and a radius larger than the available overlap cannot be
+used to request an arbitrary cross-chunk join.
+
+Ref-match joins across catalogs
+-------------------------------
+
+A registered ref-match table can connect directors in different catalogs. Qualify each table
+with its database name when necessary, and join on the configured director keys. For example,
+for a match table with columns ``objectId`` and ``deepSourceId``:
+
+.. code-block:: sql
+
+    SELECT o.objectId, d.deepSourceId
+    FROM CatalogA.RefMatch AS m
+    JOIN CatalogA.Object AS o ON m.objectId = o.objectId
+    JOIN CatalogB.DeepSource AS d ON m.deepSourceId = d.deepSourceId
+
+The catalogs must belong to the same database family.
 
 
 Restrictions
 ============
 
-This section covers restriction you need to be aware of when interacting with Qserv.
+Spatial filtering and chunk selection
+-------------------------------------
 
-Spatial constraints should be expressed through our ``qserv_areaspec_*`` functions
-----------------------------------------------------------------------------------
+Use ``qserv_areaspec_*`` or a recognized SciSQL spatial predicate when you want Qserv to select
+chunks by region. Comparisons such as ``ra BETWEEN ... AND ...`` combined with a declination
+range filter rows, but do not themselves provide spatial chunk selection.
 
-Spatial constraints should be expressed through ``qserv_areaspec_*`` functions (see Extensions section above for
-details). Any other way of specifying spatial restrictions may be significantly slower (e.g., they might
-devolve to be full table scan). For example, the form:
-
-..  code-block:: sql
-
-    WHERE ra BETWEEN <ra1> AND <ra2>
-      AND decl BETWEEN <decl1> AND <decl2>
-
-even though it is equivalent to:
-
-..  code-block:: sql
-
-    qserv_areaspec_box(<ra1>, <decl1>, <ra2>, <decl2>)
-
-should not be used.
-
-
-Spatial constraints must appear at the beginning of ``WHERE``
--------------------------------------------------------------
-
-Spatial constraints must appear at the very beginning of the ``WHERE`` clause (before or after the ``objectId``
-constraint, if there is any).
-
-
-Only one spatial constraint is allowed per query
-------------------------------------------------
-
-Only one spatial constraint expressed through ``qserv_areaspec_*`` is allowed per query, e.g., these are examples
-of invalid queries:
-
-..  code-block:: sql
-
-    WHERE qserv_areaspec_box(1, 35, 2, 38)
-      AND qserv_areaspec_box(5, 77, 6, 78)
-
-    WHERE qserv_areaspec_box(1, 35, 2, 38)
-      AND qserv_areaspec_circle(5, 77, 0.1)
-
+``qserv_areaspec_*`` constraints may occur anywhere among the ``AND`` conditions in ``WHERE``.
+Multiple such constraints are allowed and their row filters are combined conjunctively.
+Chunk selection can conservatively include chunks covering any of those regions. In a join, these
+constraints apply to the configured spatial columns of each partitioned table; a SciSQL
+predicate explicitly names the table and columns to which its row filter applies.
 
 Arguments passed to spatial constraints functions must be simple literals
 -------------------------------------------------------------------------
 
-The arguments passed to the ``qserv_aresspec_*`` functions must be simple literals. They may not contain any
+The arguments passed to the ``qserv_areaspec_*`` functions must be simple literals. They may not contain any
 references, e.g. may not refer to columns.
 
 Example of an invalid entry:
@@ -254,25 +308,24 @@ is valid, but:
      FROM  Object
      WHERE qserv_areaspec_box(1, 35, 2, 38) OR x > 3.5
 
-is not allowed. We expect to remove this restriction in the future, see
-`DM-2888 <https://jira.lsstcorp.org/browse/DM-2888>`_.
+is not allowed. A ``qserv_areaspec_*`` constraint cannot occur under ``OR`` or ``NOT``.
+Other predicates may use ``OR``, for example ``qserv_areaspec_box(1, 35, 2, 38) AND (x > 3.5 OR x < 0)``.
 
 
-The director index constraint must be expressed through ``=``, ``IN``, or ``BETWEEN``
--------------------------------------------------------------------------------------
+Director index constraints must be expressed through ``=`` or ``IN``
+-----------------------------------------------------------------------
 
-If the query has objectId constraint, it should be expressed in one of these three forms:
+If the query has an objectId constraint, express it in one of these two forms so that Qserv can
+use the director index to select only the chunks that hold those objects:
 
 ..  code-block:: sql
 
     SELECT * FROM Object WHERE objectId = 123
     SELECT * FROM Object WHERE objectId IN (123, 453, 3465)
-    SELECT * FROM Object WHERE objectId BETWEEN 123 AND 130
 
-E.g., don't try to express it as ``WHERE objectId != 1``, or ``WHERE objectId > 123``, etc.
-
-Note, we expect to allow decomposing objectId into bitfields (e.g., for sampling) in the future. See
-`DM-2889 <https://jira.lsstcorp.org/browse/DM-2889>`_.
+The values must be literals, and the constraint must be one of the top-level ``AND`` conditions
+of ``WHERE``. To select several objects, use ``IN`` rather than combining ``=`` comparisons with
+``OR``.
 
 
 Column(s) used in ``ORDER BY`` or ``GROUP BY`` must appear in ``SELECT``
@@ -291,11 +344,11 @@ Correct version:
 
     SELECT y, x FROM T ORDER BY y
 
-Expressions/functions in ``ORDER BY`` clauses are not allowed
+Functions in ``ORDER BY`` clauses are not allowed
 -------------------------------------------------------------
 
-In SQL92 ``ORDER BY`` is limited to actual table columns, thus expressions or functions in ``ORDER BY`` are rejected.
-This is true for Qserv too.
+Qserv rejects functions written directly in ``ORDER BY``. Select the expression under an alias
+and order by that alias instead.
 
 Example of an invalid use of the ``ORDER BY`` clause:
 
@@ -319,19 +372,14 @@ Commands that modify tables are disallowed
 ------------------------------------------
 
 Commands for creating or modifying tables are disabled. These commands include ``INSERT``, ``UPDATE``, ``LOAD INTO``,
-``CREATE``, ``ALTER``, ``TRUNCATE``, and ``DROP``. We will revisit this as we start adding support for Level 3.
+``CREATE``, ``ALTER``, ``TRUNCATE``, and ``DROP`` through the SQL query interface.
+To upload and manage user tables, see :ref:`http-frontend-ingest`.
 
 
 Outer joins are not supported with near-neighbor queries
 --------------------------------------------------------
 
 Qserv does not support ``LEFT`` or ``RIGHT`` joins with near-neighbor predicates.
-
-
-MySQL-specific syntax is not supported
---------------------------------------
-
-MySQL-specific syntax is not supported. Example of unsupported syntax that will be rejected: ``NAME_CONST``.
 
 
 Repeated column names through ``*`` are not supported
@@ -451,7 +499,7 @@ or:
 ..  code-block:: sql
 
     SELECT s.ra, s.decl, o.raRange, o.declRange
-      FROM Object o, Source s USING (objectId)
+      FROM Object o JOIN Source s USING (objectId)
      WHERE o.objectId = <id>
 
 
@@ -489,30 +537,8 @@ Limit results, sort results
      LIMIT 100
 
 
-Known Bugs
-==========
-
-The list of all known / reported problems can be found at: `Data Access and Database Team User-facing
-Bugs <https://jira.lsstcorp.org/issues/?filter=13501>`_.
-
-
-Selecting by objectId can miss a row
-------------------------------------
-
-Selecting rows using objectId sometimes does not return rows it should.
-For details, see: `DM-2864 <https://jira.lsstcorp.org/browse/DM-2864>`_.
-
-
-``WHERE objectId BETWEEN`` fails
---------------------------------
-
-As explained above, queries in the form ``WHERE objectId BETWEEN`` are discouraged. In fact, Qserv will
-currently return a cryptic message when such query is executed. For details, see
-`DM-2873 <https://jira.lsstcorp.org/browse/DM-2873>`_.
-
-
-Notes of Performance
-====================
+Performance Notes
+=================
 
 Use objectId when selecting sources
 -----------------------------------
