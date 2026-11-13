@@ -57,6 +57,7 @@ public:
      *   the empty string  for pulling info on all known Controllers
      *   SELECT-ONE-BY-ID  for extended info (including events log) a single controller
      *   LOG-DICT          for a dictionary of unique keys from controller's events log
+     *   STATS             for retrieving controller statistics
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -83,6 +84,7 @@ private:
     nlohmann::json _controllers();
     nlohmann::json _oneController();
     nlohmann::json _eventLogDict();
+    nlohmann::json _stats();
 
     ControllerInfo _getControllerFromParamOrThrow404(std::string const& func);
 };
