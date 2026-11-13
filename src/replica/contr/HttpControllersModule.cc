@@ -29,6 +29,9 @@
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
 #include "replica/contr/Controller.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpMessenger.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -57,6 +60,8 @@ json HttpControllersModule::executeImpl(string const& subModuleName) {
         return _oneController();
     else if (subModuleName == "LOG-DICT")
         return _eventLogDict();
+    else if (subModuleName == "STATS")
+        return _stats();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
@@ -148,6 +153,16 @@ json HttpControllersModule::_eventLogDict() {
     result["log_dict"] = controller()->serviceProvider()->databaseServices()->readControllerEventDict(
             logCurrentController ? controllerInfo.id : string());
     return result;
+}
+
+json HttpControllersModule::_stats() {
+    debug(__func__);
+    checkApiVersion(__func__, 63);
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    return json::object({{"stats", controller()->httpMessenger()->statsToJson()}});
+#else
+    return json::object({{"stats", json::object()}});
+#endif
 }
 
 ControllerInfo HttpControllersModule::_getControllerFromParamOrThrow404(string const& func) {
