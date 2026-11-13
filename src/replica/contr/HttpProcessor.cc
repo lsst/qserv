@@ -146,6 +146,11 @@ void HttpProcessor::registerServices() {
                 HttpControllersModule::process(self->controller(), self->name(), req, resp, "LOG-DICT");
             });
     httpServer()->addHandler(
+            "GET", "/replication/protocol/controller/stats",
+            [self](shared_ptr<qhttp::Request> const req, shared_ptr<qhttp::Response> const resp) {
+                HttpControllersModule::process(self->controller(), self->name(), req, resp, "STATS");
+            });
+    httpServer()->addHandler(
             "GET", "/replication/request",
             [self](shared_ptr<qhttp::Request> const req, shared_ptr<qhttp::Response> const resp) {
                 HttpRequestsModule::process(self->controller(), self->name(), req, resp);
