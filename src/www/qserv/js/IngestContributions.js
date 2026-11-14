@@ -259,7 +259,7 @@ function(CSSLoader,
           <th class="sticky right-aligned">Status</th>
           <th class="sticky">Stage</th>
           <th class="sticky"><elem style="color:red;">&darr;</elem></th>
-          <th class="sticky right-aligned">Created</elem></th>
+          <th class="sticky right-aligned">Created</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky right-aligned">Started</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
