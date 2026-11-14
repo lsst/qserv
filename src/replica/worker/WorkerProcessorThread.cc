@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/config/ConfigExceptions.h"
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerProcessor.h"
 #include "replica/worker/WorkerRequest.h"
@@ -37,19 +38,18 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessorThread");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessorPtr const& processor) {
+shared_ptr<WorkerProcessorThread> WorkerProcessorThread::create(
+        shared_ptr<WorkerProcessor> const& processor) {
     static unsigned int id = 0;
-    return WorkerProcessorThread::Ptr(new WorkerProcessorThread(processor, id++));
+    return shared_ptr<WorkerProcessorThread>(new WorkerProcessorThread(processor, id++));
 }
 
-WorkerProcessorThread::WorkerProcessorThread(WorkerProcessorPtr const& processor, unsigned int id)
+WorkerProcessorThread::WorkerProcessorThread(shared_ptr<WorkerProcessor> const& processor, unsigned int id)
         : _processor(processor), _id(id), _stop(false) {}
 
 bool WorkerProcessorThread::isRunning() const { return _thread != nullptr; }
@@ -59,7 +59,7 @@ void WorkerProcessorThread::run() {
 
     _thread = make_unique<thread>([self = shared_from_this()]() {
         LOGS(_log, LOG_LVL_DEBUG, self->context() << "start");
-        while (not self->_stop) {
+        while (!self->_stop) {
             // Get the next request to process if any. This operation will block
             // until either the next request is available (returned a valid pointer)
             // or the specified timeout expires. In either case this thread has a chance
@@ -75,7 +75,7 @@ void WorkerProcessorThread::run() {
                                      << "  id: " << request->id());
                 bool finished = false;  // just to report the request completion
                 try {
-                    while (not(finished = request->execute())) {
+                    while (!(finished = request->execute())) {
                         if (self->_stop) {
                             LOGS(_log, LOG_LVL_DEBUG,
                                  self->context() << "rollback processing"
@@ -95,27 +95,27 @@ void WorkerProcessorThread::run() {
                          self->context() << "failed processing"
                                          << "  id: " << request->id() << "  database: " << ex.databaseName
                                          << " was not found in the configuration");
-                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::CONFIG_NO_SUCH_DB);
+                    request->setStatus(protocol::Status::FAILED, protocol::StatusExt::CONFIG_NO_SUCH_DB);
                     finished = true;
                 } catch (ConfigUnknownTable const& ex) {
                     LOGS(_log, LOG_LVL_ERROR,
                          self->context() << "failed processing"
                                          << "  id: " << request->id() << "  table: " << ex.databaseName << "."
                                          << ex.tableName << " was not found in the configuration");
-                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::CONFIG_NO_SUCH_TABLE);
+                    request->setStatus(protocol::Status::FAILED, protocol::StatusExt::CONFIG_NO_SUCH_TABLE);
                     finished = true;
                 } catch (std::exception const& ex) {
                     LOGS(_log, LOG_LVL_ERROR,
                          self->context() << "failed processing"
                                          << "  id: " << request->id() << "  exception: " << ex.what());
-                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::OTHER_EXCEPTION);
+                    request->setStatus(protocol::Status::FAILED, protocol::StatusExt::OTHER_EXCEPTION);
                     finished = true;
                 }
                 if (finished) {
                     LOGS(_log, LOG_LVL_DEBUG,
                          self->context() << "finish processing"
                                          << "  id: " << request->id()
-                                         << "  status: " << WorkerRequest::status2string(request->status()));
+                                         << "  status: " << protocol::toString(request->status()));
                     self->_processor->_processingFinished(request);
                 }
             }
@@ -128,7 +128,7 @@ void WorkerProcessorThread::run() {
 }
 
 void WorkerProcessorThread::stop() {
-    if (not isRunning()) return;
+    if (!isRunning()) return;
     _stop = true;
 }
 

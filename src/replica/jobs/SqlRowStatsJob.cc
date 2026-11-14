@@ -26,9 +26,16 @@
 #include "global/constants.h"
 #include "global/stringUtil.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/SqlJobResult.h"
+#include "replica/proto/Protocol.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlRowStatsRequest.h"
+#else
 #include "replica/requests/SqlRowStatsRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkedTable.h"
 #include "util/TimeUtils.h"
 
@@ -39,7 +46,7 @@ using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRowStatsJob");
-uint64_t const unlimitedMaxRows = 0;
+uint64_t const MAX_ROWS_UNLIMITED = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -68,22 +75,23 @@ SqlRowStatsJob::StateUpdatePolicy SqlRowStatsJob::str2policy(string const& str) 
     throw invalid_argument("SqlRowStatsJob::" + string(__func__) + ": '" + str + "' is not a valid policy.");
 }
 
-SqlRowStatsJob::Ptr SqlRowStatsJob::create(string const& database, string const& table,
-                                           ChunkOverlapSelector overlapSelector,
-                                           SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
-                                           bool allWorkers, Controller::Ptr const& controller,
-                                           string const& parentJobId, CallbackType const& onFinish,
-                                           int priority) {
-    return Ptr(new SqlRowStatsJob(database, table, overlapSelector, stateUpdatePolicy, allWorkers, controller,
-                                  parentJobId, onFinish, priority));
+shared_ptr<SqlRowStatsJob> SqlRowStatsJob::create(string const& database, string const& table,
+                                                  ChunkOverlapSelector overlapSelector,
+                                                  SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
+                                                  bool allWorkers, shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId, CallbackType const& onFinish,
+                                                  int priority) {
+    return shared_ptr<SqlRowStatsJob>(new SqlRowStatsJob(database, table, overlapSelector, stateUpdatePolicy,
+                                                         allWorkers, controller, parentJobId, onFinish,
+                                                         priority));
 }
 
 SqlRowStatsJob::SqlRowStatsJob(string const& database, string const& table,
                                ChunkOverlapSelector overlapSelector,
                                SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
-                               Controller::Ptr const& controller, string const& parentJobId,
+                               shared_ptr<Controller> const& controller, string const& parentJobId,
                                CallbackType const& onFinish, int priority)
-        : SqlJob(::unlimitedMaxRows, allWorkers, controller, parentJobId, "SQL_TABLE_ROW_STATS", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_TABLE_ROW_STATS", priority),
           _database(database),
           _table(table),
           _overlapSelector(overlapSelector),
@@ -99,10 +107,16 @@ list<pair<string, string>> SqlRowStatsJob::extendedPersistentState() const {
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
-
-list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                     size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const& lock,
+                                                                string const& worker,
+                                                                size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
+list<shared_ptr<SqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const& lock, string const& worker,
+                                                            size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -130,14 +144,24 @@ list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(replica::Lock const& lock, 
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
-        requests.push_back(SqlRowStatsRequest::createAndStart(
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlRowStatsRequest::createAndStart(
                 controller(), worker, database(), tables,
-                [self = shared_from_base<SqlRowStatsJob>()](SqlRowStatsRequest::Ptr const& request) {
+                [self = shared_from_base<SqlRowStatsJob>()](
+                        shared_ptr<HttpSqlRowStatsRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#else
+        requests.push_back(SqlRowStatsRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlRowStatsJob>()](shared_ptr<SqlRowStatsRequest> const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }
@@ -149,7 +173,6 @@ void SqlRowStatsJob::notify(replica::Lock const& lock) {
 
 void SqlRowStatsJob::processResultAndFinish(replica::Lock const& lock, ExtendedState extendedState) {
     string const context_ = context() + string(__func__) + " ";
-
     bool const isForced = stateUpdatePolicy() == StateUpdatePolicy::FORCED;
     if (isForced ||
         (stateUpdatePolicy() == StateUpdatePolicy::ENABLED && extendedState == ExtendedState::SUCCESS)) {
@@ -260,7 +283,7 @@ bool SqlRowStatsJob::_process(string const& context_, bool isPartitioned, SqlJob
 
     // This scenario is possible in the FORCED mode. And we're guaranteed
     // not to seen it in the ENABLED mode.
-    if (resultSet.extendedStatus != ProtocolStatusExt::NONE) return succeeded;
+    if (resultSet.extendedStatus != protocol::StatusExt::NONE) return succeeded;
 
     // Skip special tables.
     if (isPartitioned) {
@@ -298,7 +321,7 @@ bool SqlRowStatsJob::_process(string const& context_, bool isPartitioned, SqlJob
         // even if it has 0 rows. The default transaction 0 will be used in this case.
         counters[internalTable][0].push_back(0);
     } else {
-        for (auto&& row : resultSet.rows) {
+        for (auto const& row : resultSet.rows) {
             if (row.nulls[0] || row.nulls[1]) {
                 reportResultThatHas("unexpected NULL values");
                 return !succeeded;

@@ -24,6 +24,7 @@
 // System headers
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <functional>
 #include <initializer_list>
 #include <memory>
@@ -40,6 +41,7 @@
 // Qserv headers
 #include "http/Method.h"
 #include "http/Url.h"
+#include "qhttp/Status.h"
 
 // This header declarations
 namespace lsst::qserv::http {
@@ -103,7 +105,7 @@ namespace lsst::qserv::http {
  *       AsyncReq::HostPort{"host-c", 8082},
  *       AsyncReq::HostPort{"host-d", 8083}
  *   };
- *   size_t next = 0;
+ *   std::size_t next = 0;
  *   AsyncReq::GetHostPort const getHostPort = [&hostPort, &next]() -> AsyncReq::HostPort {
  *       return hostPort[next++ % hostPort.size()];
  *   };
@@ -156,9 +158,11 @@ namespace lsst::qserv::http {
  *   the server's host and/or port won't be resolved, or if the connection attempts
  *   will be failing, or if attempts to send a request will be failing. A short delay
  *   will be introduced after each unsuccessfull attempt. The request will go into
- *   the FAILED state if 1) there will be a failure in receiving server's response,
- *   2) in case of incorrect data received from the server, or 3) the result is too
- *   large.
+ *   the FAILED_RX state if there will be a failure in receiving server's response.
+ *   In case if the response's body is larger than the allowed limit, the state will
+ *   case the response's body is larger than the allowed limit, the state will
+ *   be BODY_LIMIT_ERROR. The request will go into FAILED_TX state if there will be
+ *   a failure in delivering the request to the server.
  *
  * @note If the request was created using an alternative technique that require passing
  *   the AsyncReq::GetHostPort function then the function will get called before
@@ -190,8 +194,8 @@ public:
         IN_PROGRESS,       ///< The request is still in progress
         FINISHED,          ///< Final state: the request was deliver to the server and
                            ///  a valid server response was received.
-        FAILED,            ///< Final state: failed to deliver the request to the server or
-                           ///  receive a valid server response.
+        FAILED_TX,         ///< Final state: failed to deliver the request to the server.
+        FAILED_RX,         ///< Final state: failed to receive a valid server response.
         BODY_LIMIT_ERROR,  ///< Final state: the operation failed because the response's body
                            ///  is larger than requested.
         CANCELLED,         ///< Final state: the request was explicitly cancelled before
@@ -263,7 +267,8 @@ public:
     http::Method method() const { return _method; }
     HostPort const& hostPort() const { return _hostPort; }
     std::string const& target() const { return _target; }
-    size_t maxResponseBodySize() const { return _maxResponseBodySize; }
+    std::string const& data() const { return _data; }
+    std::size_t maxResponseBodySize() const { return _maxResponseBodySize; }
     unsigned int expirationIval() const { return _expirationIvalSec; }
 
     /// @return The current state of the request.
@@ -278,7 +283,7 @@ public:
      * @param bytes The number of bytes.
      * @throw std::logic_error If the method was called afer staring the request.
      */
-    void setMaxResponseBodySize(size_t bytes);
+    void setMaxResponseBodySize(std::size_t bytes);
 
     /**
      * @brief Set a timeout to wait before the completion of a request.
@@ -297,7 +302,7 @@ public:
      *
      * Upon successful completion of the method the object's state will be set
      * to State::IN_PROGRESS. Should any problem ocurres with initiating request
-     * processing the object's state will be set to State::FAILED and an exception
+     * processing the object's state will be set to State::FAILED_TX and an exception
      * will be thrown.
      *
      * @throw std::logic_error If the operation already started or finished.
@@ -322,7 +327,7 @@ public:
     /// @return The completion code (HTTP).
     /// @throw std::logic_error If the operation didn't start or it was still in progress.
     /// @note The code is available in states State::FINISHED and State::BODY_LIMIT_ERROR.
-    int responseCode() const;
+    qhttp::Status responseCode() const;
 
     /// @return The content of response header represented by the key/value map.
     /// @throw std::logic_error If the operation didn't start or it was still in progress.
@@ -335,7 +340,16 @@ public:
 
     /// @return The size (in bytes) of the response's body.
     /// @throw std::logic_error If the operation didn't start or it was still in progress.
-    size_t responseBodySize() const;
+    std::size_t responseBodySize() const;
+
+    // Statistics
+
+    std::size_t errorCountResolves() const { return _errorCountResolves; }
+    std::size_t errorCountConnects() const { return _errorCountConnects; }
+    std::size_t errorCountSends() const { return _errorCountSends; }
+    std::size_t errorCountReceives() const { return _errorCountReceives; }
+    std::size_t dataTx() const { return _dataTx; }
+    std::size_t dataRx() const { return _dataRx; }
 
 private:
     /// @see AsyncReq::create()
@@ -362,8 +376,8 @@ private:
     void _resolved(boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::results_type const& results);
     void _connected(boost::system::error_code const& ec);
-    void _sent(boost::system::error_code const& ec, size_t bytesSent);
-    void _received(boost::system::error_code const& ec, size_t bytesReceived);
+    void _sent(boost::system::error_code const& ec, std::size_t bytesSent);
+    void _received(boost::system::error_code const& ec, std::size_t bytesReceived);
     void _expired(boost::system::error_code const& ec);
 
     /// Extract the header from the response message and cache it.
@@ -371,6 +385,10 @@ private:
 
     /// Log a error along with the request's parameters in the specified context (overload for Boost)
     void _logError(std::string const& prefix, boost::system::error_code const& ec) const;
+
+    /// Log a error along with the request's parameters in the specified context (overload for Boost)
+    void _logError(std::string const& prefix, boost::system::error_code const& ec,
+                   std::size_t bytesReceived) const;
 
     /// Log a error along with the request's parameters in the specified context (overload for messages)
     void _logError(std::string const& prefix, std::string const& message) const;
@@ -397,7 +415,7 @@ private:
     std::string const _target;
     std::string const _data;
     std::unordered_map<std::string, std::string> const _headers;
-    size_t _maxResponseBodySize = 0;
+    std::size_t _maxResponseBodySize = 0;
 
     /// This timer is used (if configured) to limit the total run time
     /// of a request. The timer starts when the request is started. And it's
@@ -437,6 +455,14 @@ private:
 
     /// Parsed and cached response header
     std::unordered_map<std::string, std::string> _responseHeader;
+
+    // Statistics counters
+    std::atomic<std::size_t> _errorCountResolves{0};
+    std::atomic<std::size_t> _errorCountConnects{0};
+    std::atomic<std::size_t> _errorCountSends{0};
+    std::atomic<std::size_t> _errorCountReceives{0};
+    std::atomic<std::size_t> _dataTx{0};
+    std::atomic<std::size_t> _dataRx{0};
 
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.

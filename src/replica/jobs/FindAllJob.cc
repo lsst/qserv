@@ -27,7 +27,14 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpFindAllRequest.h"
+#include "replica/requests/http/HttpStopRequest.h"
+#else
+#include "replica/requests/FindAllRequest.h"
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -45,15 +52,15 @@ namespace lsst::qserv::replica {
 
 string FindAllJob::typeName() { return "FindAllJob"; }
 
-FindAllJob::Ptr FindAllJob::create(string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
-                                   Controller::Ptr const& controller, string const& parentJobId,
-                                   CallbackType const& onFinish, int priority) {
-    return FindAllJob::Ptr(new FindAllJob(databaseFamily, saveReplicaInfo, allWorkers, controller,
-                                          parentJobId, onFinish, priority));
+shared_ptr<FindAllJob> FindAllJob::create(string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
+                                          shared_ptr<Controller> const& controller, string const& parentJobId,
+                                          CallbackType const& onFinish, int priority) {
+    return shared_ptr<FindAllJob>(new FindAllJob(databaseFamily, saveReplicaInfo, allWorkers, controller,
+                                                 parentJobId, onFinish, priority));
 }
 
 FindAllJob::FindAllJob(string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
-                       Controller::Ptr const& controller, string const& parentJobId,
+                       shared_ptr<Controller> const& controller, string const& parentJobId,
                        CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "FIND_ALL", priority),
           _databaseFamily(databaseFamily),
@@ -79,8 +86,8 @@ list<pair<string, string>> FindAllJob::extendedPersistentState() const {
 list<pair<string, string>> FindAllJob::persistentLogData() const {
     // Report workers failed to respond to the requests
     list<pair<string, string>> result;
-    for (auto&& workerInfo : getReplicaData().workers) {
-        auto&& workerName = workerInfo.first;
+    for (auto const& workerInfo : getReplicaData().workers) {
+        auto const& workerName = workerInfo.first;
         bool const responded = workerInfo.second;
         if (!responded) {
             result.emplace_back("failed-qserv-worker", workerName);
@@ -99,31 +106,31 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
     //   good-replicas:
     //     the number of "good" replicas
     map<string, map<string, size_t>> workerCategoryCounter;
-    for (auto&& infoCollection : getReplicaData().replicas) {
-        for (auto&& info : infoCollection) {
+    for (auto const& infoCollection : getReplicaData().replicas) {
+        for (auto const& info : infoCollection) {
             workerCategoryCounter[info.worker()]["chunks"]++;
         }
     }
-    for (auto&& chunkItr : getReplicaData().isColocated) {
-        for (auto&& workerItr : chunkItr.second) {
-            auto&& worker = workerItr.first;
+    for (auto const& chunkItr : getReplicaData().isColocated) {
+        for (auto const& workerItr : chunkItr.second) {
+            auto const& workerName = workerItr.first;
             bool const isCollocated = workerItr.second;
-            if (isCollocated) workerCategoryCounter[worker]["collocated-replicas"]++;
+            if (isCollocated) workerCategoryCounter[workerName]["collocated-replicas"]++;
         }
     }
-    for (auto&& chunkItr : getReplicaData().isGood) {
-        for (auto&& workerItr : chunkItr.second) {
-            auto&& workerName = workerItr.first;
+    for (auto const& chunkItr : getReplicaData().isGood) {
+        for (auto const& workerItr : chunkItr.second) {
+            auto const& workerName = workerItr.first;
             bool const isGood = workerItr.second;
             if (isGood) workerCategoryCounter[workerName]["good-replicas"]++;
         }
     }
-    for (auto&& workerItr : workerCategoryCounter) {
-        auto&& workerName = workerItr.first;
+    for (auto const& workerItr : workerCategoryCounter) {
+        auto const& workerName = workerItr.first;
         string val = "worker=" + workerName;
 
-        for (auto&& categoryItr : workerItr.second) {
-            auto&& category = categoryItr.first;
+        for (auto const& categoryItr : workerItr.second) {
+            auto const& category = categoryItr.first;
             size_t const counter = categoryItr.second;
             val += " " + category + "=" + to_string(counter);
         }
@@ -134,29 +141,37 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
 
 void FindAllJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    auto const databases = controller()->serviceProvider()->config()->databases(databaseFamily());
-    auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
-                                          : controller()->serviceProvider()->config()->workers();
-    for (auto&& workerName : workerNames) {
+    auto const config = controller()->serviceProvider()->config();
+    auto const databases = config->databases(databaseFamily());
+    auto const workerNames = allWorkers() ? config->allWorkers() : config->workers();
+    bool const keepTracking = true;
+    for (auto const& workerName : workerNames) {
         _replicaData.workers[workerName] = false;
-        for (auto&& database : databases) {
-            _workerDatabaseSuccess[workerName][database] = false;
-            _requests.push_back(FindAllRequest::createAndStart(
-                    controller(), workerName, database, saveReplicaInfo(),
-                    [self = shared_from_base<FindAllJob>()](FindAllRequest::Ptr request) {
+        for (auto const& databaseName : databases) {
+            _workerDatabaseSuccess[workerName][databaseName] = false;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            _requests.push_back(HttpFindAllRequest::createAndStart(
+                    controller(), workerName, databaseName, saveReplicaInfo(),
+                    [self = shared_from_base<FindAllJob>()](shared_ptr<HttpFindAllRequest> const& request) {
                         self->_onRequestFinish(request);
                     },
-                    priority(), true, /* keepTracking*/
-                    id()              /* jobId */
-                    ));
+                    priority(), keepTracking, id()));
             _numLaunched++;
         }
+#else
+            _requests.push_back(FindAllRequest::createAndStart(
+                    controller(), workerName, databaseName, saveReplicaInfo(),
+                    [self = shared_from_base<FindAllJob>()](shared_ptr<FindAllRequest> const& request) {
+                        self->_onRequestFinish(request);
+                    },
+                    priority(), keepTracking, id()));
+            _numLaunched++;
+        }
+#endif
     }
 
-    // In case if no workers or database are present in the Config
-    // at this time.
-    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
+    // In case if no workers or database are present in the Config at this time.
+    if (_numLaunched == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
 void FindAllJob::cancelImpl(replica::Lock const& lock) {
@@ -167,11 +182,16 @@ void FindAllJob::cancelImpl(replica::Lock const& lock) {
     // by stopping the request at corresponding worker service.
     auto const noCallbackOnFinish = nullptr;
     bool const keepTracking = true;
-    for (auto&& ptr : _requests) {
+    for (auto const& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
     _requests.clear();
@@ -185,7 +205,11 @@ void FindAllJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
 
-void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void FindAllJob::_onRequestFinish(shared_ptr<HttpFindAllRequest> const& request) {
+#else
+void FindAllJob::_onRequestFinish(shared_ptr<FindAllRequest> const& request) {
+#endif
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " state=" << request->state2string());
@@ -196,11 +220,11 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
 
     // Update counters and object state if needed.
     _numFinished++;
-    if (request->extendedState() == Request::ExtendedState::SUCCESS) {
+    if (request->extendedState() == RequestI::ExtendedState::SUCCESS) {
         _numSuccess++;
         ReplicaInfoCollection const& infoCollection = request->responseData();
         _replicaData.replicas.push_back(infoCollection);
-        for (auto&& info : infoCollection) {
+        for (auto const& info : infoCollection) {
             _replicaData.chunks.atChunk(info.chunk()).atDatabase(info.database()).atWorker(info.worker()) =
                     info;
         }
@@ -229,21 +253,21 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
 
         // Databases participating in a chunk
         for (auto chunk : _replicaData.chunks.chunkNumbers()) {
-            for (auto&& database : _replicaData.chunks.chunk(chunk).databaseNames()) {
-                _replicaData.databases[chunk].push_back(database);
+            for (auto const& databaseName : _replicaData.chunks.chunk(chunk).databaseNames()) {
+                _replicaData.databases[chunk].push_back(databaseName);
             }
         }
 
         // Workers hosting complete chunks
         for (auto chunk : _replicaData.chunks.chunkNumbers()) {
             auto chunkMap = _replicaData.chunks.chunk(chunk);
-            for (auto&& database : chunkMap.databaseNames()) {
-                auto databaseMap = chunkMap.database(database);
+            for (auto const& databaseName : chunkMap.databaseNames()) {
+                auto databaseMap = chunkMap.database(databaseName);
 
-                for (auto&& workerName : databaseMap.workerNames()) {
+                for (auto const& workerName : databaseMap.workerNames()) {
                     ReplicaInfo const& replica = databaseMap.worker(workerName);
                     if (replica.status() == ReplicaInfo::Status::COMPLETE) {
-                        _replicaData.complete[chunk][database].push_back(workerName);
+                        _replicaData.complete[chunk][databaseName].push_back(workerName);
                     }
                 }
             }
@@ -263,9 +287,9 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             // NOTE: Single-database chunks are always collocated. Note that
             //       the loop over databases below has exactly one iteration.
             map<string, size_t> worker2numDatabases;
-            for (auto&& database : chunkMap.databaseNames()) {
-                auto databaseMap = chunkMap.database(database);
-                for (auto&& workerName : databaseMap.workerNames()) {
+            for (auto const& databaseName : chunkMap.databaseNames()) {
+                auto databaseMap = chunkMap.database(databaseName);
+                for (auto const& workerName : databaseMap.workerNames()) {
                     worker2numDatabases[workerName]++;
                 }
             }
@@ -274,7 +298,7 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             // against the number of all databases participated within
             // the chunk and decide for which of those workers the 'colocation'
             // requirement is met.
-            for (auto&& entry : worker2numDatabases) {
+            for (auto const& entry : worker2numDatabases) {
                 string const& workerName = entry.first;
                 size_t const numDatabases = entry.second;
                 _replicaData.isColocated[chunk][workerName] =
@@ -283,9 +307,9 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
         }
 
         // Compute the 'goodness' status of each chunk
-        for (auto&& chunk2workers : _replicaData.isColocated) {
+        for (auto const& chunk2workers : _replicaData.isColocated) {
             unsigned int const chunk = chunk2workers.first;
-            for (auto&& worker2collocated : chunk2workers.second) {
+            for (auto const& worker2collocated : chunk2workers.second) {
                 string const& workerName = worker2collocated.first;
                 bool const isColocated = worker2collocated.second;
 
@@ -298,11 +322,11 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
                 bool isGood = isColocated;
                 if (isGood) {
                     auto chunkMap = _replicaData.chunks.chunk(chunk);
-                    for (auto&& database : chunkMap.databaseNames()) {
-                        auto databaseMap = chunkMap.database(database);
-                        for (auto&& thisWorker : databaseMap.workerNames()) {
-                            if (workerName == thisWorker) {
-                                ReplicaInfo const& replica = databaseMap.worker(thisWorker);
+                    for (auto const& databaseName : chunkMap.databaseNames()) {
+                        auto databaseMap = chunkMap.database(databaseName);
+                        for (auto const& thisWorkerName : databaseMap.workerNames()) {
+                            if (workerName == thisWorkerName) {
+                                ReplicaInfo const& replica = databaseMap.worker(thisWorkerName);
                                 isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
                             }
                         }

@@ -80,6 +80,15 @@ namespace lsst::qserv::replica {
 const size_t ReplicaInfo::FileInfo::_extSize = string(".MYD").size();
 const size_t ReplicaInfo::FileInfo::_overlapSize = string("FullOverlap").size();
 
+ReplicaInfo::FileInfo::FileInfo(json const& info)
+        : name(info.at("name").get<string>()),
+          size(info.at("size").get<uint64_t>()),
+          mtime(info.at("mtime").get<time_t>()),
+          cs(info.at("cs").get<string>()),
+          beginTransferTime(info.at("begin_transfer_time").get<uint64_t>()),
+          endTransferTime(info.at("end_transfer_time").get<uint64_t>()),
+          inSize(info.at("in_size").get<uint64_t>()) {}
+
 string ReplicaInfo::FileInfo::baseTable() const {
     // IMPLEMENTATION NOTE: the algorithm implemented below is more
     // efficient than others based on the C++ Regular Expression library.
@@ -143,8 +152,18 @@ string ReplicaInfo::status2string(Status status) {
     throw logic_error("ReplicaInfo::" + string(__func__) + "  unhandled status " + to_string(status));
 }
 
-ReplicaInfo::ReplicaInfo()
-        : _status(Status::NOT_FOUND), _worker(""), _database(""), _chunk(0), _verifyTime(0), _fileInfo() {}
+ReplicaInfo::Status ReplicaInfo::string2status(string const& str) {
+    if (str == "NOT_FOUND") {
+        return Status::NOT_FOUND;
+    } else if (str == "CORRUPT") {
+        return Status::CORRUPT;
+    } else if (str == "INCOMPLETE") {
+        return Status::INCOMPLETE;
+    } else if (str == "COMPLETE") {
+        return Status::COMPLETE;
+    }
+    throw logic_error("ReplicaInfo::" + string(__func__) + "  unknown status: '" + str + "'");
+}
 
 ReplicaInfo::ReplicaInfo(Status status, string const& worker, string const& database, unsigned int chunk,
                          uint64_t verifyTime, ReplicaInfo::FileInfoCollection const& fileInfo)
@@ -183,11 +202,24 @@ ReplicaInfo::ReplicaInfo(ProtocolReplicaInfo const* info) {
 
     for (int idx = 0; idx < info->file_info_many_size(); ++idx) {
         ProtocolFileInfo const& fileInfo = info->file_info_many(idx);
-        _fileInfo.emplace_back(
-                FileInfo({fileInfo.name(), fileInfo.size(), fileInfo.mtime(), fileInfo.cs(),
-                          fileInfo.begin_transfer_time(), fileInfo.end_transfer_time(), fileInfo.in_size()}));
+        _fileInfo.emplace_back(fileInfo.name(), fileInfo.size(), fileInfo.mtime(), fileInfo.cs(),
+                               fileInfo.begin_transfer_time(), fileInfo.end_transfer_time(),
+                               fileInfo.in_size());
     }
     _verifyTime = info->verify_time();
+}
+
+ReplicaInfo::ReplicaInfo(json const& info) {
+    _status = ReplicaInfo::string2status(info.at("status").get<string>());
+    _worker = info.at("worker").get<string>();
+    _database = info.at("database").get<string>();
+    _chunk = info.at("chunk").get<uint32_t>();
+    _verifyTime = info.at("verify_time").get<uint64_t>();
+
+    json const& filesJson = info.at("files").get<json>();
+    for (json const& fileJson : filesJson) {
+        _fileInfo.emplace_back(fileJson);
+    }
 }
 
 void ReplicaInfo::setFileInfo(FileInfoCollection const& fileInfo) { _fileInfo = fileInfo; }
@@ -229,7 +261,7 @@ map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
 json ReplicaInfo::toJson() const {
     json infoJson;
 
-    infoJson["status"] = status2string(_status);
+    infoJson["status"] = ReplicaInfo::status2string(_status);
     infoJson["worker"] = _worker;
     infoJson["database"] = _database;
     infoJson["chunk"] = _chunk;

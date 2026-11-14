@@ -22,28 +22,26 @@
 // Class header
 #include "replica/requests/SqlCreateTableRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTableRequest");
 const uint64_t unlimitedMaxRows = 0;
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlCreateTableRequest::Ptr SqlCreateTableRequest::createAndStart(
+shared_ptr<SqlCreateTableRequest> SqlCreateTableRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, std::string const& database,
         std::string const& table, std::string const& engine, string const& partitionByColumn,
         std::list<SqlColDef> const& columns, std::string const& charsetName, std::string const& collationName,
         CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
         unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlCreateTableRequest(controller, workerName, database, table, engine,
-                                             partitionByColumn, columns, charsetName, collationName, onFinish,
-                                             priority, keepTracking));
+    auto ptr = shared_ptr<SqlCreateTableRequest>(
+            new SqlCreateTableRequest(controller, workerName, database, table, engine, partitionByColumn,
+                                      columns, charsetName, collationName, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -55,10 +53,10 @@ SqlCreateTableRequest::SqlCreateTableRequest(shared_ptr<Controller> const& contr
                                              std::list<SqlColDef> const& columns,
                                              std::string const& charsetName, std::string const& collationName,
                                              CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_CREATE_TABLE", workerName, ::unlimitedMaxRows, priority, keepTracking),
+        : SqlRequest(controller, "SQL_CREATE_TABLE", protocol::SqlRequestType::CREATE_TABLE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::CREATE_TABLE);
     requestBody.set_database(database);
     requestBody.set_table(table);
     requestBody.set_engine(engine);
@@ -73,8 +71,6 @@ SqlCreateTableRequest::SqlCreateTableRequest(shared_ptr<Controller> const& contr
 }
 
 void SqlCreateTableRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlCreateTableRequest>(lock, _onFinish);
 }
 

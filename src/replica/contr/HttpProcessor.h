@@ -26,11 +26,15 @@
 #include <string>
 
 // Qserv headers
-#include "replica/contr/Controller.h"
 #include "replica/contr/EventLogger.h"
-#include "replica/contr/HealthMonitorTask.h"
 #include "replica/util/HttpSvc.h"
 #include "replica/util/NamedMutexRegistry.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class HealthMonitorTask;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -43,8 +47,6 @@ namespace lsst::qserv::replica {
  */
 class HttpProcessor : public HttpSvc, public EventLogger {
 public:
-    typedef std::shared_ptr<HttpProcessor> Ptr;
-
     HttpProcessor() = delete;
     HttpProcessor(HttpProcessor const&) = delete;
     HttpProcessor& operator=(HttpProcessor const&) = delete;
@@ -58,18 +60,20 @@ public:
      * @param controller For configuration, etc. services.
      * @return A pointer to the created object.
      */
-    static Ptr create(Controller::Ptr const& controller, HealthMonitorTask::Ptr const& healthMonitorTask);
+    static std::shared_ptr<HttpProcessor> create(std::shared_ptr<Controller> const& controller,
+                                                 std::shared_ptr<HealthMonitorTask> const& healthMonitorTask);
 
 protected:
     virtual std::string const& context() const;
     virtual void registerServices();
 
 private:
-    HttpProcessor(Controller::Ptr const& controller, HealthMonitorTask::Ptr const& healthMonitorTask);
+    HttpProcessor(std::shared_ptr<Controller> const& controller,
+                  std::shared_ptr<HealthMonitorTask> const& healthMonitorTask);
 
     // Input parameters
 
-    HealthMonitorTask::Ptr const _healthMonitorTask;
+    std::shared_ptr<HealthMonitorTask> const _healthMonitorTask;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction
     /// management operations performed by the relevant modules.

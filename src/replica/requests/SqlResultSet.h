@@ -30,6 +30,8 @@
 #include <vector>
 
 // Qserv headers
+#include "http/BinaryEncoding.h"
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
 #include "replica/util/Common.h"
 #include "util/TablePrinter.h"
@@ -60,7 +62,7 @@ public:
         /// a different outcome (wether they succeeded or failed due to a specific problem).
         /// The successful completion of a query is indicated by status set
         /// to extendedCompletionStatus::EXT_STATUS_NONE.
-        ProtocolStatusExt extendedStatus = ProtocolStatusExt::MYSQL_ERROR;
+        protocol::StatusExt extendedStatus = protocol::StatusExt::MYSQL_ERROR;
 
         std::string error;        /// is set if a error code received from a server
         std::string charSetName;  /// of the connection
@@ -97,6 +99,14 @@ public:
              * @param field  a filed from an input result set to be parsed
              */
             explicit Field(ProtocolResponseSqlField const& field);
+
+            /**
+             * Construct the object by carrying over the content of the input protocol
+             * message into the corresponding data members of the structure.
+             *
+             * @param field  a filed from an input result set to be parsed
+             */
+            explicit Field(nlohmann::json const& field);
         };
 
         /// A vector with field definitions from a result set,
@@ -120,10 +130,17 @@ public:
             /**
              * Construct the object by carrying over the content of the input protocol
              * message into the corresponding data members of the structure.
-             *
-             * @param row a row from an input result set to be parsed
+             * @param row A row from an input result set to be parsed
              */
             explicit Row(ProtocolResponseSqlRow const& row);
+
+            /**
+             * Construct the object by carrying over the content of the input protocol
+             * message into the corresponding data members of the structure.
+             * @param row A row from an input result set to be parsed
+             * @param binaryEncodingMode The mode for decoding binary data
+             */
+            explicit Row(nlohmann::json const& row, http::BinaryEncodingMode binaryEncodingMode);
         };
 
         /// An array of rows from a result set,
@@ -141,6 +158,15 @@ public:
          * @param result  a result set from an input message to be parsed
          */
         explicit ResultSet(ProtocolResponseSqlResultSet const& result);
+
+        /**
+         * Construct the object by carrying over the content of the input protocol
+         * message into the corresponding data members of the structure.
+         *
+         * @param result A result set from an input message to be parsed
+         * @param binaryEncodingMode The mode for decoding binary data
+         */
+        explicit ResultSet(nlohmann::json const& result, http::BinaryEncodingMode binaryEncodingMode);
 
         /// @return  JSON representation of the object
         nlohmann::json toJson() const;
@@ -175,10 +201,18 @@ public:
      * Carry over the content of the input protocol message into
      * the corresponding data members of the structure.
      *
-     * @param message
-     *   input message to be parsed
+     * @param message The input message to be parsed
      */
     void set(ProtocolResponseSql const& message);
+
+    /**
+     * Carry over the content of the input protocol message into
+     * the corresponding data members of the structure.
+     *
+     * @param message The input message to be parsed
+     * @param binaryEncodingMode The mode for decoding binary data
+     */
+    void set(nlohmann::json const& message, http::BinaryEncodingMode binaryEncodingMode);
 
     /// @return  JSON representation of the object
     nlohmann::json toJson() const;
@@ -189,8 +223,8 @@ public:
 
     /// @return 'true' if all errors are of the specified 'status'
     /// @note this method should be used together with method SqlResultSet::hasErrors().
-    /// @note ProtocolStatusExt::NONE is not treated as an error.
-    bool allErrorsOf(ProtocolStatusExt status) const;
+    /// @note protocol::StatusExt::NONE is not treated as an error.
+    bool allErrorsOf(protocol::StatusExt status) const;
 
     /**
      * Look for errors in the result sets based on a value of the extended

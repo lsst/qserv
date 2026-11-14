@@ -34,6 +34,7 @@
 #include "replica/qserv/QservWorkerMgtRequest.h"
 #include "replica/util/ReplicaInfo.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -47,10 +48,8 @@ namespace lsst::qserv::replica {
  */
 class GetReplicasQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<GetReplicasQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<GetReplicasQservMgtRequest>)> CallbackType;
 
     GetReplicasQservMgtRequest() = delete;
     GetReplicasQservMgtRequest(GetReplicasQservMgtRequest const&) = delete;
@@ -71,14 +70,12 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                      std::string const& databaseFamily, bool inUseOnly = false,
-                      CallbackType const& onFinish = nullptr);
+    static std::shared_ptr<GetReplicasQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
+            std::string const& databaseFamily, bool inUseOnly = false,
+            CallbackType const& onFinish = nullptr);
 
-    /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
-
-    /// @return flag indicating (if set) to report a subset of chunks which are in use
     bool inUseOnly() const { return _inUseOnly; }
 
     /**
@@ -88,25 +85,18 @@ public:
      */
     QservReplicaCollection const& replicas() const;
 
-    /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl()
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::dataReady()
     virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
                                                      nlohmann::json const& data) override;
-
-    /// @see QservMgtRequest::notify
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see GetReplicasQservMgtRequest::create()
-    GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                               std::string const& databaseFamily, bool inUseOnly,
-                               CallbackType const& onFinish);
+    GetReplicasQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                               std::string const& workerName, std::string const& databaseFamily,
+                               bool inUseOnly, CallbackType const& onFinish);
 
     // Input parameters
 

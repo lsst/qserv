@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/config/ConfigExceptions.h"
+#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 
 using namespace std;
@@ -39,7 +40,7 @@ using namespace database::mysql;
 
 int const ConfigParserMySQL::expectedSchemaVersion = 15;
 
-ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, map<string, ConfigWorker>& workers,
+ConfigParserMySQL::ConfigParserMySQL(shared_ptr<Connection> const& conn, map<string, ConfigWorker>& workers,
                                      map<string, DatabaseFamilyInfo>& databaseFamilies,
                                      map<string, DatabaseInfo>& databases)
         : _conn(conn),
