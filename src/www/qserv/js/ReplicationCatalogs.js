@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/ReplicationConfigCatalogs.css');
+    CSSLoader.load('qserv/css/ReplicationCatalogs.css');
 
-    class ReplicationConfigCatalogs extends FwkApplication {
+    class ReplicationCatalogs extends FwkApplication {
 
         /**
          * @returns the default update interval for the page.
@@ -48,7 +48,7 @@ function(CSSLoader,
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > ReplicationConfigCatalogs.update_ival_sec()) {
+                if (now_sec - this._prev_update_sec > ReplicationCatalogs.update_ival_sec()) {
                     this._prev_update_sec = now_sec;
                     this._init();
                     this._load();
@@ -299,5 +299,5 @@ databaseHtml += `
             });
         }
     }
-    return ReplicationConfigCatalogs;
+    return ReplicationCatalogs;
 });
