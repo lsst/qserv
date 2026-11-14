@@ -81,8 +81,119 @@ resources:
 - `*-cm.yaml` / secrets — config files and passwords/auth keys mounted into pods.
 - `czar-external-svc.yaml` (optional) — LoadBalancer exposing the SQL/HTTP frontends
   outside the cluster (MetalLB at USDF).
-- `mode: full | db-only` in values — `db-only` runs just the MariaDBs (used
-  operationally for maintenance; see `qserv.enable` helper in `_helpers.tpl`).
+- `mode: full | db-only | mariadb-upgrade` in values — `db-only` runs just the MariaDBs
+  (used operationally for maintenance); `mariadb-upgrade` additionally replaces the
+  MariaDB container command with an in-place `mariadb-upgrade` run (see
+  *MariaDB major-version upgrades* below, and `mariadbUpgrade.force` there). Both gate
+  off every Qserv sidecar; see the `qserv.enable` helper in `_helpers.tpl`. An
+  unrecognised mode fails the render.
+
+## MariaDB major-version upgrades
+
+After a MariaDB major-version bump, each MariaDB instance needs `mariadb-upgrade` run
+against its own data. `mariadb-upgrade` learns the datadir from the server
+(`SHOW VARIABLES LIKE 'datadir'`) but then writes its version stamp on its *own*
+filesystem, so it cannot be run usefully from a floating Job the way the smig jobs are —
+it needs the data volume mounted. `mode: mariadb-upgrade` solves this by reusing the
+StatefulSets: each pod already has its own PVC attached on the right node, so the
+upgrade runs locally with no co-scheduling or PVC-name games.
+
+Operating sequence (the teardown/redeploy cycle already used for every upgrade, which
+leaves PVCs intact):
+
+1. Delete the deployed release (pods go away, PVCs remain).
+2. Deploy with `mode: mariadb-upgrade`. MariaDB pods come up, upgrade their own data,
+   then park with `mariadbd` running so the probes keep passing.
+3. Audit completion (below), then delete and redeploy with `mode: full`.
+
+Notes on the design, all deliberate:
+
+- The upgrade runs the **full** `mariadb-upgrade`, *not* `--upgrade-system-tables`. That
+  means `mariadb-check` runs over all databases with `--auto-repair` and
+  `--process-views=UPGRADE`, which remediates drift accumulated across MariaDB
+  revisions. On workers this is expected to take minutes and to hammer the disks; run it
+  in a planned maintenance window.
+- No full data snapshot is taken — at worker scale that would be hundreds of terabytes
+  of copying. Back up separately if you want one.
+- Upstream's `MARIADB_AUTO_UPGRADE` is deliberately **not** used: it hardcodes
+  `--upgrade-system-tables` (so it cannot do the full check) and its backup is only
+  suppressible wholesale. The mode bypasses the image's `docker-entrypoint.sh` entirely.
+- Repair scratch space is pointed at `/qserv/data/tmp` rather than the default `/tmp`,
+  which is a small `emptyDir` a large MyISAM repair could fill.
+- `livenessProbe.failureThreshold` is relaxed in this mode so a long `REPAIR TABLE`
+  cannot get the container killed mid-repair.
+
+**Pod phase is not the completion signal** — pods stay Running and Ready by design. Use:
+
+- `/qserv/data/mysql-upgrade.json` on each PVC — the durable, machine-readable record:
+  `{"status":"ok|running|failed","version":…,"checked":N,"repaired":N,…}`. `running`
+  distinguishes "killed mid-upgrade" from "never started". This is the source of truth,
+  and it survives the teardown in step 3 (pod logs do not). Startup failures (bad root
+  password, `mariadbd` dying before it accepts connections) are deliberately *not*
+  recorded here — they carry no version and no repair work, and are usually transient, so
+  the container just exits non-zero and crashloops visibly.
+- A `QSERV-UPGRADE-RESULT status=… checked=… repaired=…` line in the container log — the
+  convenient view:
+
+  ```sh
+  for c in czar repl worker; do
+      kubectl logs -l app.kubernetes.io/component=$c --tail=-1 --prefix \
+        | grep QSERV-UPGRADE-RESULT
+  done
+  ```
+
+  Count the lines against each component's replica count and check `repaired=` for the
+  drift audit. `--tail=-1` matters: with a selector, `kubectl logs` otherwise shows only
+  the last 10 lines per pod. Statuses are `ok`, `failed exit=N`, `already-done` and
+  `previously-failed` (both marker-driven skips, see below), and `failed-startup` — the
+  last of which crashloops rather than parking, so it writes no marker.
+- `/qserv/data/mysql-upgrade.log` — the full `mariadb-check` output, retained per volume,
+  for auditing *which* tables needed repair.
+
+**Audit all three components, not just the workers.** Every one of the three
+StatefulSets runs the upgrade against its own PVC and writes its own marker, so a czar or
+repl volume that silently failed to upgrade is as broken as a worker that did. The czar
+and repl databases are small and finish long before the workers, which makes them easy to
+miss when scrolling worker output. Marker sweep:
+
+```sh
+for c in czar repl worker; do
+    for p in $(kubectl get pods -l app.kubernetes.io/component=$c -o name); do
+        echo "== $p"; kubectl exec $p -- cat /qserv/data/mysql-upgrade.json
+    done
+done
+```
+
+Scoping by release instead of by component (`-l app.kubernetes.io/instance=<release>`)
+also works, but needs `--all-containers`: the ingest StatefulSet is gated on
+`ingest.enable` rather than `qserv.enable`, so its multi-container pods can still be
+running in this mode.
+
+### Marker semantics and re-running
+
+Both idempotency checks are keyed on the **running** server version, taken from
+`SELECT VERSION()` at startup:
+
+- Marker records `ok` for the running version → skipped, so the mode can be re-applied to
+  finish a partially-completed multi-worker run.
+- Marker records `failed` for the running version → also skipped rather than retried
+  automatically; re-running repairs unattended on a multi-terabyte volume is worse than a
+  pod that waits for a human.
+- Marker is from an *earlier* server version → ignored, and the upgrade runs normally.
+
+That last case is why **no cleanup tooling is needed before the next major upgrade**: the
+marker self-invalidates as soon as the image's `VERSION()` changes, in both the success
+and failure directions. There is nothing to sweep, and a stale `failed` marker cannot
+block a future upgrade. (Note this also means re-selecting the mode after a mere *patch*
+bump will re-run the full check/repair — only an operator deliberately choosing the mode
+can trigger that, so it errs on the conservative side.)
+
+To retry a recorded failure on the same server version, set `mariadbUpgrade.force: true`
+in values and redeploy. That ignores the marker entirely, on every volume in the release —
+there is no way to scope it to one pod or one component, so a force aimed at a single
+failed worker also re-runs the full check/repair on the czar and repl volumes. Investigate
+the recorded failure first, and unset it afterwards. It exists so recovery is a values
+change rather than a human exec'ing into each pod to `rm` marker files.
 
 `deploy/helm/environments/usdf-{dev,int,prod}.yaml` are in-repo presets, but the values
 actually deployed live in **qserv-deployments** (below).
