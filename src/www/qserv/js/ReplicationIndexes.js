@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/ReplicationTableIndexes.css');
+    CSSLoader.load('qserv/css/ReplicationIndexes.css');
 
-    class ReplicationTableIndexes extends FwkApplication {
+    class ReplicationIndexes extends FwkApplication {
 
         constructor(name) {
             super(name);
@@ -299,6 +299,6 @@ function(CSSLoader,
             return "status-INCONSISTENT";
         }
     }
-    return ReplicationTableIndexes;
+    return ReplicationIndexes;
 });
 
