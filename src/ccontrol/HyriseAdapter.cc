@@ -666,14 +666,19 @@ query::TableRef::Ptr buildTableRef(hsql::TableRef const* table) {
     // So we traverse down the left side recursively and build the right
     // side on our way up to convert this to a Qserv join list.
 
+    if (table->join->natural || table->join->type == hsql::kJoinNatural) {
+        // NATURAL JOINs pick up meta columns like chunkId, subchunkId, qserv_trans_id, so they do not
+        // generally produce meaningful results in qserv.
+        unsupported("NATURAL JOIN; use USING or ON");
+    }
+
     auto left = buildTableRef(table->join->left);
 
     // Qserv supports only named tables on the right side of an explicit join.
     auto right = buildNamedTableRef(table->join->right);
 
-    left->addJoin(std::make_shared<query::JoinRef>(
-            right, mapJoinType(table->join->type),
-            table->join->natural || table->join->type == hsql::kJoinNatural, buildJoinSpec(table->join)));
+    left->addJoin(std::make_shared<query::JoinRef>(right, mapJoinType(table->join->type), false,
+                                                   buildJoinSpec(table->join)));
     return left;
 }
 
