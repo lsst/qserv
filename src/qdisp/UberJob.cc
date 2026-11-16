@@ -253,9 +253,6 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
     }
 
     _jobStatus->updateInfo(getIdStr(), newState, msg, 0, "", MSG_INFO);
-    for (auto&& jq : _jobs) {
-        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg, 0, "", MSG_INFO);
-    }
     return true;
 }
 
