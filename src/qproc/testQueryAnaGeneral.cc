@@ -1801,30 +1801,12 @@ BOOST_AUTO_TEST_CASE(ImplicitJoin) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(NoSpec) {
-    std::string stmt =
-            "SELECT s1.foo, s2.foo AS s2_foo "
-            "FROM Source s1 NATURAL LEFT JOIN Source s2 "
-            "WHERE s1.bar = s2.bar;";
-    std::string expected =
-            "SELECT `s1`.`foo` AS `s1.foo`,`s2`.`foo` AS `s2_foo` "
-            "FROM `LSST`.`Source_100` AS `s1` NATURAL LEFT OUTER JOIN `LSST`.`Source_100` AS `s2` "
-            "WHERE `s1`.`bar`=`s2`.`bar`";
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"foo", "bar"}}}}}));
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    qs->addChunk(ChunkSpec::makeFake(100, true));
-    auto i = qs->cQueryBegin();
-    auto e = qs->cQueryEnd();
-    BOOST_REQUIRE(i != e);
-    auto queryTemplates = qs->makeQueryTemplates();
-    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
-    BOOST_CHECK_EQUAL(first->queries.size(), 1U);
-    BOOST_CHECK_EQUAL(first->queries[0], expected);
-    BOOST_CHECK_EQUAL(first->subChunkTables.size(), 0U);
-    BOOST_CHECK_EQUAL(first->db, "LSST");
-    BOOST_CHECK_EQUAL(first->chunkId, 100);
-    ++i;
-    BOOST_CHECK(i == e);
+BOOST_AUTO_TEST_CASE(NaturalJoinRejected) {
+    // Verify that the parser rejection is reported through QuerySession before query analysis.
+    auto qs =
+            queryAnaHelper.buildQuerySession(qsTest, "SELECT o.objectId FROM Object o NATURAL JOIN Source s");
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "ParseException:Unsupported SQL construct: NATURAL JOIN; use USING or ON");
 }
 
 BOOST_AUTO_TEST_CASE(Cross) {
