@@ -84,7 +84,7 @@ std::shared_ptr<query::ValueExpr> buildValueExpr(hsql::Expr const* expr);
 std::shared_ptr<query::LogicalTerm> buildBoolTerm(hsql::Expr const* expr);
 
 [[noreturn]] void unsupported(std::string const& what) {
-    throw ccontrol::ParseException("Hyrise unsupported SQL construct: " + what);
+    throw ccontrol::ParseException("Unsupported SQL construct: " + what);
 }
 
 std::string nullToEmpty(char const* value) { return value == nullptr ? std::string() : std::string(value); }
@@ -93,8 +93,8 @@ std::string nullToEmpty(char const* value) { return value == nullptr ? std::stri
 /// Currently rejects any identifiers that start with an underscore (reserved by Qserv).
 void validateIdentifier(char const* identifier) {
     if (identifier != nullptr && identifier[0] == '_') {
-        throw ccontrol::ParseException("Error parsing query, near \"" + nullToEmpty(identifier) +
-                                       "\", Identifiers in Qserv may not start with an underscore.");
+        unsupported("identifier \"" + nullToEmpty(identifier) +
+                    "\", Identifiers in Qserv may not start with an underscore.");
     }
 }
 
@@ -109,7 +109,7 @@ void validateAlias(hsql::Alias const* alias) {
 /// Currently rejects CASE expressions, which the Qserv IR cannot represent.
 void validateExpression(hsql::Expr const* expr) {
     if (expr != nullptr && expr->type == hsql::kExprOperator && expr->opType == hsql::kOpCase) {
-        throw ccontrol::ParseException("qserv cannot parse query: CASE expressions are not supported.");
+        unsupported("CASE expressions");
     }
 }
 
@@ -119,7 +119,7 @@ void validateAreaRestrictorPlacement(hsql::Expr const* expr, bool allowAreaRestr
 
     if (buildAreaRestrictor(expr) != nullptr) {
         if (!allowAreaRestrictorExtraction) {
-            unsupported("qserv area restrictors are only supported in conjunctive (AND) contexts");
+            unsupported("area restrictors are only supported in conjunctive (AND) contexts");
         }
         return;
     }
@@ -135,7 +135,7 @@ void validateAreaRestrictorPlacement(hsql::Expr const* expr, bool allowAreaRestr
     }
 
     if (expr->type == hsql::kExprOperator && expr->opType == hsql::kOpNot) {
-        if (expr->expr == nullptr) unsupported("NOT expression");
+        if (expr->expr == nullptr) unsupported("NOT without an operand");
         validateAreaRestrictorPlacement(expr->expr, false);
     }
 }
@@ -226,7 +226,7 @@ query::JoinRef::Type mapJoinType(hsql::JoinType type) {
         case hsql::kJoinNatural:
             return query::JoinRef::DEFAULT;
         default:
-            unsupported("join type");
+            unsupported("unknown join type");
     }
 }
 
@@ -298,7 +298,7 @@ std::string restrictorArgToString(hsql::Expr const* expr) {
     if (expr->type == hsql::kExprOperator && expr->opType == hsql::kOpUnaryMinus) {
         return "-" + restrictorArgToString(expr->expr);
     }
-    unsupported("non-constant qserv area restrictor argument");
+    unsupported("area restrictor argument must be a numeric literal");
 }
 
 std::shared_ptr<query::ColumnRef> buildColumnRef(hsql::Expr const* expr) {
@@ -415,7 +415,8 @@ std::shared_ptr<query::AndTerm> buildPredicateTerm(hsql::Expr const* expr, bool 
         predicate = std::make_shared<query::InPredicate>(buildValueExpr(expr->expr), values,
                                                          std::exchange(negate, false));
     } else if (expr->opType == hsql::kOpBetween) {
-        if (expr->exprList == nullptr || expr->exprList->size() != 2) unsupported("BETWEEN bounds");
+        if (expr->exprList == nullptr || expr->exprList->size() != 2)
+            unsupported("BETWEEN without two bounds");
         predicate = std::make_shared<query::BetweenPredicate>(
                 buildValueExpr(expr->expr), buildValueExpr(expr->exprList->at(0)),
                 buildValueExpr(expr->exprList->at(1)), std::exchange(negate, false));
@@ -568,7 +569,7 @@ std::shared_ptr<query::LogicalTerm> buildBoolTerm(hsql::Expr const* expr) {
     }
     if (expr->opType == hsql::kOpNot) {
         auto const* op = expr->expr;
-        if (op == nullptr) unsupported("NOT expression");
+        if (op == nullptr) unsupported("NOT without an operand");
         if (op->type == hsql::kExprOperator && op->opType == hsql::kOpNot) {
             // Recurse if we have double negation (e.g., WHERE NOT (objectId NOT IN(...)))
             return buildBoolTerm(op->expr);
@@ -604,7 +605,7 @@ std::shared_ptr<query::JoinSpec> buildJoinSpec(hsql::JoinDefinition const* join)
     if (join == nullptr) unsupported("missing join definition");
     if (join->namedColumns != nullptr) {
         for (auto const* column : *join->namedColumns) validateIdentifier(column);
-        if (join->namedColumns->size() != 1) unsupported("multi-column USING");
+        if (join->namedColumns->size() != 1) unsupported("USING without exactly one column");
         return std::make_shared<query::JoinSpec>(
                 std::make_shared<query::ColumnRef>(nullToEmpty(join->namedColumns->front())));
     }
@@ -622,7 +623,7 @@ std::shared_ptr<query::JoinSpec> buildJoinSpec(hsql::JoinDefinition const* join)
         // Implicit join (no JOIN ... ON or USING)
         return nullptr;
     }
-    unsupported("join without ON or USING");
+    unsupported("outer join without ON or USING");
 }
 
 query::TableRef::Ptr buildNamedTableRef(hsql::TableRef const* table) {
@@ -722,8 +723,8 @@ std::shared_ptr<query::OrderByClause> buildOrderBy(hsql::SelectStatement const& 
 
         auto valueExpr = buildValueExpr(term->expr);
         if (valueExpr->isFunction()) {
-            throw ccontrol::ParseException(
-                    "qserv does not support functions in ORDER BY. Select the expression under an alias "
+            unsupported(
+                    "functions in ORDER BY. Select the expression under an alias "
                     "and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".");
         }
 

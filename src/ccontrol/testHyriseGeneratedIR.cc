@@ -2652,7 +2652,7 @@ BOOST_AUTO_TEST_CASE(AreaRestrictorAgainstColumnNotSupported) {
 
 bool areaRestrictorNotAllowed(ccontrol::ParseException const& err) {
     return std::string(err.what())
-                   .find("qserv area restrictors are only supported in conjunctive (AND) contexts") !=
+                   .find("area restrictors are only supported in conjunctive (AND) contexts") !=
            std::string::npos;
 }
 
