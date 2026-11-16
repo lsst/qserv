@@ -33,7 +33,6 @@
 // Qserv headers
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
-#include "replica/proto/protocol.pb.h"
 #include "replica/util/Performance.h"
 #include "util/BlockPost.h"
 #include "util/TimeUtils.h"
@@ -496,30 +495,6 @@ vector<string> const& Connection::columnNames() const {
 size_t Connection::numFields() const {
     _assertQueryContext();
     return _numFields;
-}
-
-void Connection::exportField(ProtocolResponseSqlField* ptr, size_t idx) const {
-    _assertQueryContext();
-
-    string const context = "Connection::" + string(__func__) + "  idx: " + to_string(idx) + " range: [0," +
-                           to_string(_numFields) + "]  ";
-
-    if (idx >= _numFields) {
-        throw out_of_range(context + " error: index is out of range");
-    }
-    auto&& field = _fields[idx];
-    ptr->set_name(field.name);
-    ptr->set_org_name(field.org_name);
-    ptr->set_table(field.table);
-    ptr->set_org_table(field.org_table);
-    ptr->set_db(field.db);
-    ptr->set_catalog(field.catalog);
-    ptr->set_def(field.def);
-    ptr->set_length(field.length);
-    ptr->set_max_length(field.max_length);
-    ptr->set_flags(field.flags);
-    ptr->set_decimals(field.decimals);
-    ptr->set_type(field.type);
 }
 
 json Connection::fieldsToJson() const {

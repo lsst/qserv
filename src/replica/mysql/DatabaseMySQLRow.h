@@ -46,7 +46,6 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class ProtocolResponseSqlRow;
 class SqlResultSet;
 namespace database::mysql {
 class Connection;
@@ -216,13 +215,6 @@ public:
      * @return reference to the data cell for the column
      */
     Cell const& getDataCell(std::string const& columnName) const;
-
-    /**
-     * Fill a Protobuf object representing a row.
-     * @param ptr a valid pointer to the Protobuf object to be populated.
-     * @param std::invalid_argument if the input pointer is 0
-     */
-    void exportRow(ProtocolResponseSqlRow* ptr) const;
 
     /**
      * Convert the current row into a JSON object.

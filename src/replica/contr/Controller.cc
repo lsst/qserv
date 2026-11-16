@@ -38,7 +38,6 @@
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
 #include "replica/requests/http/HttpMessenger.h"
-#include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
@@ -169,7 +168,6 @@ Controller::Controller(shared_ptr<ServiceProvider> const& serviceProvider)
           _identity({Generators::uniqueId(), boost::asio::ip::host_name(), getpid()}),
           _startTime(util::TimeUtils::now()),
           _httpMessenger(HttpMessenger::create(serviceProvider->config(), serviceProvider->io_service())),
-          _messenger(Messenger::create(serviceProvider->config(), serviceProvider->io_service())),
           _qservMgtServices(QservMgtServices::create(_serviceProvider)) {
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
@@ -177,7 +175,6 @@ Controller::Controller(shared_ptr<ServiceProvider> const& serviceProvider)
 void Controller::stop() {
     // Cancel all outstanding requests to workers (if any)
     _httpMessenger->cancelAll();
-    _messenger->stop();
 }
 
 string Controller::_context(string const& func) const {
