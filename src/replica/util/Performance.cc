@@ -26,7 +26,6 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/proto/protocol.pb.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -50,12 +49,6 @@ Performance::Performance()
           w_start_time(0),
           w_finish_time(0),
           c_finish_time(0) {}
-
-void Performance::update(ProtocolPerformance const& workerPerformanceInfo) {
-    w_receive_time = workerPerformanceInfo.receive_time();
-    w_start_time = workerPerformanceInfo.start_time();
-    w_finish_time = workerPerformanceInfo.finish_time();
-}
 
 void Performance::update(nlohmann::json const& workerPerformanceInfo) {
     if (!workerPerformanceInfo.is_object()) {
@@ -102,14 +95,6 @@ WorkerPerformance::WorkerPerformance()
 uint64_t WorkerPerformance::setUpdateStart() { return start_time.exchange(util::TimeUtils::now()); }
 
 uint64_t WorkerPerformance::setUpdateFinish() { return finish_time.exchange(util::TimeUtils::now()); }
-
-unique_ptr<ProtocolPerformance> WorkerPerformance::info() const {
-    auto ptr = make_unique<ProtocolPerformance>();
-    ptr->set_receive_time(receive_time);
-    ptr->set_start_time(start_time);
-    ptr->set_finish_time(finish_time);
-    return ptr;
-}
 
 json WorkerPerformance::toJson() const {
     return json::object({{"receive_time", receive_time.load()},

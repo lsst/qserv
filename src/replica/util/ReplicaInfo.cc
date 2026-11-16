@@ -28,52 +28,11 @@
 
 // Qserv headers
 #include "replica/mysql/DatabaseMySQLUtils.h"
-#include "replica/proto/protocol.pb.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 using json = nlohmann::json;
-
-namespace {
-
-/// State translation
-void setInfoImpl(ReplicaInfo const& ri, ProtocolReplicaInfo* info) {
-    switch (ri.status()) {
-        case ReplicaInfo::Status::NOT_FOUND:
-            info->set_status(ProtocolReplicaInfo::NOT_FOUND);
-            break;
-        case ReplicaInfo::Status::CORRUPT:
-            info->set_status(ProtocolReplicaInfo::CORRUPT);
-            break;
-        case ReplicaInfo::Status::INCOMPLETE:
-            info->set_status(ProtocolReplicaInfo::INCOMPLETE);
-            break;
-        case ReplicaInfo::Status::COMPLETE:
-            info->set_status(ProtocolReplicaInfo::COMPLETE);
-            break;
-        default:
-            throw logic_error("ReplicaInfo::" + string(__func__) + "  unhandled status " +
-                              ReplicaInfo::status2string(ri.status()));
-    }
-    info->set_worker(ri.worker());
-    info->set_database(ri.database());
-    info->set_chunk(ri.chunk());
-    info->set_verify_time(ri.verifyTime());
-
-    for (auto&& fi : ri.fileInfo()) {
-        ProtocolFileInfo* fileInfo = info->add_file_info_many();
-        fileInfo->set_name(fi.name);
-        fileInfo->set_size(fi.size);
-        fileInfo->set_mtime(fi.mtime);
-        fileInfo->set_cs(fi.cs);
-        fileInfo->set_begin_transfer_time(fi.beginTransferTime);
-        fileInfo->set_end_transfer_time(fi.endTransferTime);
-        fileInfo->set_in_size(fi.inSize);
-    }
-}
-
-}  // namespace
 
 namespace lsst::qserv::replica {
 
@@ -178,37 +137,6 @@ ReplicaInfo::ReplicaInfo(Status status, string const& worker, string const& data
                          uint64_t verifyTime)
         : _status(status), _worker(worker), _database(database), _chunk(chunk), _verifyTime(verifyTime) {}
 
-ReplicaInfo::ReplicaInfo(ProtocolReplicaInfo const* info) {
-    switch (info->status()) {
-        case ProtocolReplicaInfo::NOT_FOUND:
-            this->_status = Status::NOT_FOUND;
-            break;
-        case ProtocolReplicaInfo::CORRUPT:
-            this->_status = Status::CORRUPT;
-            break;
-        case ProtocolReplicaInfo::INCOMPLETE:
-            this->_status = Status::INCOMPLETE;
-            break;
-        case ProtocolReplicaInfo::COMPLETE:
-            this->_status = Status::COMPLETE;
-            break;
-        default:
-            throw logic_error("ReplicaInfo::" + string(__func__) + "  unhandled status " +
-                              ProtocolReplicaInfo_ReplicaStatus_Name(info->status()));
-    }
-    _worker = info->worker();
-    _database = info->database();
-    _chunk = info->chunk();
-
-    for (int idx = 0; idx < info->file_info_many_size(); ++idx) {
-        ProtocolFileInfo const& fileInfo = info->file_info_many(idx);
-        _fileInfo.emplace_back(fileInfo.name(), fileInfo.size(), fileInfo.mtime(), fileInfo.cs(),
-                               fileInfo.begin_transfer_time(), fileInfo.end_transfer_time(),
-                               fileInfo.in_size());
-    }
-    _verifyTime = info->verify_time();
-}
-
 ReplicaInfo::ReplicaInfo(json const& info) {
     _status = ReplicaInfo::string2status(info.at("status").get<string>());
     _worker = info.at("worker").get<string>();
@@ -241,14 +169,6 @@ uint64_t ReplicaInfo::endTransferTime() const {
     }
     return t;
 }
-
-unique_ptr<ProtocolReplicaInfo> ReplicaInfo::info() const {
-    auto ptr = make_unique<ProtocolReplicaInfo>();
-    ::setInfoImpl(*this, ptr.get());
-    return ptr;
-}
-
-void ReplicaInfo::setInfo(ProtocolReplicaInfo* info) const { ::setInfoImpl(*this, info); }
 
 map<string, ReplicaInfo::FileInfo> ReplicaInfo::fileInfoMap() const {
     map<string, ReplicaInfo::FileInfo> result;

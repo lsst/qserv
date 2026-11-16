@@ -60,11 +60,6 @@
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class ProtocolResponseSqlField;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica::database::mysql {
 
@@ -427,24 +422,6 @@ public:
      *   if the last query failed.
      */
     std::size_t numFields() const;
-
-    /**
-     * Fill a Protobuf object representing a field
-     *
-     * @note The method can be called only upon a successful completion of a query
-     *   which has a result set. Otherwise it will throw an exception.
-     *
-     * @see mysql_fetch_field()
-     * @see database::mysql::Connection::hasResult
-     *
-     * @param ptr a pointer to the Protobuf object to be populated
-     * @param idx a relative (0 based) index of the field in a result set
-     *
-     * @throw std::logic_error if no SQL statement has ever been executed, or
-     *   if the last query failed.
-     * @throw std::out_of_range if the specified index exceed the maximum index of a result set.
-     */
-    void exportField(ProtocolResponseSqlField* ptr, std::size_t idx) const;
 
     /**
      * Convert the current result set into a JSON object.

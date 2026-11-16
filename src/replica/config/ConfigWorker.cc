@@ -56,9 +56,6 @@ ConfigWorker::ConfigWorker(json const& obj) {
         parseRequired<string>(name, obj, "name");
         parseRequired<bool>(isEnabled, obj, "is-enabled");
         parseRequired<bool>(isReadOnly, obj, "is-read-only");
-        parseRequired<string>(svcHost.addr, obj.at("svc-host"), "addr");
-        parseRequired<string>(svcHost.name, obj.at("svc-host"), "name");
-        parseOptional<uint16_t>(svcPort, obj, "svc-port");
         parseRequired<string>(httpSvcHost.addr, obj.at("http-svc-host"), "addr");
         parseRequired<string>(httpSvcHost.name, obj.at("http-svc-host"), "name");
         parseOptional<uint16_t>(httpSvcPort, obj, "http-svc-port");
@@ -88,8 +85,6 @@ json ConfigWorker::toJson() const {
     infoJson["name"] = name;
     infoJson["is-enabled"] = isEnabled ? 1 : 0;
     infoJson["is-read-only"] = isReadOnly ? 1 : 0;
-    infoJson["svc-host"] = svcHost.toJson();
-    infoJson["svc-port"] = svcPort;
     infoJson["http-svc-host"] = httpSvcHost.toJson();
     infoJson["http-svc-port"] = httpSvcPort;
     infoJson["fs-host"] = fsHost.toJson();
@@ -107,12 +102,12 @@ json ConfigWorker::toJson() const {
 
 bool ConfigWorker::operator==(ConfigWorker const& other) const {
     return (name == other.name) && (isEnabled == other.isEnabled) && (isReadOnly == other.isReadOnly) &&
-           (svcHost == other.svcHost) && (svcPort == other.svcPort) && (httpSvcHost == other.httpSvcHost) &&
-           (httpSvcPort == other.httpSvcPort) && (fsHost == other.fsHost) && (fsPort == other.fsPort) &&
-           (dataDir == other.dataDir) && (exporterHost == other.exporterHost) &&
-           (exporterPort == other.exporterPort) && (exporterTmpDir == other.exporterTmpDir) &&
-           (httpLoaderHost == other.httpLoaderHost) && (httpLoaderPort == other.httpLoaderPort) &&
-           (httpLoaderTmpDir == other.httpLoaderTmpDir) && (qservWorker == other.qservWorker);
+           (httpSvcHost == other.httpSvcHost) && (httpSvcPort == other.httpSvcPort) &&
+           (fsHost == other.fsHost) && (fsPort == other.fsPort) && (dataDir == other.dataDir) &&
+           (exporterHost == other.exporterHost) && (exporterPort == other.exporterPort) &&
+           (exporterTmpDir == other.exporterTmpDir) && (httpLoaderHost == other.httpLoaderHost) &&
+           (httpLoaderPort == other.httpLoaderPort) && (httpLoaderTmpDir == other.httpLoaderTmpDir) &&
+           (qservWorker == other.qservWorker);
 }
 
 ostream& operator<<(ostream& os, ConfigWorker const& info) {

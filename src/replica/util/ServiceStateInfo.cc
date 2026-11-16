@@ -24,7 +24,6 @@
 #include <ostream>
 
 // Qserv headers
-#include "replica/proto/protocol.pb.h"
 #include "util/TimeUtils.h"
 
 using namespace std;
@@ -46,29 +45,6 @@ void dumpRequestInfo(ostream& os, vector<ServiceStateInfo::QueuedRequestInfo> co
 }  // namespace
 
 namespace lsst::qserv::replica {
-
-void ServiceStateInfo::set(ProtocolServiceResponse const& message) {
-    state = protocol::ServiceState(message.service_state());
-    startTime = message.start_time();
-    numNewRequests = message.num_new_requests();
-    numInProgressRequests = message.num_in_progress_requests();
-    numFinishedRequests = message.num_finished_requests();
-    newRequests.clear();
-    for (auto const& request : message.new_requests()) {
-        newRequests.emplace_back(protocol::toQueuedRequestType(request.queued_type()), request.id(),
-                                 request.priority());
-    }
-    inProgressRequests.clear();
-    for (auto const& request : message.in_progress_requests()) {
-        inProgressRequests.emplace_back(protocol::toQueuedRequestType(request.queued_type()), request.id(),
-                                        request.priority());
-    }
-    finishedRequests.clear();
-    for (auto const& request : message.finished_requests()) {
-        finishedRequests.emplace_back(protocol::toQueuedRequestType(request.queued_type()), request.id(),
-                                      request.priority());
-    }
-}
 
 void ServiceStateInfo::set(json const& info) {
     state = protocol::toServiceState(info.at("service_state").get<string>());

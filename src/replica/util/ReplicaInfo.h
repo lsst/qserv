@@ -40,11 +40,6 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class ProtocolReplicaInfo;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -131,7 +126,6 @@ public:
                 std::uint64_t verifyTime, FileInfoCollection const& fileInfo);
     ReplicaInfo(Status status, std::string const& worker, std::string const& database, unsigned int chunk,
                 std::uint64_t verifyTime);
-    explicit ReplicaInfo(ProtocolReplicaInfo const* info);
     explicit ReplicaInfo(nlohmann::json const& info);
     ReplicaInfo(ReplicaInfo const& ri) = default;
     ReplicaInfo& operator=(ReplicaInfo const& ri) = default;
@@ -166,10 +160,6 @@ public:
      *  in a context of creating a new replica.
      */
     std::uint64_t endTransferTime() const;
-
-    std::unique_ptr<ProtocolReplicaInfo> info() const;
-
-    void setInfo(ProtocolReplicaInfo* info) const;
 
     bool operator==(ReplicaInfo const& other) const {
         return _status == other._status and _worker == other._worker and _database == other._database and

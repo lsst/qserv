@@ -29,7 +29,6 @@
 #include "replica/config/Config.h"
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/mysql/DatabaseMySQL.h"
-#include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -47,11 +46,7 @@ Application::Application(int argc, const char* const argv[], string const& descr
                          bool const enableServiceProvider, ConfigSchema const& configSchema)
         : _enableServiceProvider(enableServiceProvider),
           _configSchema(configSchema),
-          _parser(argc, argv, description) {
-    // Verify that the version of the library that we linked against is
-    // compatible with the version of the headers we compiled against.
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-}
+          _parser(argc, argv, description) {}
 
 int Application::run() {
     // The standard option which is available to all applications.

@@ -4,19 +4,6 @@ target_sources(replica_worker PRIVATE
     FileClient.cc
     FileServer.cc
     FileServerConnection.cc
-    WorkerDeleteRequest.cc
-    WorkerDirectorIndexRequest.cc
-    WorkerEchoRequest.cc
-    WorkerExporterHttpSvc.cc
-    WorkerExporterHttpSvcMod.cc
-    WorkerFindAllRequest.cc
-    WorkerFindRequest.cc
-    WorkerProcessor.cc
-    WorkerProcessorThread.cc
-    WorkerReplicationRequest.cc
-    WorkerRequest.cc
-    WorkerServer.cc
-    WorkerServerConnection.cc
     http/WorkerCreateReplicaHttpRequest.cc
     http/WorkerDeleteReplicaHttpRequest.cc
     http/WorkerDirectorIndexHttpRequest.cc
@@ -29,7 +16,8 @@ target_sources(replica_worker PRIVATE
     http/WorkerHttpSvc.cc
     http/WorkerHttpSvcMod.cc
     http/WorkerSqlHttpRequest.cc
-    WorkerSqlRequest.cc
+    WorkerExporterHttpSvc.cc
+    WorkerExporterHttpSvcMod.cc
     WorkerUtils.cc
 )
 target_link_libraries(replica_worker PUBLIC

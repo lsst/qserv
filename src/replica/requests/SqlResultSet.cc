@@ -120,20 +120,6 @@ string SqlResultSet::ResultSet::Field::type2string() const {
     }
 }
 
-SqlResultSet::ResultSet::Field::Field(ProtocolResponseSqlField const& field)
-        : name(field.name()),
-          orgName(field.org_name()),
-          table(field.table()),
-          orgTable(field.org_table()),
-          db(field.db()),
-          catalog(field.catalog()),
-          def(field.def()),
-          length(field.length()),
-          maxLength(field.max_length()),
-          flags(field.flags()),
-          decimals(field.decimals()),
-          type(field.type()) {}
-
 SqlResultSet::ResultSet::Field::Field(nlohmann::json const& field)
         : name(field.at("name").get<string>()),
           orgName(field.at("org_name").get<string>()),
@@ -147,13 +133,6 @@ SqlResultSet::ResultSet::Field::Field(nlohmann::json const& field)
           flags(field.at("flags").get<uint32_t>()),
           decimals(field.at("decimals").get<uint32_t>()),
           type(field.at("type").get<int32_t>()) {}
-
-SqlResultSet::ResultSet::Row::Row(ProtocolResponseSqlRow const& row) {
-    for (int i = 0; i < row.cells_size(); ++i) {
-        cells.push_back(row.cells(i));
-        nulls.push_back(row.nulls(i) ? 1 : 0);
-    }
-}
 
 SqlResultSet::ResultSet::Row::Row(nlohmann::json const& row, http::BinaryEncodingMode binaryEncodingMode) {
     for (auto const& cellJson : row.at("cells")) {
@@ -177,19 +156,6 @@ SqlResultSet::ResultSet::Row::Row(nlohmann::json const& row, http::BinaryEncodin
     }
     for (auto const& nullJson : row.at("nulls")) {
         nulls.push_back(nullJson.get<uint8_t>());
-    }
-}
-
-SqlResultSet::ResultSet::ResultSet(ProtocolResponseSqlResultSet const& result) {
-    extendedStatus = protocol::toStatusExt(result.status_ext());
-    error = result.error();
-    charSetName = result.char_set_name();
-    hasResult = result.has_result();
-    for (int i = 0; i < result.fields_size(); ++i) {
-        fields.emplace_back(result.fields(i));
-    }
-    for (int i = 0; i < result.rows_size(); ++i) {
-        rows.emplace_back(result.rows(i));
     }
 }
 
@@ -278,14 +244,6 @@ util::ColumnTablePrinter SqlResultSet::ResultSet::toColumnTable(string const& ca
         table.addColumn(fields[columnIdx].name, *(tableColumns[columnIdx]), util::ColumnTablePrinter::LEFT);
     }
     return table;
-}
-
-void SqlResultSet::set(ProtocolResponseSql const& message) {
-    queryResultSet.clear();
-    for (int i = 0; i < message.result_sets_size(); ++i) {
-        auto&& resultSetMessage = message.result_sets(i);
-        queryResultSet.emplace(resultSetMessage.scope(), resultSetMessage);
-    }
 }
 
 void SqlResultSet::set(json const& message, http::BinaryEncodingMode binaryEncodingMode) {
