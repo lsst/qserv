@@ -33,11 +33,6 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class ProtocolServiceResponse;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -67,9 +62,6 @@ struct ServiceStateInfo {
     std::vector<QueuedRequestInfo> newRequests;
     std::vector<QueuedRequestInfo> inProgressRequests;
     std::vector<QueuedRequestInfo> finishedRequests;
-
-    /// Set parameter values from a protobuf object
-    void set(ProtocolServiceResponse const& message);
 
     // Set parameter values from a JSON object
     void set(nlohmann::json const& j);

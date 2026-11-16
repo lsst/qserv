@@ -111,21 +111,6 @@ string Dialect::sqlOptions(string const& quote) const {
 
 Parser::Parser(Dialect const& dialect) : _dialect(dialect), _lineBuf(new char[MAX_ROW_LENGTH]) {}
 
-DialectInput::DialectInput(ProtocolDialectInput const& obj)
-        : fieldsTerminatedBy(obj.fields_terminated_by()),
-          fieldsEnclosedBy(obj.fields_enclosed_by()),
-          fieldsEscapedBy(obj.fields_escaped_by()),
-          linesTerminatedBy(obj.lines_terminated_by()) {}
-
-unique_ptr<ProtocolDialectInput> DialectInput::toProto() const {
-    unique_ptr<ProtocolDialectInput> ptr(new ProtocolDialectInput());
-    ptr->set_fields_terminated_by(fieldsTerminatedBy);
-    ptr->set_fields_enclosed_by(fieldsEnclosedBy);
-    ptr->set_fields_escaped_by(fieldsEscapedBy);
-    ptr->set_lines_terminated_by(linesTerminatedBy);
-    return ptr;
-}
-
 json DialectInput::toJson() const {
     return json({{"fields_terminated_by", fieldsTerminatedBy},
                  {"fields_enclosed_by", fieldsEnclosedBy},

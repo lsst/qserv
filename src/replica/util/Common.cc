@@ -85,31 +85,6 @@ list<SqlColDef> parseSqlColumns(json const& columnsJsonArray) {
     return columns;
 }
 
-SqlIndexSpec::SqlIndexSpec(ProtocolRequestSql::IndexSpec spec) {
-    switch (spec) {
-        case ProtocolRequestSql::DEFAULT: {
-            _type = SqlIndexSpec::DEFAULT;
-            break;
-        }
-        case ProtocolRequestSql::UNIQUE: {
-            _type = SqlIndexSpec::UNIQUE;
-            break;
-        }
-        case ProtocolRequestSql::FULLTEXT: {
-            _type = SqlIndexSpec::FULLTEXT;
-            break;
-        }
-        case ProtocolRequestSql::SPATIAL: {
-            _type = SqlIndexSpec::SPATIAL;
-            break;
-        }
-        default:
-            throw invalid_argument("IndexSpec::" + string(__func__) +
-                                   "  unsupported protocol index specification: '" +
-                                   ProtocolRequestSql_IndexSpec_Name(spec) + "'");
-    }
-}
-
 SqlIndexSpec::SqlIndexSpec(string const& str) {
     if (str == "DEFAULT") {
         _type = Type::DEFAULT;
@@ -137,21 +112,6 @@ string SqlIndexSpec::str() const {
             return "SPATIAL";
     }
     throw runtime_error("SqlIndexSpec::" + string(__func__) + "  unsupported index specification");
-}
-
-ProtocolRequestSql::IndexSpec SqlIndexSpec::protocol() const {
-    switch (_type) {
-        case Type::DEFAULT:
-            return ProtocolRequestSql::DEFAULT;
-        case Type::UNIQUE:
-            return ProtocolRequestSql::UNIQUE;
-        case Type::FULLTEXT:
-            return ProtocolRequestSql::FULLTEXT;
-        case Type::SPATIAL:
-            return ProtocolRequestSql::SPATIAL;
-    }
-    throw runtime_error("SqlIndexSpec::" + string(__func__) + "  unsupported index specification: '" + str() +
-                        "'");
 }
 
 SqlIndexDef::SqlIndexDef(json const& indexSpecJson) {

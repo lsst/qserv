@@ -269,7 +269,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
                 "mysql://qsmaster@host-B:13306/qservw_worker");
 
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 122);
-    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
     BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 10);
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
@@ -663,10 +662,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 123));
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 123);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-threads", 4));
-    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 4);
-
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 5);
@@ -848,7 +843,6 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_CHECK(workerA.name == "worker-A");
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
-    BOOST_CHECK_EQUAL(workerA.svcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.httpSvcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.fsHost, hostA);
     BOOST_CHECK_EQUAL(workerA.exporterHost, hostA);
@@ -860,7 +854,6 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_CHECK(workerB.name == "worker-B");
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
-    BOOST_CHECK_EQUAL(workerB.svcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.httpSvcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.fsHost, hostB);
     BOOST_CHECK_EQUAL(workerB.exporterHost, hostB);
@@ -873,7 +866,6 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_REQUIRE_NO_THROW(workerC = config->worker("worker-C"));
     BOOST_CHECK(workerC.name == "worker-C");
     BOOST_CHECK(!workerC.isEnabled);
-    BOOST_CHECK_EQUAL(workerC.svcHost, ConfigHost({"168.1.1.1", "host-C1"}));
     BOOST_CHECK_EQUAL(workerC.httpSvcHost, ConfigHost({"168.1.1.7", "host-C7"}));
     BOOST_CHECK_EQUAL(workerC.fsHost, ConfigHost({"168.1.1.2", "host-C2"}));
     BOOST_CHECK_EQUAL(workerC.exporterHost, ConfigHost({"168.1.1.4", "host-C4"}));

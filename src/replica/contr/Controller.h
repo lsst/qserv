@@ -39,7 +39,6 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class HttpMessenger;
-class Messenger;
 class QservMgtServices;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -103,9 +102,6 @@ public:
     /// @return a reference to worker messenger service (HTTP+JSON)
     std::shared_ptr<HttpMessenger> httpMessenger() const { return _httpMessenger; }
 
-    /// @return a reference to worker messenger service (TCP+PROTOBUF)
-    std::shared_ptr<Messenger> messenger() const { return _messenger; }
-
     /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
     std::shared_ptr<QservMgtServices> qservMgtServices() const { return _qservMgtServices; }
 
@@ -128,7 +124,6 @@ private:
     std::uint64_t const _startTime;
 
     std::shared_ptr<HttpMessenger> const _httpMessenger;  ///< The HTTP+JSON worker messenger service
-    std::shared_ptr<Messenger> const _messenger;          ///< The TCP+PROTOBUF worker messenger service
 
     /// Qserv management services
     std::shared_ptr<QservMgtServices> const _qservMgtServices;

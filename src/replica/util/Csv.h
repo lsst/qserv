@@ -29,7 +29,6 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/proto/protocol.pb.h"
 #include "replica/util/Common.h"
 
 // This header declarations
@@ -127,16 +126,10 @@ private:
 /// @see class Dialect
 class DialectInput {
 public:
-    /// Convert from the Protobuf object
-    explicit DialectInput(ProtocolDialectInput const& obj);
-
     DialectInput() = default;
     DialectInput(DialectInput const&) = default;
     DialectInput& operator=(DialectInput const&) = default;
     ~DialectInput() = default;
-
-    /// @return Protobuf representation of the object
-    std::unique_ptr<ProtocolDialectInput> toProto() const;
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;

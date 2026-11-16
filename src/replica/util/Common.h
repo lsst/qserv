@@ -40,7 +40,6 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/proto/protocol.pb.h"
 #include "replica/util/Mutex.h"
 
 // This header declarations
@@ -140,20 +139,12 @@ public:
 /**
  * Class SqlIndexSpec is an abstraction for the index type specification.
  *
- * It's been designed to allow constructing specifications from a string
- * or a Protobuf representations. The class contract also allows a reverse
- * translation into either of those representations.
+ * It's been designed to allow constructing specifications from a string,
+ * The class contract also allows a reverse translation into a string.
  */
 class SqlIndexSpec {
 public:
     enum Type { DEFAULT, UNIQUE, FULLTEXT, SPATIAL };
-
-    /**
-     * Construct from the Protobuf representation.
-     * @throws std::invalid_argument If the input specification is not supported
-     *   by the class.
-     */
-    SqlIndexSpec(ProtocolRequestSql::IndexSpec spec);
 
     /**
      * Construct by translate the input string into the internal specification.
@@ -170,9 +161,6 @@ public:
 
     /// @return The string representation.
     std::string str() const;
-
-    /// @return The Protobuf representation.
-    ProtocolRequestSql::IndexSpec protocol() const;
 
 private:
     /// The internal representation
