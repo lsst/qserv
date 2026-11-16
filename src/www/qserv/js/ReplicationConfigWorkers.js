@@ -142,13 +142,6 @@ function(CSSLoader,
                 let workerReadOnlyCssClass = worker['is-read-only'] ? 'class="table-warning"' : '';
                 const service = [
                     {   "name":     "Replica Management",
-                        "protocol": "binary",
-                        "port":      worker['svc-port'],
-                        "ip":        worker['svc-host']['addr'],
-                        "dns":       worker['svc-host']['name'],
-                        "cssClass":  "bg-white"
-                    },
-                    {   "name":     "Replica Management (HTTP)",
                         "protocol": "http",
                         "port":      worker['http-svc-port'],
                         "ip":        worker['http-svc-host']['addr'],
