@@ -1152,7 +1152,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     std::string stmt =
             " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
     char const expectedErr[] =
-            "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv "
+            "ParseException:Unsupported SQL construct: identifier \"_chunkId\", Identifiers in Qserv "
             "may not start with an underscore.";
     qsTest.sqlConfig = SqlConfig(
             SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS", "_chunkId"}}}}}));
@@ -1945,7 +1945,8 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     char const* expectedErr =
-            "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
+            "ParseException:Unsupported SQL construct: functions in ORDER BY. Select "
+            "the expression under "
             "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".";
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
@@ -1961,7 +1962,8 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     char const* expectedErr =
-            "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
+            "ParseException:Unsupported SQL construct: functions in ORDER BY. Select "
+            "the expression under "
             "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".";
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
@@ -2154,7 +2156,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
             "FROM Object WHERE rFlux_PS > 10;";
 
     // CASE in column spec is illegal.
-    char const* expectedErr = "ParseException:qserv cannot parse query: CASE expressions are not supported.";
+    char const* expectedErr = "ParseException:Unsupported SQL construct: CASE expressions";
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }

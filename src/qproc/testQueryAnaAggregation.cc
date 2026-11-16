@@ -309,9 +309,9 @@ BOOST_AUTO_TEST_CASE(IllegalAggregatePlacement) {
             {"select sum(count(objectId)) from LSST.Object",
              "AnalysisError:Qserv does not support an aggregate directly inside another aggregate"},
             {"select objectId from LSST.Object where sum(bMagF) > 5",
-             "ParseException:Hyrise unsupported SQL construct: aggregate function in WHERE"},
+             "ParseException:Unsupported SQL construct: aggregate function in WHERE"},
             {"select objectId from LSST.Object where round(sum(bMagF), 2) > 5",
-             "ParseException:Hyrise unsupported SQL construct: aggregate function in WHERE"},
+             "ParseException:Unsupported SQL construct: aggregate function in WHERE"},
     };
     for (auto const& [stmt, expectedPrefix] : stmts) {
         BOOST_TEST_MESSAGE("checking that this is rejected: " << stmt);
