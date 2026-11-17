@@ -121,7 +121,7 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
             int msgCount = msgStore->messageCount();
             bool firstLine = true;
             for (int i = 0; i != msgCount; ++i) {
-                const qmeta::QueryMessage& qm = msgStore->getMessage(i);
+                const qmeta::QueryMessage qm = msgStore->getMessage(i);
                 std::string src = qm.msgSource;
                 // Try to restrict individual Job messages from being sent to the user as there may be
                 // thousands of them. TODO: enumerate sources instead of using strings.
