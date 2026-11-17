@@ -524,13 +524,13 @@ DatabaseInfo Config::addTable(TableInfo const& table_) {
     TableInfo const table = database.validate(_databases, table_, sanitize);
     if (_updatePersistentState(lock)) {
         vector<string> queries;
-        string const query =
-                _g.insert("config_database_table", table.database, table.name, table.isPartitioned,
-                          table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
-                          table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
-                          table.flagColName, table.angSep, table.uniquePrimaryKey ? 1 : 0, table.charsetName,
-                          table.collationName, table.latitudeColName, table.longitudeColName,
-                          table.isPublished ? 1 : 0, table.createTime, table.publishTime);
+        string const query = _g.insert(
+                "config_database_table", table.database, table.name, table.isPartitioned,
+                table.persistSubChunks, table.directorTable.databaseTableName(),
+                table.directorTable.primaryKeyColumn(), table.directorTable2.databaseTableName(),
+                table.directorTable2.primaryKeyColumn(), table.flagColName, table.angSep,
+                table.uniquePrimaryKey ? 1 : 0, table.charsetName, table.collationName, table.latitudeColName,
+                table.longitudeColName, table.isPublished ? 1 : 0, table.createTime, table.publishTime);
         queries.emplace_back(query);
         int colPosition = 0;
         for (auto&& column : table.columns) {
@@ -546,6 +546,30 @@ DatabaseInfo Config::addTable(TableInfo const& table_) {
     }
     bool const validate = false;
     database.addTable(_databases, table, validate);
+    return database;
+}
+
+DatabaseInfo Config::updateTableSubChunks(string const& databaseName, string const& tableName,
+                                          bool persistSubChunks) {
+    _THROW_IF_EMPTY(databaseName);
+    _THROW_IF_EMPTY(tableName);
+    replica::Lock const lock(_mtx, _context(__func__));
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
+    TableInfo& table = database.findTable(tableName);
+    if (database.isPublished) {
+        throw logic_error(_context(__func__) + " updating tables of the published databases isn't allowed.");
+    }
+    if (persistSubChunks && !(table.isDirector() || table.isRefMatch())) {
+        throw logic_error(_context(__func__) + " can't set 'persistSubChunks' for this table.");
+    }
+    table.persistSubChunks = persistSubChunks;
+    if (_updatePersistentState(lock)) {
+        string const query = _g.update("config_database_table",
+                                       make_pair("persist_sub_chunks", persistSubChunks ? 1 : 0)) +
+                             _g.where(_g.eq("database", database.name), _g.eq("table", tableName));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
     return database;
 }
 
