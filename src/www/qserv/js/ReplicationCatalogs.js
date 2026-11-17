@@ -194,10 +194,12 @@ function(CSSLoader,
                         if (table.is_ref_match) {
                             databaseHtml += `
       <br>ang_sep:&nbsp;<span style="font-weight:bold;">${table.ang_sep}</span>
-      <br>flag:&nbsp;<span style="font-weight:bold;">${table.flag}</span>`;
+      <br>flag:&nbsp;<span style="font-weight:bold;">${table.flag}</span>
+      <br>persist_sub_chunks:&nbsp;<span style="font-weight:bold;">${table.persist_sub_chunks}</span>`;
                         } else if (table.is_director) {
                           databaseHtml += `
-    <br>unique_primary_key:&nbsp;<span style="font-weight:bold;">${table.unique_primary_key}</span>`;
+      <br>unique_primary_key:&nbsp;<span style="font-weight:bold;">${table.unique_primary_key}</span>
+      <br>persist_sub_chunks:&nbsp;<span style="font-weight:bold;">${table.persist_sub_chunks}</span>`;
                         }
                         databaseHtml += `
   </td>

@@ -84,6 +84,7 @@ DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo
                 table.publishTime = tableJson.at("publish_time").get<uint64_t>();
                 table.isPartitioned = tableJson.at("is_partitioned").get<int>() != 0;
                 if (table.isPartitioned) {
+                    table.persistSubChunks = tableJson.at("persist_sub_chunks").get<int>() != 0;
                     table.directorTable = DirectorTableRef(tableJson.at("director_table").get<string>(),
                                                            tableJson.at("director_key").get<string>());
                     table.directorTable2 = DirectorTableRef(tableJson.at("director_table2").get<string>(),
@@ -301,6 +302,8 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
             throwIfNot(table.latitudeColName.empty() && table.longitudeColName.empty(),
                        "the RefMatch table can't have spatial coordinate columns");
         } else {
+            throwIf(table.persistSubChunks,
+                    "sub-chunks can only be materialized for the director or RefMatch tables");
             throwIf(table.directorTable.empty(), "the dependent table requires a valid director");
             DatabaseInfo const* database = this;
             if (!table.directorTable.databaseName().empty()) {
@@ -387,6 +390,12 @@ TableInfo DatabaseInfo::sanitize(TableInfo const& table_) const {
                 table.latitudeColName = string();
                 table.longitudeColName = string();
             }
+
+            // Sub-chunk materialization only matters for the director or RefMatch tables.
+            if (!(table.isDirector() || table.isRefMatch())) {
+                table.persistSubChunks = false;
+            }
+
         } else if (table.isDirector() && table.isRefMatch()) {
             // It's impossible to do anything here due to the explicitly
             // made table type ambiguity.
