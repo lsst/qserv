@@ -131,6 +131,14 @@ public:
     }
 
     /**
+     * Indicates whether the table has sub-chunks that are materialized into
+     * MySQL partitions based on the column `subChunkId`.
+     * @note This attribute is relevant only for partitioned tables which have sub-chunks
+     *  such as the "Director" and the "RefMatch" tables.
+     */
+    bool persistSubChunks = false;
+
+    /**
      * @brief The "director" table (if any).
      *
      * The dependency is required for all partitioned tables including the "directors".
