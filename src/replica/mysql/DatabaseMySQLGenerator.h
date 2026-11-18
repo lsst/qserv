@@ -188,8 +188,11 @@ public:
         return SqlId(id(first).str + "." + second.str);
     }
 
-    /// @return a back-ticked identifier of a MySQL partition for the given "super-transaction"
-    SqlId partId(TransactionId transactionId) const { return id("p" + std::to_string(transactionId)); }
+    /// @return a valid identifier of a MySQL partition
+    template <typename COLTYPE>
+    SqlId partId(COLTYPE value, std::string const& prefix = "p") const {
+        return id(prefix + std::to_string(value));
+    }
 
     template <typename TYPEID>
     DoNotProcess distinctId(TYPEID const& nameOrId) const {
@@ -974,9 +977,21 @@ public:
         return " PARTITION BY LIST (" + id(column).str + ")";
     }
 
-    std::string partition(TransactionId transactionId) const {
-        return " (PARTITION " + partId(transactionId).str + " VALUES IN (" + std::to_string(transactionId) +
-               "))";
+    template <typename COLTYPE>
+    std::string partition(COLTYPE value, std::string const& prefix = "p") const {
+        return " (PARTITION " + partId(value, prefix).str + " VALUES IN (" + std::to_string(value) + "))";
+    }
+
+    template <typename COLTYPE>
+    std::string partitions(std::vector<COLTYPE> const& values, std::string const& prefix = "p") const {
+        std::string sql = " (";
+        for (size_t i = 0; i < values.size(); ++i) {
+            if (i > 0) sql += ", ";
+            sql += "PARTITION " + partId(values[i], prefix).str + " VALUES IN (" + std::to_string(values[i]) +
+                   ")";
+        }
+        sql += ")";
+        return sql;
     }
 
     // Generators for ALTER TABLE ...
