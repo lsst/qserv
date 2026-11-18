@@ -146,29 +146,30 @@ json SqlIndexes::toJson() const {
 string SqlGetIndexesJob::typeName() { return "SqlGetIndexesJob"; }
 
 shared_ptr<SqlGetIndexesJob> SqlGetIndexesJob::create(string const& database, string const& table,
-                                                      bool overlap, bool allWorkers,
+                                                      ChunkOverlapSelector tableSelector, bool allWorkers,
                                                       shared_ptr<Controller> const& controller,
                                                       string const& parentJobId, CallbackType const& onFinish,
                                                       int priority) {
-    return shared_ptr<SqlGetIndexesJob>(new SqlGetIndexesJob(database, table, overlap, allWorkers, controller,
-                                                             parentJobId, onFinish, priority));
+    return shared_ptr<SqlGetIndexesJob>(new SqlGetIndexesJob(database, table, tableSelector, allWorkers,
+                                                             controller, parentJobId, onFinish, priority));
 }
 
-SqlGetIndexesJob::SqlGetIndexesJob(string const& database, string const& table, bool overlap, bool allWorkers,
+SqlGetIndexesJob::SqlGetIndexesJob(string const& database, string const& table,
+                                   ChunkOverlapSelector tableSelector, bool allWorkers,
                                    shared_ptr<Controller> const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
         : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_GET_TABLE_INDEXES",
                  priority),
           _database(database),
           _table(table),
-          _overlap(overlap),
+          _tableSelector(tableSelector),
           _onFinish(onFinish) {}
 
 list<pair<string, string>> SqlGetIndexesJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
-    result.emplace_back("overlap", bool2str(overlap()));
+    result.emplace_back("table_selector", toString(tableSelector()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
@@ -242,7 +243,7 @@ SqlIndexes SqlGetIndexesJob::indexes() const {
     SqlIndexes result;
     result.database = _database;
     result.table = _table;
-    result.overlap = _overlap;
+    result.overlap = _tableSelector == ChunkOverlapSelector::OVERLAP;
     for (auto itr : name2finalIndex) {
         SqlIndexes::Index& index = itr.second;
         if (index.status != SqlIndexes::Index::Status::INCONSISTENT) {
@@ -271,8 +272,10 @@ list<shared_ptr<SqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock cons
     if (_workers2tables.count(worker) != 0) return requests;
 
     // Only the requested subset of tables is going to be processed at the worker.
-    bool const allTables = false;
-    _workers2tables[worker] = workerTables(worker, database(), table(), allTables, overlap());
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    _workers2tables[worker] = workerTables(worker, database(), table(), tableSelector(), includeProtoTable,
+                                           includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

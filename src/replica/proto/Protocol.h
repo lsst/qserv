@@ -100,7 +100,8 @@ enum class SqlRequestType : unsigned int {
     DROP_TABLE_INDEX,
     ALTER_TABLE,
     TABLE_ROW_STATS,
-    _LAST = TABLE_ROW_STATS
+    PERSIST_SUBCHUNKS,
+    _LAST = PERSIST_SUBCHUNKS
 
 };
 

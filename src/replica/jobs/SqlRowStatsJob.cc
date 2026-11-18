@@ -76,25 +76,25 @@ SqlRowStatsJob::StateUpdatePolicy SqlRowStatsJob::str2policy(string const& str) 
 }
 
 shared_ptr<SqlRowStatsJob> SqlRowStatsJob::create(string const& database, string const& table,
-                                                  ChunkOverlapSelector overlapSelector,
+                                                  ChunkOverlapSelector tableSelector,
                                                   SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
                                                   bool allWorkers, shared_ptr<Controller> const& controller,
                                                   string const& parentJobId, CallbackType const& onFinish,
                                                   int priority) {
-    return shared_ptr<SqlRowStatsJob>(new SqlRowStatsJob(database, table, overlapSelector, stateUpdatePolicy,
+    return shared_ptr<SqlRowStatsJob>(new SqlRowStatsJob(database, table, tableSelector, stateUpdatePolicy,
                                                          allWorkers, controller, parentJobId, onFinish,
                                                          priority));
 }
 
 SqlRowStatsJob::SqlRowStatsJob(string const& database, string const& table,
-                               ChunkOverlapSelector overlapSelector,
+                               ChunkOverlapSelector tableSelector,
                                SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
                                shared_ptr<Controller> const& controller, string const& parentJobId,
                                CallbackType const& onFinish, int priority)
         : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_TABLE_ROW_STATS", priority),
           _database(database),
           _table(table),
-          _overlapSelector(overlapSelector),
+          _tableSelector(tableSelector),
           _stateUpdatePolicy(stateUpdatePolicy),
           _onFinish(onFinish) {}
 
@@ -102,7 +102,7 @@ list<pair<string, string>> SqlRowStatsJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
-    result.emplace_back("overlap_selector", overlapSelector2str(overlapSelector()));
+    result.emplace_back("table_selector", toString(tableSelector()));
     result.emplace_back("state_update_policy", policy2str(stateUpdatePolicy()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
@@ -124,23 +124,10 @@ list<shared_ptr<SqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const&
     _workers.insert(worker);
 
     // Only the requested subset of tables is going to be processed at the worker.
-    bool const allTables = false;
-    vector<string> tables2process;
-    switch (overlapSelector()) {
-        case ChunkOverlapSelector::CHUNK:
-            tables2process = workerTables(worker, database(), table(), allTables, false);
-            break;
-        case ChunkOverlapSelector::OVERLAP:
-            tables2process = workerTables(worker, database(), table(), allTables, true);
-            break;
-        case ChunkOverlapSelector::CHUNK_AND_OVERLAP: {
-            tables2process = workerTables(worker, database(), table(), allTables, false);
-            auto overlaps = workerTables(worker, database(), table(), allTables, true);
-            tables2process.insert(tables2process.end(), std::make_move_iterator(overlaps.begin()),
-                                  std::make_move_iterator(overlaps.end()));
-            break;
-        }
-    }
+    bool const includeProtoTable = true;
+    bool const includeDummyChunkTable = true;
+    auto const tables2process = workerTables(worker, database(), table(), tableSelector(), includeProtoTable,
+                                             includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

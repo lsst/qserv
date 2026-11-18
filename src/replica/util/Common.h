@@ -65,14 +65,14 @@ enum class ChunkOverlapSelector : int { CHUNK = 1, OVERLAP = 2, CHUNK_AND_OVERLA
 /// @param selector The selector to be translated.
 /// @return The string representation of the selector.
 /// @throw std::invalid_argument If the selector is not valid.
-std::string overlapSelector2str(ChunkOverlapSelector selector);
+std::string toString(ChunkOverlapSelector selector);
 
 std::ostream& operator<<(std::ostream& os, ChunkOverlapSelector selector);
 
 /// @param str The input string to be parsed.
 /// @return ChunkOverlapSelector The selector's value.
 /// @throw std::invalid_argument If the string doesn't match any value.
-ChunkOverlapSelector str2overlapSelector(std::string const& str);
+ChunkOverlapSelector parseTableSelector(std::string const& str);
 
 /**
  * Class Generators is the utility class for generating a set of unique

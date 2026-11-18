@@ -32,6 +32,7 @@ target_sources(replica_jobs PRIVATE
     SqlGrantAccessJob.cc
     SqlJob.cc
     SqlJobResult.cc
+    SqlPersistSubChunksJob.cc
     SqlQueryJob.cc
     SqlRemoveTablePartitionsJob.cc
     SqlRowStatsJob.cc

@@ -48,18 +48,19 @@ namespace lsst::qserv::replica {
 string SqlCreateIndexesJob::typeName() { return "SqlCreateIndexesJob"; }
 
 shared_ptr<SqlCreateIndexesJob> SqlCreateIndexesJob::create(
-        string const& database, string const& table, bool overlap, SqlIndexSpec const& indexSpec,
-        string const& indexName, string const& indexComment, vector<SqlIndexColumn> const& indexColumns,
-        bool allWorkers, bool ignoreDuplicateKey, shared_ptr<Controller> const& controller,
-        string const& parentJobId, CallbackType const& onFinish, int priority) {
+        string const& database, string const& table, ChunkOverlapSelector tableSelector,
+        SqlIndexSpec const& indexSpec, string const& indexName, string const& indexComment,
+        vector<SqlIndexColumn> const& indexColumns, bool allWorkers, bool ignoreDuplicateKey,
+        shared_ptr<Controller> const& controller, string const& parentJobId, CallbackType const& onFinish,
+        int priority) {
     return shared_ptr<SqlCreateIndexesJob>(new SqlCreateIndexesJob(
-            database, table, overlap, indexSpec, indexName, indexComment, indexColumns, allWorkers,
+            database, table, tableSelector, indexSpec, indexName, indexComment, indexColumns, allWorkers,
             ignoreDuplicateKey, controller, parentJobId, onFinish, priority));
 }
 
-SqlCreateIndexesJob::SqlCreateIndexesJob(string const& database, string const& table, bool overlap,
-                                         SqlIndexSpec const& indexSpec, string const& indexName,
-                                         string const& indexComment,
+SqlCreateIndexesJob::SqlCreateIndexesJob(string const& database, string const& table,
+                                         ChunkOverlapSelector tableSelector, SqlIndexSpec const& indexSpec,
+                                         string const& indexName, string const& indexComment,
                                          vector<SqlIndexColumn> const& indexColumns, bool allWorkers,
                                          bool ignoreDuplicateKey, shared_ptr<Controller> const& controller,
                                          string const& parentJobId, CallbackType const& onFinish,
@@ -68,7 +69,7 @@ SqlCreateIndexesJob::SqlCreateIndexesJob(string const& database, string const& t
                  priority, ::ignoreNonPartitioned, ignoreDuplicateKey),
           _database(database),
           _table(table),
-          _overlap(overlap),
+          _tableSelector(tableSelector),
           _indexSpec(indexSpec),
           _indexName(indexName),
           _indexComment(indexComment),
@@ -79,7 +80,7 @@ list<pair<string, string>> SqlCreateIndexesJob::extendedPersistentState() const 
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
-    result.emplace_back("overlap", bool2str(overlap()));
+    result.emplace_back("table_selector", toString(tableSelector()));
     result.emplace_back("index_spec", indexSpec().str());
     result.emplace_back("index_name", indexName());
     result.emplace_back("index_comment", indexComment());
@@ -107,8 +108,10 @@ list<shared_ptr<SqlRequest>> SqlCreateIndexesJob::launchRequests(replica::Lock c
     _workers.insert(worker);
 
     // Only the requested subset of tables is going to be processed at the worker.
-    bool const allTables = false;
-    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, overlap());
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    auto const tables2process = workerTables(worker, database(), table(), tableSelector(), includeProtoTable,
+                                             includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

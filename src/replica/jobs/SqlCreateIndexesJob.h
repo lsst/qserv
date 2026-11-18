@@ -71,11 +71,10 @@ public:
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
-     * @param overlap The flag (applies to the partitioned tables only)
-     *   indicating which kind of the partitioned tables to be affected by
-     *   the operation. If the flag is set to 'true' then only the overlap tables
-     *   will be involved into the operation. Otherwise, only the chunk tables will
-     *   be affected.
+     * @param tableSelector Table selector (applies to the partitioned tables only) indicating which kind of
+     *  the partitioned tables to be affected by the operation. If the selector is set to 'OVERLAP' then
+     *  only the overlap tables will be involved into the operation. Otherwise, only the chunk
+     *  tables will be affected.
      * @param indexSpec The type specification of the index.
      * @param indexName The name of the index.
      * @param indexComment An arbitrary comment string documenting the index.
@@ -94,7 +93,7 @@ public:
      * @return A pointer to the created object.
      */
     static std::shared_ptr<SqlCreateIndexesJob> create(
-            std::string const& database, std::string const& table, bool overlap,
+            std::string const& database, std::string const& table, ChunkOverlapSelector tableSelector,
             SqlIndexSpec const& indexSpec, std::string const& indexName, std::string const& indexComment,
             std::vector<SqlIndexColumn> const& indexColumns, bool allWorkers, bool ignoreDuplicateKey,
             std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
@@ -108,7 +107,7 @@ public:
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
-    bool overlap() const { return _overlap; }
+    ChunkOverlapSelector tableSelector() const { return _tableSelector; }
     SqlIndexSpec const& indexSpec() const { return _indexSpec; }
     std::string const& indexName() const { return _indexName; }
     std::string const& indexComment() const { return _indexComment; }
@@ -129,17 +128,17 @@ protected:
 #endif
 
 private:
-    SqlCreateIndexesJob(std::string const& database, std::string const& table, bool overlap,
-                        SqlIndexSpec const& indexSpec, std::string const& indexName,
-                        std::string const& indexComment, std::vector<SqlIndexColumn> const& indexColumns,
-                        bool allWorkers, bool ignoreDuplicateKey,
-                        std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
-                        CallbackType const& onFinish, int priority);
+    SqlCreateIndexesJob(std::string const& database, std::string const& table,
+                        ChunkOverlapSelector tableSelector, SqlIndexSpec const& indexSpec,
+                        std::string const& indexName, std::string const& indexComment,
+                        std::vector<SqlIndexColumn> const& indexColumns, bool allWorkers,
+                        bool ignoreDuplicateKey, std::shared_ptr<Controller> const& controller,
+                        std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Input parameters
     std::string const _database;
     std::string const _table;
-    bool const _overlap;
+    ChunkOverlapSelector const _tableSelector;
     SqlIndexSpec const _indexSpec;
     std::string const _indexName;
     std::string const _indexComment;

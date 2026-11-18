@@ -92,12 +92,16 @@ list<shared_ptr<SqlRequest>> SqlRemoveTablePartitionsJob::launchRequests(replica
     _workers.insert(worker);
 
     // All tables which are going to be processed at the worker
-    vector<string> const allTables = workerTables(worker, database(), table());
+    ChunkOverlapSelector const tableSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP;
+    bool const includeProtoTable = true;
+    bool const includeDummyChunkTable = true;
+    auto const tables2process = workerTables(worker, database(), table(), tableSelector, includeProtoTable,
+                                             includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     bool const keepTracking = true;
-    for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
 #ifdef QSERV_REPLICA_PROTOCOL_HTTP
         requests.push_back(HttpSqlRemoveTablePartitionsRequest::createAndStart(
                 controller(), worker, database(), tables,

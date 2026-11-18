@@ -95,7 +95,7 @@ public:
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
-     * @param overlapSelector The selector (applies to the partitioned tables only) indicating what kind
+     * @param tableSelector The selector (applies to the partitioned tables only) indicating what kind
      *  of the partitioned tables to be affected by the operation.
      * @param stateUpdatePolicy The option that tells the job if it should also update row counters in
      *  the persistent state of the Replication system.
@@ -109,7 +109,7 @@ public:
      * @return A pointer to the created object.
      */
     static std::shared_ptr<SqlRowStatsJob> create(std::string const& database, std::string const& table,
-                                                  ChunkOverlapSelector overlapSelector,
+                                                  ChunkOverlapSelector tableSelector,
                                                   StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
                                                   std::shared_ptr<Controller> const& controller,
                                                   std::string const& parentJobId,
@@ -123,7 +123,7 @@ public:
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
-    ChunkOverlapSelector overlapSelector() const { return _overlapSelector; }
+    ChunkOverlapSelector tableSelector() const { return _tableSelector; }
     StateUpdatePolicy stateUpdatePolicy() const { return _stateUpdatePolicy; }
 
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
@@ -142,8 +142,8 @@ protected:
     virtual void processResultAndFinish(replica::Lock const& lock, ExtendedState extendedState) final;
 
 private:
-    SqlRowStatsJob(std::string const& database, std::string const& table,
-                   ChunkOverlapSelector overlapSelector, StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
+    SqlRowStatsJob(std::string const& database, std::string const& table, ChunkOverlapSelector tableSelector,
+                   StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
                    std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                    CallbackType const& onFinish, int priority);
 
@@ -166,7 +166,7 @@ private:
     // Input parameters
     std::string const _database;
     std::string const _table;
-    ChunkOverlapSelector const _overlapSelector;
+    ChunkOverlapSelector const _tableSelector;
     StateUpdatePolicy const _stateUpdatePolicy;
     CallbackType _onFinish;  ///< @note is reset when the job finishes
 

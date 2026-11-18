@@ -24,6 +24,7 @@ target_sources(replica_requests PRIVATE
     http/HttpSqlEnableDbRequest.cc
     http/HttpSqlGetIndexesRequest.cc
     http/HttpSqlGrantAccessRequest.cc
+    http/HttpSqlPersistSubChunksRequest.cc
     http/HttpSqlQueryRequest.cc
     http/HttpSqlRemoveTablePartitionsRequest.cc
     http/HttpSqlRequest.cc
