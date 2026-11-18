@@ -326,6 +326,9 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             // CREATE TABLE ...
             {" PARTITION BY LIST (`qserv_trans_id`)", g.partitionByList("qserv_trans_id")},
             {" (PARTITION `p1` VALUES IN (1))", g.partition(1)},
+            {" (PARTITION `cs2` VALUES IN (2))", g.partition(2, "cs")},
+            {" (PARTITION `cs0` VALUES IN (0), PARTITION `cs1` VALUES IN (1), PARTITION `cs2` VALUES IN (2))",
+             g.partitions<int>({0, 1, 2}, "cs")},
 
             {createTableOne, g.createTable("one", true, list<SqlColDef>())},
             {createTableOne, g.createTable(g.id("one"), true, list<SqlColDef>())},
