@@ -768,7 +768,8 @@ Where, the mandatory attributes of the ``params`` object are:
   :ref:`qserv-api-repl-worker-sql-create-table-index`,
   :ref:`qserv-api-repl-worker-sql-drop-table-index`,
   :ref:`qserv-api-repl-worker-sql-alter-table`,
-  :ref:`qserv-api-repl-worker-sql-table-row-stats`
+  :ref:`qserv-api-repl-worker-sql-table-row-stats`,
+  :ref:`qserv-api-repl-worker-sql-persist-subchunks`
 
   The operations are explained in further details in the relevant sections below.
 
@@ -786,7 +787,8 @@ Where, the mandatory attributes of the ``params`` object are:
   :ref:`qserv-api-repl-worker-sql-create-table-index`,
   :ref:`qserv-api-repl-worker-sql-drop-table-index`,
   :ref:`qserv-api-repl-worker-sql-alter-table`,
-  :ref:`qserv-api-repl-worker-sql-table-row-stats`
+  :ref:`qserv-api-repl-worker-sql-table-row-stats`,
+  :ref:`qserv-api-repl-worker-sql-persist-subchunks`
 
 ``max_rows`` : *int* = ``0``
   The optional parameter for the maximum number of rows to be returned in the result set. A value of ``0`` means that
@@ -1485,6 +1487,40 @@ attribute is mandatory and the ``tables`` attribute is not applicable:
 
     "params" : {
         "sql_request_type" : "TABLE_ROW_STATS",
+        "table" : <string>
+    }
+
+Where:
+
+``tables`` : *array* of *string*
+  The list of table names to which the operation should be applied.
+
+``table`` : *string*
+  The name of the table to which the operation should be applied.
+
+.. _qserv-api-repl-worker-sql-persist-subchunks:
+
+PERSIST_SUBCHUNKS
+^^^^^^^^^^^^^^^^^
+Convert the monolitic (non-subdivided) chunk tables into the MySQL-partitioned tables, where the partitioning is done
+by sub-chunk identifiers.
+
+These are the request-specific attributes in the batch mode (``"batch_mode" : 1``):
+
+.. code-block::
+
+    "params" : {
+        "sql_request_type" : "PERSIST_SUBCHUNKS",
+        "tables": [<string>, ...]
+    }
+
+The attributes for the single-table mode  (``"batch_mode" : 0``) are the same as for the batch mode except that the ``table``
+attribute is mandatory and the ``tables`` attribute is not applicable:
+
+.. code-block::
+
+    "params" : {
+        "sql_request_type" : "PERSIST_SUBCHUNKS",
         "table" : <string>
     }
 

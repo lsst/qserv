@@ -148,8 +148,8 @@ public:
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
-     * @param overlap The flag (applies to the partitioned tables only) indicating which kind of
-     *  the partitioned tables to be affected by the operation. If the flag is set to 'true' then
+     * @param tableSelector Table selector (applies to the partitioned tables only) indicating which kind of
+     *  the partitioned tables to be affected by the operation. If the selector is set to 'OVERLAP' then
      *  only the overlap tables will be involved into the operation. Otherwise, only the chunk
      *  tables will be affected.
      * @param allWorkers The flag which if set to 'true' will engage all known workers regardless of
@@ -162,7 +162,7 @@ public:
      * @return A pointer to the created object.
      */
     static std::shared_ptr<SqlGetIndexesJob> create(std::string const& database, std::string const& table,
-                                                    bool overlap, bool allWorkers,
+                                                    ChunkOverlapSelector tableSelector, bool allWorkers,
                                                     std::shared_ptr<Controller> const& controller,
                                                     std::string const& parentJobId,
                                                     CallbackType const& onFinish, int priority);
@@ -175,7 +175,7 @@ public:
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
-    bool overlap() const { return _overlap; }
+    ChunkOverlapSelector tableSelector() const { return _tableSelector; }
 
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
@@ -200,14 +200,15 @@ protected:
 #endif
 
 private:
-    SqlGetIndexesJob(std::string const& database, std::string const& table, bool overlap, bool allWorkers,
+    SqlGetIndexesJob(std::string const& database, std::string const& table,
+                     ChunkOverlapSelector tableSelector, bool allWorkers,
                      std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                      CallbackType const& onFinish, int priority);
 
     // Input parameters
     std::string const _database;
     std::string const _table;
-    bool const _overlap;
+    ChunkOverlapSelector const _tableSelector;
     CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// A collection of tables to be processed by workers. The collection

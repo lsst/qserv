@@ -763,7 +763,7 @@ json HttpIngestModule::_scanTableStats() {
     auto const databaseName = body().required<string>("database");
     auto const tableName = body().required<string>("table");
     auto const overlapSelector =
-            str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
+            parseTableSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
     auto const rowCountersStateUpdatePolicy = SqlRowStatsJob::str2policy(
             body().optional<string>("row_counters_state_update_policy", "DISABLED"));
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
@@ -771,7 +771,7 @@ json HttpIngestModule::_scanTableStats() {
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "table=" + tableName);
-    debug(__func__, "overlap_selector=" + overlapSelector2str(overlapSelector));
+    debug(__func__, "overlap_selector=" + toString(overlapSelector));
     debug(__func__,
           "row_counters_state_update_policy=" + SqlRowStatsJob::policy2str(rowCountersStateUpdatePolicy));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
@@ -853,7 +853,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
                     break;
                 default:
                     runtime_error("HttpIngestModule::" + string(__func__) +
-                                  " unsupported overlap selector '" + overlapSelector2str(overlapSelector));
+                                  " unsupported overlap selector '" + toString(overlapSelector));
             }
             if (scanRequired) {
                 debug(__func__, "scan required for " + database.name + "." + table.name +
@@ -862,7 +862,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
                                         to_string(chunks.size()) + " chunkOverlapsInEntries.size(): " +
                                         to_string(chunkOverlapsInEntries.size()) +
                                         " chunksInEntries.size(): " + to_string(chunksInEntries.size()) +
-                                        " with overlapSelector: " + overlapSelector2str(overlapSelector));
+                                        " with overlapSelector: " + toString(overlapSelector));
             }
         } else {
             // The regular table won't require rescan since the collection of entries
@@ -956,9 +956,9 @@ json HttpIngestModule::_deleteTableStats() {
     auto const table = getTableInfo(__func__);
     bool const qservOnly = body().optional<int>("qserv_only", 0) != 0;
     auto const overlapSelector =
-            str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
+            parseTableSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
     debug(__func__, "qserv_only=" + bool2str(qservOnly));
-    debug(__func__, "overlap_selector=" + overlapSelector2str(overlapSelector));
+    debug(__func__, "overlap_selector=" + toString(overlapSelector));
 
     try {
         ConnectionHandler const h(qservMasterDbConnection("qservMeta"));

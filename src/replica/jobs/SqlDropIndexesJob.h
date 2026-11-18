@@ -71,10 +71,10 @@ public:
      *
      * @param database The name of a database where the tables are residing.
      * @param table The name of the base table to be affected by the operation.
-     * @param overlap The flag (applies to the partitioned tables only) indicating which kind of
-     *  the partitioned tables to be affected by the operation. If the flag is set to 'true' then
-     *  only the overlap tables will be involved into the operation. Otherwise, only the chunk tables
-     *  will be affected.
+     * @param tableSelector Table selector (applies to the partitioned tables only) indicating which kind of
+     *  the partitioned tables to be affected by the operation. If the selector is set to 'OVERLAP' then
+     *  only the overlap tables will be involved into the operation. Otherwise, only the chunk
+     *  tables will be affected.
      * @param indexName The name of the index affected by the operation.
      * @param allWorkers The flag which if set to 'true' will engage all known workers regardless of their
      *  status. If the flag is set to 'false' then only 'ENABLED' workers which are not in the 'READ-ONLY'
@@ -86,8 +86,8 @@ public:
      * @return A pointer to the created object.
      */
     static std::shared_ptr<SqlDropIndexesJob> create(std::string const& database, std::string const& table,
-                                                     bool overlap, std::string const& indexName,
-                                                     bool allWorkers,
+                                                     ChunkOverlapSelector tableSelector,
+                                                     std::string const& indexName, bool allWorkers,
                                                      std::shared_ptr<Controller> const& controller,
                                                      std::string const& parentJobId,
                                                      CallbackType const& onFinish, int priority);
@@ -100,7 +100,7 @@ public:
 
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
-    bool overlap() const { return _overlap; }
+    ChunkOverlapSelector tableSelector() const { return _tableSelector; }
     std::string const& indexName() const { return _indexName; }
 
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
@@ -118,8 +118,8 @@ protected:
 #endif
 
 private:
-    SqlDropIndexesJob(std::string const& database, std::string const& table, bool overlap,
-                      std::string const& indexName, bool allWorkers,
+    SqlDropIndexesJob(std::string const& database, std::string const& table,
+                      ChunkOverlapSelector tableSelector, std::string const& indexName, bool allWorkers,
                       std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
@@ -127,7 +127,7 @@ private:
 
     std::string const _database;
     std::string const _table;
-    bool const _overlap;
+    ChunkOverlapSelector const _tableSelector;
     std::string const _indexName;
 
     CallbackType _onFinish;  ///< @note is reset when the job finishes

@@ -39,6 +39,7 @@
 #include "replica/jobs/SqlGetIndexesJob.h"
 #include "replica/requests/SqlResultSet.h"
 #include "replica/services/ServiceProvider.h"
+#include "replica/util/Common.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -73,8 +74,8 @@ json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
     checkApiVersion(__func__, 58);
 
-    bool const overlap = query().optionalInt("overlap", 0) != 0;
-    debug(__func__, "overlap=" + bool2str(overlap));
+    auto const overlap = body().optional<int>("overlap", 0);
+    debug(__func__, "overlap=" + to_string(overlap));
 
     auto const database = getDatabaseFromParamOrThrow404(__func__);
     auto const table = getTableFromParamOrThrow404(__func__, database);
@@ -83,10 +84,11 @@ json HttpSqlIndexModule::_getIndexes() {
     // doesn't have this restriction.
     if (!table.isPublished) throw http::Error(__func__, "table is not published");
 
+    auto const tableSelector = overlap ? ChunkOverlapSelector::OVERLAP : ChunkOverlapSelector::CHUNK;
     bool const allWorkers = true;
     string const noParentJobId;
-    auto const job = SqlGetIndexesJob::create(database.name, table.name, overlap, allWorkers, controller(),
-                                              noParentJobId, nullptr,
+    auto const job = SqlGetIndexesJob::create(database.name, table.name, tableSelector, allWorkers,
+                                              controller(), noParentJobId, nullptr,
                                               controller()->serviceProvider()->config()->get<int>(
                                                       "controller", "catalog-management-priority-level"));
     job->start();
@@ -115,7 +117,7 @@ json HttpSqlIndexModule::_createIndexes() {
     SqlIndexSpec const spec = SqlIndexSpec(
             body().optional<string>("spec", "DEFAULT", {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"}));
     json const columnsJson = body().required<json>("columns");
-    bool const overlap = body().optional<int>("overlap", 0) != 0;
+    auto const overlap = body().optional<int>("overlap", 0);
     bool const ignoreDuplicateKey = body().optional<int>("ignore_duplicate_key", 1) != 0;
 
     debug(__func__, "database=" + databaseName);
@@ -123,8 +125,8 @@ json HttpSqlIndexModule::_createIndexes() {
     debug(__func__, "index=" + indexName);
     debug(__func__, "comment=" + comment);
     debug(__func__, "spec=" + spec.str());
-    debug(__func__, "columns.size()=" + columnsJson.size());
-    debug(__func__, "overlap=" + bool2str(overlap));
+    debug(__func__, "columns.size()=" + to_string(columnsJson.size()));
+    debug(__func__, "overlap=" + to_string(overlap));
     debug(__func__, "ignore_duplicate_key=" + bool2str(ignoreDuplicateKey));
 
     auto const config = controller()->serviceProvider()->config();
@@ -163,10 +165,11 @@ json HttpSqlIndexModule::_createIndexes() {
                                   http::RequestBodyJSON::required<int>(columnJson, "ascending"));
     }
 
+    auto const tableSelector = overlap ? ChunkOverlapSelector::OVERLAP : ChunkOverlapSelector::CHUNK;
     bool const allWorkers = true;
     string const noParentJobId;
     auto const job = SqlCreateIndexesJob::create(
-            database.name, table.name, overlap, spec, indexName, comment, indexColumns, allWorkers,
+            database.name, table.name, tableSelector, spec, indexName, comment, indexColumns, allWorkers,
             ignoreDuplicateKey, controller(), noParentJobId, nullptr,
             config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
@@ -189,12 +192,12 @@ json HttpSqlIndexModule::_dropIndexes() {
     string const databaseName = body().required<string>("database");
     string const tableName = body().required<string>("table");
     string const indexName = body().required<string>("index");
-    bool const overlap = body().optional<int>("overlap", 0) != 0;
+    auto const overlap = body().optional<int>("overlap", 0);
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "table=" + tableName);
     debug(__func__, "index=" + indexName);
-    debug(__func__, "overlap=" + bool2str(overlap));
+    debug(__func__, "overlap=" + to_string(overlap));
 
     auto const config = controller()->serviceProvider()->config();
     auto const database = config->databaseInfo(databaseName);
@@ -204,11 +207,12 @@ json HttpSqlIndexModule::_dropIndexes() {
     // doesn't have this restriction.
     if (!table.isPublished) throw http::Error(__func__, "table is not published");
 
+    auto const tableSelector = overlap ? ChunkOverlapSelector::OVERLAP : ChunkOverlapSelector::CHUNK;
     bool const allWorkers = true;
     string const noParentJobId;
     auto const job = SqlDropIndexesJob::create(
-            database.name, table.name, overlap, indexName, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog-management-priority-level"));
+            database.name, table.name, tableSelector, indexName, allWorkers, controller(), noParentJobId,
+            nullptr, config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlDropIndexesJob::typeName(), job, database.family);
     job->wait();

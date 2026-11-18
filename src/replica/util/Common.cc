@@ -35,7 +35,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-string overlapSelector2str(ChunkOverlapSelector selector) {
+string toString(ChunkOverlapSelector selector) {
     switch (selector) {
         case ChunkOverlapSelector::CHUNK:
             return "CHUNK";
@@ -50,11 +50,11 @@ string overlapSelector2str(ChunkOverlapSelector selector) {
 }
 
 ostream& operator<<(ostream& os, ChunkOverlapSelector selector) {
-    os << overlapSelector2str(selector);
+    os << toString(selector);
     return os;
 }
 
-ChunkOverlapSelector str2overlapSelector(string const& str) {
+ChunkOverlapSelector parseTableSelector(string const& str) {
     if (str == "CHUNK")
         return ChunkOverlapSelector::CHUNK;
     else if (str == "OVERLAP")

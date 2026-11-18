@@ -62,6 +62,8 @@ SqlRequestType toSqlRequestType(string const& str) {
         return ALTER_TABLE;
     } else if (str == "TABLE_ROW_STATS") {
         return TABLE_ROW_STATS;
+    } else if (str == "PERSIST_SUBCHUNKS") {
+        return PERSIST_SUBCHUNKS;
     }
     throw invalid_argument("Unknown SQL request type: '" + str + "'");
 }
@@ -107,6 +109,8 @@ string toString(SqlRequestType status) {
             return "ALTER_TABLE";
         case TABLE_ROW_STATS:
             return "TABLE_ROW_STATS";
+        case PERSIST_SUBCHUNKS:
+            return "PERSIST_SUBCHUNKS";
         default:
             throw logic_error("Unhandled SQL request type: " + to_string(static_cast<int>(status)));
     }

@@ -91,8 +91,11 @@ list<shared_ptr<SqlRequest>> SqlAlterTablesJob::launchRequests(replica::Lock con
     _workers.insert(worker);
 
     // Only the requested subset of tables is going to be processed at the worker.
-    bool const allTables = true;
-    vector<string> const tables2process = workerTables(worker, database(), table(), allTables);
+    ChunkOverlapSelector const tableSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP;
+    bool const includeProtoTable = true;
+    bool const includeDummyChunkTable = true;
+    auto const tables2process = workerTables(worker, database(), table(), tableSelector, includeProtoTable,
+                                             includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

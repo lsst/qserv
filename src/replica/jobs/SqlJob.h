@@ -34,6 +34,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/util/Common.h"
 #include "replica/jobs/Job.h"
 #include "replica/jobs/SqlJobResult.h"
 
@@ -193,30 +194,27 @@ protected:
      * multiple entries for the partitioned tables (which includes prototype
      * tables if requested, special "overflow" tables, and chunk-specific tables).
      *
-     * @param workerName The unique identifier of a worker hosting the tables.
-     * @param databaseName The name of the table's database.
-     * @param tableName The base name of a table.
-     * @param allTables The optional flag (applies to the partitioned tables only)
-     *  indicating if all or a subset of tables (as determined by the next
-     *  parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
-     *  then the next parameter 'overlapTablesOnly' will be ignored.
-     * @param overlapTablesOnly The optional flag (applies to the partitioned tables only)
-     *  indicating which kind of the partitioned tables to be reported.
-     *  If the flag is set to 'true' then overlap tables will be reported.
-     *  If the flag is set to 'false' then the chunk tables will be reported.
-     *  Note, this parameter is only taken into consideration if the previous
-     *  parameter 'allTables' was set to 'false'.
-     * @param includeProtoTable The optional flag (applies to the partitioned tables only)
-     *  telling the method to include the name of the prototype table into the report.
-     *  Note, this parameter is only taken into consideration if a value of
-     *  the parameter 'allTables' was set to 'false'.
+     * These parameters apply to any table classes:
+     *  @param workerName The unique identifier of a worker hosting the tables.
+     *  @param databaseName The name of the table's database.
+     *  @param tableName The base name of a table.
+     *
+     * These parameters apply to the partitioned tables only:
+     *  @param tableSelector The selector indicating which subset of partitioned tables
+     *   to include in the report.
+     *  @param includeProtoTable The flag telling the method to include the name of the prototype table
+     *   into the report. Note that this flag is taken in consideration regardless of the values of other
+     *   selectors.
+     *  @param includeDummyChunkTable The flag telling the method to include the name of the dummy chunk
+     *   (0123456789) table into the report. Note that this flag is taken in consideration regardless of the
+     *   values of other selectors.
+     *
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
     std::vector<std::string> workerTables(std::string const& workerName, std::string const& databaseName,
-                                          std::string const& tableName, bool allTables = true,
-                                          bool overlapTablesOnly = false,
-                                          bool includeProtoTable = false) const;
+                                          std::string const& tableName, ChunkOverlapSelector tableSelector,
+                                          bool includeProtoTable, bool includeDummyChunkTable) const;
 
     /**
      * This version of the table locator method searches for tables where actual
@@ -224,28 +222,27 @@ protected:
      * transaction. The operation relies upon the persistent records for the transaction
      * contributions.
      *
-     * @param workerName The unique identifier of a worker hosting the tables.
-     * @param transactionId The unique identifier of the transaction.
-     * @param tableName The base name of a table.
-     * @param allTables The optional flag (applies to the partitioned tables only) indicating if all
-     *  or a subset of tables (as determined by the next parameter 'overlapTablesOnly') shall be
-     *  reported. if the flag is set to 'true' then the next parameter 'overlapTablesOnly'
-     *  will be ignored.
-     * @param overlapTablesOnly The optional flag (applies to the partitioned tables only) indicating
-     *  which kind of the partitioned tables to be reported. If the flag is set to 'true' then overlap
-     *  tables will be reported. If the flag is set to 'false' then the chunk tables will be reported.
-     *  Note, this parameter is only taken into consideration if the previous parameter 'allTables'
-     *  was set to 'false'.
-     * @param includeProtoTable The optional flag (applies to the partitioned tables only) telling
-     *  the method to include the name of the prototype table into the report. Note, this parameter
-     *  is only taken into consideration if a value of the parameter 'allTables' was set to 'false'.
+     * These parameters apply to any table classes:
+     *  @param workerName The unique identifier of a worker hosting the tables.
+     *  @param transactionId The unique identifier of the transaction.
+     *  @param tableName The base name of a table.
+     *
+     * These parameters apply to the partitioned tables only:
+     *  @param tableSelector The selector indicating which subset of partitioned tables
+     *   to include in the report.
+     *  @param includeProtoTable The flag telling the method to include the name of the prototype table
+     *   into the report. Note that this flag is taken in consideration regardless of the values of other
+     *   selectors.
+     *  @param includeDummyChunkTable The flag telling the method to include the name of the dummy chunk
+     *   (0123456789) table into the report. Note that this flag is taken in consideration regardless of the
+     *    values of other selectors.
+     *
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
     std::vector<std::string> workerTables(std::string const& workerName, TransactionId const& transactionId,
-                                          std::string const& tableName, bool allTables = true,
-                                          bool overlapTablesOnly = false,
-                                          bool includeProtoTable = false) const;
+                                          std::string const& tableName, ChunkOverlapSelector tableSelector,
+                                          bool includeProtoTable, bool includeDummyChunkTable) const;
 
     /**
      * The algorithm will distribute tables between the specified number of bins. The resulting

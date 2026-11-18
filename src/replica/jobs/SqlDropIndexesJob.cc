@@ -47,24 +47,25 @@ namespace lsst::qserv::replica {
 string SqlDropIndexesJob::typeName() { return "SqlDropIndexesJob"; }
 
 shared_ptr<SqlDropIndexesJob> SqlDropIndexesJob::create(string const& database, string const& table,
-                                                        bool overlap, string const& indexName,
-                                                        bool allWorkers,
+                                                        ChunkOverlapSelector tableSelector,
+                                                        string const& indexName, bool allWorkers,
                                                         shared_ptr<Controller> const& controller,
                                                         string const& parentJobId,
                                                         CallbackType const& onFinish, int priority) {
-    return shared_ptr<SqlDropIndexesJob>(new SqlDropIndexesJob(
-            database, table, overlap, indexName, allWorkers, controller, parentJobId, onFinish, priority));
+    return shared_ptr<SqlDropIndexesJob>(new SqlDropIndexesJob(database, table, tableSelector, indexName,
+                                                               allWorkers, controller, parentJobId, onFinish,
+                                                               priority));
 }
 
-SqlDropIndexesJob::SqlDropIndexesJob(string const& database, string const& table, bool overlap,
-                                     string const& indexName, bool allWorkers,
-                                     shared_ptr<Controller> const& controller, string const& parentJobId,
-                                     CallbackType const& onFinish, int priority)
+SqlDropIndexesJob::SqlDropIndexesJob(string const& database, string const& table,
+                                     ChunkOverlapSelector tableSelector, string const& indexName,
+                                     bool allWorkers, shared_ptr<Controller> const& controller,
+                                     string const& parentJobId, CallbackType const& onFinish, int priority)
         : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_DROP_TABLE_INDEXES",
                  priority),
           _database(database),
           _table(table),
-          _overlap(overlap),
+          _tableSelector(tableSelector),
           _indexName(indexName),
           _onFinish(onFinish) {}
 
@@ -72,7 +73,7 @@ list<pair<string, string>> SqlDropIndexesJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
-    result.emplace_back("overlap", bool2str(overlap()));
+    result.emplace_back("table_selector", toString(tableSelector()));
     result.emplace_back("index_name", indexName());
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
@@ -96,8 +97,10 @@ list<shared_ptr<SqlRequest>> SqlDropIndexesJob::launchRequests(replica::Lock con
     _workers.insert(worker);
 
     // Only the requested subset of tables is going to be processed at the worker.
-    bool const allTables = false;
-    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, overlap());
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    auto const tables2process = workerTables(worker, database(), table(), tableSelector(), includeProtoTable,
+                                             includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

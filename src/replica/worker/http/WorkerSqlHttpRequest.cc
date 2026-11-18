@@ -27,15 +27,20 @@
 #include <utility>
 
 // Qserv headers
+#include "global/constants.h"
+#include "replica/proto/Protocol.h"
 #include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
+#include "replica/config/ConfigDatabaseFamily.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
+#include "replica/util/ChunkedTable.h"
 #include "replica/util/Performance.h"
 #include "replica/util/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "lsst/sphgeom/Chunker.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -135,6 +140,10 @@ WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& se
         case protocol::SqlRequestType::TABLE_ROW_STATS:
             _tables = _getTables(params, _batchMode);
             break;
+        case protocol::SqlRequestType::PERSIST_SUBCHUNKS:
+            _tables = _getTables(params, _batchMode);
+            _partitionByColumn = SUB_CHUNK_COLUMN;
+            break;
         default:
             break;
     }
@@ -179,6 +188,11 @@ bool WorkerSqlHttpRequest::execute() {
                 try {
                     h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
                         auto const query = _generateQuery(conn_, table);
+                        if (query.query.empty()) {
+                            // The empty query means there is nothing to execute.
+                            _initResultSetAsSuccess(lock, conn_);
+                            return;
+                        }
                         if (query.mutexName.empty()) {
                             conn_->execute(query.query);
                         } else {
@@ -229,6 +243,11 @@ bool WorkerSqlHttpRequest::execute() {
             // requests should take this into account.
             h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
                 for (auto const& query : _queries(conn_)) {
+                    if (query.query.empty()) {
+                        // The empty query means there is nothing to execute.
+                        _initResultSetAsSuccess(lock, conn_);
+                        return;
+                    }
                     if (query.mutexName.empty()) {
                         conn_->execute(query.query);
                     } else {
@@ -394,10 +413,51 @@ Query WorkerSqlHttpRequest::_generateQuery(shared_ptr<Connection> const& conn, s
                     g.from(DoNotProcess(databaseTable)) + g.groupBy("qserv_trans_id");
             return Query(query);
         }
+        case protocol::SqlRequestType::PERSIST_SUBCHUNKS: {
+            auto const subChunks = _getSubChunks(table);
+            string const prefix = "cs";
+            if (isPartitionedLike(conn, _databaseName, table, "LIST", prefix)) {
+                return Query();
+            } else {
+                string const query = g.alterTable(databaseTable, g.partitionByList(_partitionByColumn) +
+                                                                         g.partitions(subChunks, prefix));
+                return Query(query, databaseTable.str);
+            }
+        }
         default:
             throw invalid_argument(
                     CONTEXT + " not the table-scope request type: " + protocol::toString(_sqlRequestType));
     }
+}
+
+vector<int32_t> WorkerSqlHttpRequest::_getSubChunks(string const& tableName) const {
+    if (_databaseName.empty()) {
+        throw std::logic_error(CONTEXT + " the name of the database is not provided for the request");
+    }
+
+    // This will throw std::invalid_argument if the table name does not follow the expected convention.
+    ChunkedTable const table(tableName);
+
+    // These calls will throw if the database or family information is not found in the configuration.
+    auto const database = serviceProvider()->config()->databaseInfo(_databaseName);
+    auto const family = serviceProvider()->config()->databaseFamilyInfo(database.family);
+
+    lsst::sphgeom::Chunker chunker(family.numStripes, family.numSubStripes);
+    return chunker.getAllSubChunks(table.chunk());
+}
+
+void WorkerSqlHttpRequest::_initResultSetAsSuccess(replica::Lock const& lock,
+                                                   shared_ptr<Connection> const& conn) {
+    LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
+
+    json& resultSet = _currentResultSet(lock);
+    resultSet["result_set"]["status_ext"] = protocol::StatusExt::NONE;
+    resultSet["result_set"]["status_ext_str"] = protocol::toString(protocol::StatusExt::NONE);
+    resultSet["result_set"]["error"] = "";
+
+    // Now carry over the actual rest set (if any)
+    resultSet["result_set"]["char_set_name"] = conn->charSetName();
+    resultSet["result_set"]["has_result"] = 0;
 }
 
 void WorkerSqlHttpRequest::_extractResultSet(replica::Lock const& lock, shared_ptr<Connection> const& conn) {

@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_WORKERSQLHTTPREQUEST_H
 
 // System headers
+#include <cstddef>
 #include <list>
 #include <string>
 #include <vector>
@@ -146,10 +147,33 @@ private:
                          std::string const& table) const;
 
     /**
+     * Get a collection of subchunk numbers for a given table.
+     * @note The implementation assumes that the table names follow the convention used by Qserv
+     *  for chunked tables. It also uses the name of the database to determine the partitioning parameters
+     *  for the table. The name of the database must be provided for the request.
+     * @param tableName The name of the table for which to retrieve subchunks.
+     * @return A collection of subchunk numbers.
+     * @throw std::invalid_argument If the table name does not follow the expected convention.
+     * @throws std::logic_error If the name of the database is not provided for the request.
+     * @throw ConfigUnknownDatabase If the database name is not found in the configuration.
+     * @throw ConfigUnknownDatabaseFamily If the database family is not found in the configuration.
+     */
+    std::vector<std::int32_t> _getSubChunks(std::string const& tableName) const;
+
+    /**
+     * Initialize result set for the current query as a success.
+     * @param lock The lock must be held before calling the method since it's
+     *  going to access a protected state of the object.
+     * @param conn A valid database connector for setting the default result set.
+     */
+    void _initResultSetAsSuccess(replica::Lock const& lock,
+                                 std::shared_ptr<database::mysql::Connection> const& conn);
+
+    /**
      * Extract a result set (if any) via the database connector into
      * the Protobuf response object.
      * @param lock The lock must be held before calling the method since it's
-     *   going to access a protected state of the object.
+     *  going to access a protected state of the object.
      * @param conn  a valid database connector for extracting a result set
      */
     void _extractResultSet(replica::Lock const& lock,
