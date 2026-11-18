@@ -246,6 +246,17 @@ public:
     void setTableStatus(std::string const& dbName, std::string const& tableName, std::string const& status);
 
     /**
+     * @brief Change table sub-chunks persistence status.
+     *
+     * @param dbName:  Database name
+     * @param tableName:  Table name
+     * @param persist:  New sub-chunks persistence status
+     * @throws NoSuchTable: if table (or database) does not exist
+     * @throws CssError: for all CSS errors
+     */
+    void setSubChunkMode(std::string const& dbName, std::string const& tableName, bool persist);
+
+    /**
      * @brief Returns true if table name is defined in CSS.
      *
      * @param dbName: database name
