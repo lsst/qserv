@@ -219,6 +219,23 @@ nlohmann::json tableSchemaForCreate(std::shared_ptr<Connection> const& conn, std
                                     std::string const& tableName,
                                     std::set<std::string> const& columnsToExclude = {});
 
+/**
+ * Check if a table is partitioned in the MySQL database using a specific method and partition name prefix.
+ *
+ * @param conn The MySQL connection for executing the query.
+ * @param databaseName The name of a database.
+ * @param tableName The name of a table.
+ * @param partitionMethod The partitioning method to check for (default is "LIST").
+ * @param partitionNamePrefix The prefix used for partition names (default is "p").
+ * @return True if the table is partitioned using the specified method and the names of all partitions
+ *   start with the specified prefix, false otherwise.
+ * @throws std::invalid_argument If the connection pointer, or the database or the table name is empty.
+ * @throws mysql::Error on errors detected during query execution/processing.
+ */
+bool isPartitionedLike(std::shared_ptr<Connection> const& conn, std::string const& databaseName,
+                       std::string const& tableName, std::string const& partitionMethod = "LIST",
+                       std::string const& partitionNamePrefix = "p");
+
 }  // namespace lsst::qserv::replica::database::mysql
 
 #endif  // LSST_QSERV_REPLICA_DATABASEMYSQLUTILS_H
