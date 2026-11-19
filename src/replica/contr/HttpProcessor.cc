@@ -45,6 +45,7 @@
 #include "replica/contr/HttpRequestsModule.h"
 #include "replica/contr/HttpReplicationLevelsModule.h"
 #include "replica/contr/HttpSqlIndexModule.h"
+#include "replica/contr/HttpSqlPersistSubChunksModule.h"
 #include "replica/contr/HttpSqlSchemaModule.h"
 #include "replica/contr/HttpWorkerStatusModule.h"
 #include "replica/services/ServiceProvider.h"
@@ -354,6 +355,18 @@ void HttpProcessor::registerServices() {
             [self](shared_ptr<qhttp::Request> const req, shared_ptr<qhttp::Response> const resp) {
                 HttpSqlIndexModule::process(self->controller(), self->name(), req, resp, "DROP-INDEXES",
                                             http::AuthType::REQUIRED);
+            });
+    httpServer()->addHandler(
+            "PUT", "/replication/sql/sub-chunking/:database/:table",
+            [self](shared_ptr<qhttp::Request> const req, shared_ptr<qhttp::Response> const resp) {
+                HttpSqlPersistSubChunksModule::process(self->controller(), self->name(), req, resp,
+                                                       "CREATE-SUB-CHUNKS", http::AuthType::REQUIRED);
+            });
+    httpServer()->addHandler(
+            "DELETE", "/replication/sql/sub-chunking/:database/:table",
+            [self](shared_ptr<qhttp::Request> const req, shared_ptr<qhttp::Response> const resp) {
+                HttpSqlPersistSubChunksModule::process(self->controller(), self->name(), req, resp,
+                                                       "DROP-SUB-CHUNKS", http::AuthType::REQUIRED);
             });
     httpServer()->addHandler(
             "GET", "/ingest/config",
