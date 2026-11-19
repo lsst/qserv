@@ -66,7 +66,7 @@ void MessageStore::addMessage(int chunkId, std::string const& msgSource, int cod
     auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
     LOGS(_log, level, "Add msg: " << qMsg.dump());
 
-    std::lock_guard<std::mutex> lock(_storeMutex);
+    VLOCK(lock, _storeMutex);
     _queryMessages.push_back(qMsg);
 }
 
@@ -74,12 +74,19 @@ void MessageStore::addErrorMessage(std::string const& msgSource, std::string con
     addMessage(NOTSET, msgSource, NOTSET, description, MessageSeverity::MSG_ERROR);
 }
 
-QueryMessage MessageStore::getMessage(int idx) const { return _queryMessages.at(idx); }
+QueryMessage MessageStore::getMessage(int idx) const {
+    VLOCK(lock, _storeMutex);
+    return _queryMessages.at(idx);
+}
 
-int MessageStore::messageCount() const { return _queryMessages.size(); }
+int MessageStore::messageCount() const {
+    VLOCK(lock, _storeMutex);
+    return _queryMessages.size();
+}
 
 int MessageStore::messageCount(int code) const {
     int count = 0;
+    VLOCK(lock, _storeMutex);
     for (std::vector<QueryMessage>::const_iterator i = _queryMessages.begin(); i != _queryMessages.end();
          ++i) {
         if (i->code == code) count++;
@@ -89,6 +96,7 @@ int MessageStore::messageCount(int code) const {
 
 string MessageStore::dump() const {
     stringstream os;
+    VLOCK(lock, _storeMutex);
     os << "MessageStore[count=" << _queryMessages.size();
     for (auto const& msg : _queryMessages) {
         os << "{" << msg.dump() << "}\n";

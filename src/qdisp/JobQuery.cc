@@ -51,6 +51,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
+    _jobStatus->updateInfo(getIdStr(), qmeta::JobStatus::REQUEST, "CREATED", 0, "", MSG_INFO);
 }
 
 JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }

@@ -41,6 +41,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "qmeta/JobStatus.h"
+#include "util/Mutex.h"
 
 namespace lsst::qserv::qmeta {
 
@@ -120,7 +121,7 @@ public:
     std::string dump() const;
 
 private:
-    std::mutex _storeMutex;
+    mutable VMUTEX _storeMutex;
     std::vector<QueryMessage> _queryMessages;
 };
 

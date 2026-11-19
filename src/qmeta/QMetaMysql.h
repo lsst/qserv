@@ -277,8 +277,8 @@ private:
             std::lock_guard<std::mutex> const& lock);
 
     /// Add qMsg to the permanent message table.
-    void _addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg, int& cancelCount,
-                          int& completeCount, int& execFailCount,
+    void _addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg,
+                          std::map<std::string, int>& mainCountMap,
                           std::map<std::string, ManyMsg>& msgCountMap);
 
     /// Execute queries in the same order as they are registered in the array.

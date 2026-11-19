@@ -30,6 +30,7 @@
 // Third-party headers
 #include "boost/lexical_cast.hpp"
 #include <boost/algorithm/string/replace.hpp>
+#include "nlohmann/json.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -738,25 +739,28 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
 
 void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> const& msgStore) {
     int msgCount = msgStore->messageCount();
-    int cancelCount = 0;
-    int completeCount = 0;
-    int execFailCount = 0;
+
+    map<string, int> mainCountMap;
+    mainCountMap["COMPLETE"] = 0;
     map<string, ManyMsg> msgCountMap;
     for (int i = 0; i != msgCount; ++i) {
-        qmeta::QueryMessage const& qMsg = msgStore->getMessage(i);
+        qmeta::QueryMessage const qMsg = msgStore->getMessage(i);
         try {
-            _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount, msgCountMap);
+            // Fill in the mainCountMap with the counts of each message type.
+            _addQueryMessage(queryId, qMsg, mainCountMap, msgCountMap);
         } catch (qmeta::SqlError const& ex) {
             LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
         }
     }
     // Add the total number of cancel messages received.
-    qmeta::QueryMessage qm(-1, "CANCELTOTAL", 0,
-                           string("{\"CANCEL_count\":") + to_string(cancelCount) +
-                                   ", \"EXECFAIL_count\":" + to_string(execFailCount) +
-                                   ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
-                           qmeta::JobStatus::getNow(), MessageSeverity::MSG_INFO);
-    _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
+    auto countMsg = nlohmann::json::object();
+    for (auto const& [key, val] : mainCountMap) {
+        countMsg[key + "_count"] = to_string(val);
+    }
+    qmeta::QueryMessage qm(-1, "CANCELTOTAL", 0, countMsg.dump(), qmeta::JobStatus::getNow(),
+                           MessageSeverity::MSG_INFO);
+
+    _addQueryMessage(queryId, qm, mainCountMap, msgCountMap);
 
     for (auto const& elem : msgCountMap) {
         if (elem.second.count > _maxMsgSourceStore) {
@@ -766,7 +770,7 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
             string desc = string("{\"msgSource\":") + elem.first +
                           ", \"count\":" + to_string(elem.second.count) + "}";
             qmeta::QueryMessage qm(-1, source, 0, desc, qmeta::JobStatus::getNow(), elem.second.severity);
-            _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
+            _addQueryMessage(queryId, qm, mainCountMap, msgCountMap);
         }
     }
 }
@@ -852,27 +856,35 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     }
 }
 
-void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg, int& cancelCount,
-                                  int& completeCount, int& execFailCount, map<string, ManyMsg>& msgCountMap) {
+void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg,
+                                  map<string, int>& mainCountMap, map<string, ManyMsg>& msgCountMap) {
     // Don't add duplicate messages.
     if (qMsg.msgSource == "DUPLICATE") {
         return;
     }
-    // Don't add COMPLETE messages as no one is interested.
+    // NOTE: If any of these do not exist in the map, they are created with a
+    //       default value of 0. This is normal std::map behavior.
+    // COMPLETE finished and are not interesting.
     if (qMsg.msgSource == "COMPLETE") {
-        ++completeCount;
+        mainCountMap["COMPLETE"] += 1;
         return;
     }
-    // Dont't add individual "CANCEL" messages.
+    // Just count CANCEL messages, the root error should be in the multiError.
     if (qMsg.msgSource == "CANCEL") {
-        ++cancelCount;
+        mainCountMap["CANCEL"] += 1;
         return;
     }
-    // EXECFAIL are messages that the executive has killed since something else happened.
+    // EXECFAIL are czar failures, the root error should be in multiError.
     if (qMsg.msgSource == "EXECFAIL") {
-        ++execFailCount;
+        mainCountMap["EXECFAIL"] += 1;
         return;
     }
+    // CREATED are  jobs that have not completed, cancelled, or erred yet.
+    if (qMsg.msgSource == "CREATED") {
+        mainCountMap["CREATED"] += 1;
+        return;
+    }
+
     auto iter = msgCountMap.find(qMsg.msgSource);
     if (iter == msgCountMap.end()) {
         msgCountMap[qMsg.msgSource] = ManyMsg(1, qMsg.severity);
