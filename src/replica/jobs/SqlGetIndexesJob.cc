@@ -272,7 +272,11 @@ list<shared_ptr<SqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock cons
 
     // Only the requested subset of tables is going to be processed at the worker.
     bool const allTables = false;
-    _workers2tables[worker] = workerTables(worker, database(), table(), allTables, overlap());
+    bool const overlapTablesOnly = overlap();
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    _workers2tables[worker] = workerTables(worker, database(), table(), allTables, overlapTablesOnly,
+                                           includeProtoTable, includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

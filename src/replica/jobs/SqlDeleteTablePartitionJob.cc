@@ -115,11 +115,17 @@ list<shared_ptr<SqlRequest>> SqlDeleteTablePartitionJob::launchRequests(replica:
     _workers.insert(worker);
 
     // All tables modified during the transaction will be selected
-    vector<string> const allTables = workerTables(worker, transactionId(), table());
+    bool const allTables = true;
+    bool const overlapTablesOnly = false;
+    bool const includeProtoTable = true;
+    bool const includeDummyChunkTable = true;
+    vector<string> const tables2process =
+            workerTables(worker, transactionId(), table(), allTables, overlapTablesOnly, includeProtoTable,
+                         includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
 #ifdef QSERV_REPLICA_PROTOCOL_HTTP
         requests.push_back(HttpSqlDeleteTablePartitionRequest::createAndStart(

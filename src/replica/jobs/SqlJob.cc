@@ -279,7 +279,7 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
     // If the total number of tables if less than the number of bins
     // then we won't be constructing empty bins.
     vector<vector<string>> tablesPerBin(min(numBins, allTables.size()));
-    if (not tablesPerBin.empty()) {
+    if (!tablesPerBin.empty()) {
         // The trivial 'round-robin'
         for (size_t i = 0; i < allTables.size(); ++i) {
             auto const bin = i % tablesPerBin.size();
@@ -291,21 +291,17 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
 
 vector<string> SqlJob::workerTables(string const& workerName, string const& databaseName,
                                     string const& tableName, bool allTables, bool overlapTablesOnly,
-                                    bool includeProtoTable) const {
+                                    bool includeProtoTable, bool includeDummyChunkTable) const {
     vector<string> tables;
     if (_isPartitioned(databaseName, tableName)) {
-        // The prototype table for creating chunks and chunk overlap tables
-        if (allTables || includeProtoTable) {
-            tables.push_back(tableName);
-        }
-        // Always include the "dummy" chunk even if it won't be explicitly found
-        // in the replica collection. This chunk must be present at all workers.
-        bool const overlap = true;
-        if (allTables || overlapTablesOnly) {
-            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, overlap).name());
-        }
-        if (allTables || !overlapTablesOnly) {
-            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, !overlap).name());
+        if (includeProtoTable) tables.push_back(tableName);
+        if (includeDummyChunkTable) {
+            if (allTables || overlapTablesOnly) {
+                tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, true).name());
+            }
+            if (allTables || !overlapTablesOnly) {
+                tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, false).name());
+            }
         }
 
         // Locate all chunks registered on the worker. These chunks will be used
@@ -314,16 +310,15 @@ vector<string> SqlJob::workerTables(string const& workerName, string const& data
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, workerName,
                                                                                 databaseName);
 
+        // Avoiding the "dummy" chunk as it should only be included explicitly if requested.
         for (auto const& replica : replicas) {
             auto const chunk = replica.chunk();
-            // Avoiding the "dummy" chunk as it was already forced to be in
-            // the collection.
             if (chunk != lsst::qserv::DUMMY_CHUNK) {
-                if (allTables or overlapTablesOnly) {
-                    tables.push_back(ChunkedTable(tableName, chunk, overlap).name());
+                if (allTables || overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(tableName, chunk, true).name());
                 }
-                if (allTables or not overlapTablesOnly) {
-                    tables.push_back(ChunkedTable(tableName, chunk, !overlap).name());
+                if (allTables || !overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(tableName, chunk, false).name());
                 }
             }
         }
@@ -335,7 +330,8 @@ vector<string> SqlJob::workerTables(string const& workerName, string const& data
 
 vector<string> SqlJob::workerTables(string const& workerName, TransactionId const& transactionId,
                                     string const& tableName, bool allTables, bool overlapTablesOnly,
-                                    bool includeProtoTable) const {
+                                    bool includeProtoTable, bool includeDummyChunkTable) const {
+    bool const overlap = true;
     vector<string> tables;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     TransactionInfo const transaction = databaseServices->transaction(transactionId);
@@ -349,17 +345,19 @@ vector<string> SqlJob::workerTables(string const& workerName, TransactionId cons
         if (allTables || includeProtoTable) {
             tables.push_back(tableName);
         }
-        // Always include the "dummy" chunk even if it won't be explicitly found
+
+        // (If permitted) Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
-        bool const overlap = true;
-        if (allTables || overlapTablesOnly) {
-            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, overlap).name());
-        }
-        if (allTables || !overlapTablesOnly) {
-            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, !overlap).name());
+        if (includeDummyChunkTable) {
+            if (allTables || overlapTablesOnly) {
+                tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, overlap).name());
+            }
+            if (allTables || !overlapTablesOnly) {
+                tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, !overlap).name());
+            }
         }
         for (auto const& contrib : contribs) {
-            // Avoiding the "dummy" chunk as it was already forced to be in
+            // Avoiding the "dummy" chunk as it could have already been forced to be in
             // the collection.
             if (contrib.chunk != lsst::qserv::DUMMY_CHUNK) {
                 if (allTables || overlapTablesOnly) {

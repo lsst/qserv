@@ -81,8 +81,16 @@ list<shared_ptr<HttpSqlRequest>> SqlPersistSubChunksJob::launchRequests(replica:
     _workers.insert(worker);
 
     // Only the requested subset of tables is going to be processed at the worker.
+    // Important exclusions are: the prototype table and the dummy chunk table.
+    // The algorithm won't work with this tables since they don't have a valid
+    // chunk-specific partitioning.
     bool const allTables = true;
-    vector<string> const tables2process = workerTables(worker, database(), table(), allTables);
+    bool const overlapTablesOnly = false;
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    vector<string> const tables2process =
+            workerTables(worker, database(), table(), allTables, overlapTablesOnly, includeProtoTable,
+                         includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

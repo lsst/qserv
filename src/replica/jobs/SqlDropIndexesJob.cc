@@ -97,7 +97,12 @@ list<shared_ptr<SqlRequest>> SqlDropIndexesJob::launchRequests(replica::Lock con
 
     // Only the requested subset of tables is going to be processed at the worker.
     bool const allTables = false;
-    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, overlap());
+    bool const overlapTablesOnly = overlap();
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    vector<string> const tables2process =
+            workerTables(worker, database(), table(), allTables, overlapTablesOnly, includeProtoTable,
+                         includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

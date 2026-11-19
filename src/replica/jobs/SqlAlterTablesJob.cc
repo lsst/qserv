@@ -92,7 +92,10 @@ list<shared_ptr<SqlRequest>> SqlAlterTablesJob::launchRequests(replica::Lock con
 
     // Only the requested subset of tables is going to be processed at the worker.
     bool const allTables = true;
-    vector<string> const tables2process = workerTables(worker, database(), table(), allTables);
+    bool const includeProtoTable = true;
+    bool const includeDummyChunkTable = true;
+    vector<string> const tables2process = workerTables(worker, database(), table(), allTables, false,
+                                                       includeProtoTable, includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.

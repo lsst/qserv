@@ -101,11 +101,17 @@ list<shared_ptr<SqlRequest>> SqlCreateTablesJob::launchRequests(replica::Lock co
     _workers.insert(worker);
 
     // All tables which are going to be processed at the worker
-    vector<string> const allTables = workerTables(worker, database(), table());
+    bool const allTables = true;
+    bool const overlapTablesOnly = false;
+    bool const includeProtoTable = true;
+    bool const includeDummyChunkTable = true;
+    vector<string> const tables2process =
+            workerTables(worker, database(), table(), allTables, overlapTablesOnly, includeProtoTable,
+                         includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto const& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         bool const keepTracking = true;
 #ifdef QSERV_REPLICA_PROTOCOL_HTTP
         requests.push_back(HttpSqlCreateTablesRequest::createAndStart(

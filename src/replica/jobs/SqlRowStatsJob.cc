@@ -125,17 +125,23 @@ list<shared_ptr<SqlRequest>> SqlRowStatsJob::launchRequests(replica::Lock const&
 
     // Only the requested subset of tables is going to be processed at the worker.
     bool const allTables = false;
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
     vector<string> tables2process;
     switch (overlapSelector()) {
         case ChunkOverlapSelector::CHUNK:
-            tables2process = workerTables(worker, database(), table(), allTables, false);
+            tables2process = workerTables(worker, database(), table(), allTables, false, includeProtoTable,
+                                          includeDummyChunkTable);
             break;
         case ChunkOverlapSelector::OVERLAP:
-            tables2process = workerTables(worker, database(), table(), allTables, true);
+            tables2process = workerTables(worker, database(), table(), allTables, true, includeProtoTable,
+                                          includeDummyChunkTable);
             break;
         case ChunkOverlapSelector::CHUNK_AND_OVERLAP: {
-            tables2process = workerTables(worker, database(), table(), allTables, false);
-            auto overlaps = workerTables(worker, database(), table(), allTables, true);
+            tables2process = workerTables(worker, database(), table(), allTables, false, includeProtoTable,
+                                          includeDummyChunkTable);
+            auto overlaps = workerTables(worker, database(), table(), allTables, true, includeProtoTable,
+                                         includeDummyChunkTable);
             tables2process.insert(tables2process.end(), std::make_move_iterator(overlaps.begin()),
                                   std::make_move_iterator(overlaps.end()));
             break;
