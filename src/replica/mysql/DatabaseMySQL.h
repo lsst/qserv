@@ -41,7 +41,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
@@ -61,11 +60,6 @@
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class ProtocolResponseSqlField;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica::database::mysql {
 
@@ -74,8 +68,6 @@ namespace lsst::qserv::replica::database::mysql {
  */
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
-    typedef std::shared_ptr<Connection> Ptr;
-
     /// @return value of the corresponding MySQL variable set for a session
     static unsigned long max_allowed_packet();
 
@@ -130,7 +122,7 @@ public:
      * @code
      *    BlockPost delayBetweenReconnects(1000,2000);
      *    ConnectionParams params = ...;
-     *    Connection::Ptr conn;
+     *    std::shared_ptr<Connection> conn;
      *    do {
      *        try {
      *            conn = Connection::open(params);
@@ -170,7 +162,7 @@ public:
      * @see Connection::_databaseConnectTimeoutSec
      * @see Connection::open2()
      */
-    static Ptr open(ConnectionParams const& connectionParams);
+    static std::shared_ptr<Connection> open(ConnectionParams const& connectionParams);
 
     /**
      * The factory method allows to override default values of the corresponding
@@ -193,8 +185,9 @@ public:
      * @see Connection::_databaseConnectTimeoutSec
      * @see Connection::open()
      */
-    static Ptr open2(ConnectionParams const& connectionParams, bool allowReconnects = false,
-                     unsigned int connectTimeoutSec = 0);
+    static std::shared_ptr<Connection> open2(ConnectionParams const& connectionParams,
+                                             bool allowReconnects = false,
+                                             unsigned int connectTimeoutSec = 0);
 
     Connection() = delete;
     Connection(Connection const&) = delete;
@@ -241,7 +234,7 @@ public:
      * @throw std::logic_error if the transaction was already been started
      * @throw Error for any other MySQL specific errors
      */
-    Connection::Ptr begin();
+    std::shared_ptr<Connection> begin();
 
     /**
      * Commit the current transaction
@@ -250,7 +243,7 @@ public:
      * @throw std::logic_error if the transaction was not started
      * @throw Error for any other MySQL specific errors
      */
-    Connection::Ptr commit();
+    std::shared_ptr<Connection> commit();
 
     /**
      * Rollback the current transaction
@@ -259,7 +252,7 @@ public:
      * @throw std::logic_error if the transaction was not started
      * @throw Error for any other MySQL specific errors
      */
-    Connection::Ptr rollback();
+    std::shared_ptr<Connection> rollback();
 
     /**
      * Execute the specified query and initialize object context to allow
@@ -272,7 +265,7 @@ public:
      * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
      */
-    Connection::Ptr execute(std::string const& query);
+    std::shared_ptr<Connection> execute(std::string const& query);
 
     /**
      * Execute a user-supplied algorithm which could be retried the specified
@@ -290,10 +283,10 @@ public:
      * @code
      *     Connection::setDatabaseConnectTimeoutSec(60);
      *     ConnectionParams params = ... ;
-     *     Connection::Ptr conn = Connection::open(params);
+     *     std::shared_ptr<Connection> conn = Connection::open(params);
      *     try {
      *         conn->execute(
-     *             [](Connection::Ptr conn) {
+     *             [](std::shared_ptr<Connection> conn) {
      *                 conn->begin();
      *                 conn->execute("SELECT ...");
      *                 conn->execute("INSERT ...");
@@ -349,8 +342,8 @@ public:
      * @see Connection::setDatabaseConnectTimeoutSec
      * @see Connection::open()
      */
-    Connection::Ptr execute(std::function<void(Ptr)> const& script, unsigned int maxReconnects = 0,
-                            unsigned int timeoutSec = 0);
+    std::shared_ptr<Connection> execute(std::function<void(std::shared_ptr<Connection>)> const& script,
+                                        unsigned int maxReconnects = 0, unsigned int timeoutSec = 0);
 
     /**
      * Execute a script within its own transaction to be automatically started and commited.
@@ -374,9 +367,9 @@ public:
      *   trying to update the same table.
      * @see Connection::execute()
      */
-    Connection::Ptr executeInOwnTransaction(std::function<void(Ptr)> const& script,
-                                            unsigned int maxReconnects = 0, unsigned int timeoutSec = 0,
-                                            unsigned int maxRetriesOnDeadLock = 0);
+    std::shared_ptr<Connection> executeInOwnTransaction(
+            std::function<void(std::shared_ptr<Connection>)> const& script, unsigned int maxReconnects = 0,
+            unsigned int timeoutSec = 0, unsigned int maxRetriesOnDeadLock = 0);
 
     /**
      * This is just a convenience method for a typical use case.
@@ -402,10 +395,11 @@ public:
      *   LockDeadlock that may happen while two or many threads/processes were
      *   trying to update the same table.
      */
-    Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
-                                          std::function<void(Ptr)> const& updateScript,
-                                          unsigned int maxReconnects = 0, unsigned int timeoutSec = 0,
-                                          unsigned int maxRetriesOnDeadLock = 0);
+    std::shared_ptr<Connection> executeInsertOrUpdate(
+            std::function<void(std::shared_ptr<Connection>)> const& insertScript,
+            std::function<void(std::shared_ptr<Connection>)> const& updateScript,
+            unsigned int maxReconnects = 0, unsigned int timeoutSec = 0,
+            unsigned int maxRetriesOnDeadLock = 0);
 
     /**
      * @return 'true' if the last successful query returned a result set
@@ -427,25 +421,7 @@ public:
      * @throw std::logic_error if no SQL statement has ever been executed, or
      *   if the last query failed.
      */
-    size_t numFields() const;
-
-    /**
-     * Fill a Protobuf object representing a field
-     *
-     * @note The method can be called only upon a successful completion of a query
-     *   which has a result set. Otherwise it will throw an exception.
-     *
-     * @see mysql_fetch_field()
-     * @see database::mysql::Connection::hasResult
-     *
-     * @param ptr a pointer to the Protobuf object to be populated
-     * @param idx a relative (0 based) index of the field in a result set
-     *
-     * @throw std::logic_error if no SQL statement has ever been executed, or
-     *   if the last query failed.
-     * @throw std::out_of_range if the specified index exceed the maximum index of a result set.
-     */
-    void exportField(ProtocolResponseSqlField* ptr, size_t idx) const;
+    std::size_t numFields() const;
 
     /**
      * Convert the current result set into a JSON object.
@@ -471,7 +447,7 @@ public:
      *   the next query. Hence the safe practice for using this method to iterate
      *   over a result set would be:
      * @code
-     *     Connection::Ptr conn = Connection::connect(...);
+     *     std::shared_ptr<Connection> conn = Connection::connect(...);
      *     conn->execute ("SELECT ...");
      *
      *     Row row;
@@ -529,7 +505,7 @@ public:
      * @see https://mariadb.com/kb/en/mysql_affected_rows/
      * @return unsigned long long - the number of rows reported by MySQL.
      */
-    uint64_t affectedRows();
+    std::uint64_t affectedRows();
 
 private:
     /**
@@ -608,24 +584,23 @@ private:
     static std::atomic<unsigned int> _databaseConnectTimeoutSec;
     static std::atomic<unsigned int> _databaseMaxReconnects;
 
-    static std::atomic<size_t>
-            _nextId;   // The next available connector identifier in the generator's sequence
-    size_t const _id;  // Unique identifier of this connector
-    ConnectionParams const _connectionParams;  // Parameters of the connection
-    unsigned int _connectTimeoutSec;           // Time to wait between reconnection attempts
-    std::string _lastQuery;                    // The last SQL statement
-    bool _inTransaction;                       // Transaction status
-    MYSQL* _mysql;                             // MySQL connection
-    unsigned long _mysqlThreadId;              // Thread ID of the current connection
-    unsigned long _connectionAttempt;          // The counter of attempts between successful reconnects
+    static std::atomic<std::size_t> _nextId;   ///< The next identifier in the generator's sequence
+    std::size_t const _id;                     ///< Unique identifier of this connector
+    ConnectionParams const _connectionParams;  ///< Parameters of the connection
+    unsigned int _connectTimeoutSec;           ///< Time to wait between reconnection attempts
+    std::string _lastQuery;                    ///< The last SQL statement
+    bool _inTransaction;                       ///< Transaction status
+    MYSQL* _mysql;                             ///< MySQL connection
+    unsigned long _mysqlThreadId;              ///< Thread ID of the current connection
+    unsigned long _connectionAttempt;          ///< The counter of attempts between successful reconnects
 
     // A result set of the last successful query
 
     MYSQL_RES* _res;
     MYSQL_FIELD* _fields;
-    size_t _numFields;
+    std::size_t _numFields;
     std::vector<std::string> _columnNames;
-    std::map<std::string, size_t> _name2index;
+    std::map<std::string, std::size_t> _name2index;
 
     std::string _charSetName;  // of the current connection
 
@@ -648,8 +623,6 @@ private:
  */
 class ConnectionPool {
 public:
-    typedef std::shared_ptr<ConnectionPool> Ptr;
-
     /**
      * The static factory object creates a pool and sets the maximum number
      * of connections.
@@ -661,7 +634,7 @@ public:
      * @param maxConnections  the maximum number of connections managed by the pool
      * @return smart pointer to the newly created object
      */
-    static Ptr create(ConnectionParams const& params, size_t maxConnections);
+    static std::shared_ptr<ConnectionPool> create(ConnectionParams const& params, std::size_t maxConnections);
 
     ConnectionPool() = delete;
     ConnectionPool(ConnectionPool const&) = delete;
@@ -674,7 +647,7 @@ public:
      * @return pointer to the allocated connector
      * @see ConnectionPool::release()
      */
-    Connection::Ptr allocate();
+    std::shared_ptr<Connection> allocate();
 
     /**
      * Return a connection object back into the pool of the available ones.
@@ -683,22 +656,22 @@ public:
      * @throw std::logic_error if the object was not previously allocated
      * @see ConnectionPool::allocate()
      */
-    void release(Connection::Ptr const& conn);
+    void release(std::shared_ptr<Connection> const& conn);
 
 private:
     /// @see ConnectionPool::create
-    ConnectionPool(ConnectionParams const& params, size_t maxConnections);
+    ConnectionPool(ConnectionParams const& params, std::size_t maxConnections);
 
     // Input parameters
 
     ConnectionParams const _params;
-    size_t const _maxConnections;
+    std::size_t const _maxConnections;
 
     /// Connection objects which are available
-    std::list<Connection::Ptr> _availableConnections;
+    std::list<std::shared_ptr<Connection>> _availableConnections;
 
     /// Connection objects which are in use
-    std::list<Connection::Ptr> _usedConnections;
+    std::list<std::shared_ptr<Connection>> _usedConnections;
 
     /// The mutex for enforcing thread safety of the class's public API and
     /// internal operations. The mutex is locked by methods ConnectionPool::allocate()
@@ -718,41 +691,37 @@ private:
 class ConnectionHandler {
 public:
     /**
-     * The default constructor will initialize the connection pointer
-     * with 'nullptr'
+     * The default constructor will initialize the connection pointer with 'nullptr'
      */
     ConnectionHandler() = default;
 
     /**
      * Construct with a connection
-     *
-     * @param conn_  connection to be watched and managed
+     * @param conn_ A connection to be watched and managed
      */
-    explicit ConnectionHandler(Connection::Ptr const& conn_);
+    explicit ConnectionHandler(std::shared_ptr<Connection> const& conn_);
 
     /**
      * Construct with a pointer to a connection pool for allocating
      * a connection. The connection will get released by the destructor.
-     *
      * @param pool  connection pool to acquire persistent connections
      */
-    explicit ConnectionHandler(ConnectionPool::Ptr const& pool);
+    explicit ConnectionHandler(std::shared_ptr<ConnectionPool> const& pool);
 
     ConnectionHandler(ConnectionHandler const&) = delete;
     ConnectionHandler& operator=(ConnectionHandler const&) = delete;
 
     /**
-     * The destructor will rollback a transaction if any was started at
-     * a presence of a connection.
+     * The destructor will rollback a transaction if any was started at the presence of a connection.
      */
     ~ConnectionHandler();
 
     /// The smart reference to the connector object (if any))
-    Connection::Ptr conn;
+    std::shared_ptr<Connection> conn;
 
 private:
     /// The smart reference to the connector pool object (if any))
-    ConnectionPool::Ptr _pool;
+    std::shared_ptr<ConnectionPool> _pool;
 };
 
 }  // namespace lsst::qserv::replica::database::mysql

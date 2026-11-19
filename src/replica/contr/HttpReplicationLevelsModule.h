@@ -29,9 +29,19 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/contr/HealthMonitorTask.h"
 #include "replica/contr/HttpModule.h"
 #include "replica/util/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+class HealthMonitorTask;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -42,8 +52,6 @@ namespace lsst::qserv::replica {
  */
 class HttpReplicationLevelsModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpReplicationLevelsModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -52,9 +60,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        HealthMonitorTask::Ptr const& healthMonitorTask,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
+                        std::shared_ptr<HealthMonitorTask> const& healthMonitorTask,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -62,15 +71,16 @@ public:
     HttpReplicationLevelsModule(HttpReplicationLevelsModule const&) = delete;
     HttpReplicationLevelsModule& operator=(HttpReplicationLevelsModule const&) = delete;
 
-    ~HttpReplicationLevelsModule() final = default;
+    virtual ~HttpReplicationLevelsModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpReplicationLevelsModule(Controller::Ptr const& controller, std::string const& taskName,
-                                qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                HealthMonitorTask::Ptr const& healthMonitorTask);
+    HttpReplicationLevelsModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                                std::shared_ptr<qhttp::Request> const& req,
+                                std::shared_ptr<qhttp::Response> const& resp,
+                                std::shared_ptr<HealthMonitorTask> const& healthMonitorTask);
 
     /// @return nlohmann::json The replica status report for all known families.
     nlohmann::json _get();

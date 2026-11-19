@@ -36,11 +36,6 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class ProtocolPerformance;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -65,10 +60,10 @@ public:
     ~Performance() = default;
 
     /**
-     * Update object state with counters from the protocol buffer object
+     * Update object state with counters from the JSON object
      * @param workerPerformanceInfo counters to be carried over into an internal state
      */
-    void update(ProtocolPerformance const& workerPerformanceInfo);
+    void update(nlohmann::json const& workerPerformanceInfo);
 
     /**
      * Update the Controller's 'start' time
@@ -114,7 +109,6 @@ public:
     uint64_t setUpdateStart();
     uint64_t setUpdateFinish();
 
-    std::unique_ptr<ProtocolPerformance> info() const;
     nlohmann::json toJson() const;
 
     std::atomic<uint64_t> receive_time;  ///< Received by a worker service

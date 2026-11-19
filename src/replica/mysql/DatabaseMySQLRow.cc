@@ -29,7 +29,6 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
-#include "replica/proto/protocol.pb.h"
 #include "util/String.h"
 
 // LSST headers
@@ -184,26 +183,6 @@ Row::Cell const& Row::getDataCell(string const& columnName) const {
         throw invalid_argument(context + "the column '" + columnName + "' is not in the result set");
     }
     return _index2cell.at(itr->second);
-}
-
-void Row::exportRow(ProtocolResponseSqlRow* ptr) const {
-    string const context = "Row::" + string(__func__) + "  ";
-    if (not isValid()) {
-        throw logic_error(context + "the object is not valid");
-    }
-    if (nullptr == ptr) {
-        throw invalid_argument(context + "null pointer passed as a parameter");
-    }
-    for (auto&& cell : _index2cell) {
-        auto&& str = cell.first;
-        if (nullptr == str) {
-            ptr->add_cells(string());
-            ptr->add_nulls(true);
-        } else {
-            ptr->add_cells(cell.first, cell.second);
-            ptr->add_nulls(false);
-        }
-    }
 }
 
 json Row::toJson(http::BinaryEncodingMode binaryEncodingMode) const {

@@ -71,8 +71,33 @@ void ChttpSvc::run() {
 void ChttpSvc::_createAndConfigure() {
     _server = make_unique<httplib::Server>();
     throwIf<runtime_error>(!_server->is_valid(), _context + "Failed to create the server");
+
     _server->set_payload_max_length(_payloadMaxLength);
-    _server->new_task_queue = [&] { return new httplib::ThreadPool(_numThreads, _maxQueuedRequests); };
+
+    // Thread pool and connection queue configuration.
+    // Note that by setting the base and max threads to the same value, we effectively fix the number
+    // of threads in the pool and disable so called "dynamic" threading (as per the documentation
+    // om the library).
+    _server->new_task_queue = [baseThreads = _numThreads, maxThreads = _numThreads,
+                               maxQueuedRequests = _maxQueuedRequests] {
+        return new httplib::ThreadPool(baseThreads, maxThreads, maxQueuedRequests);
+    };
+
+    // Access logging
+    _server->set_logger([](httplib::Request const& req, httplib::Response const& res) {
+        LOGS(_log, LOG_LVL_INFO, "ChttpSvc: " << req.method << " " << req.path << " -> " << res.status);
+    });
+
+    // Error logging
+    _server->set_error_logger([](httplib::Error const& err, httplib::Request const* req) {
+        string msg = "ChttpSvc: " + httplib::to_string(err) + " while processing request";
+        if (req) {
+            msg += ", client: " + req->get_header_value("X-Forwarded-For") + ", request: '" + req->method +
+                   " " + req->path + " " + req->version + "'" + ", host: " + req->get_header_value("Host");
+        }
+        LOGS(_log, LOG_LVL_ERROR, msg);
+    });
+
     if (_port == 0) {
         _port = _server->bind_to_any_port(_bindAddr, _port);
         throwIf<runtime_error>(_port < 0, _context + "Failed to bind the server to any port");
@@ -81,7 +106,10 @@ void ChttpSvc::_createAndConfigure() {
         throwIf<runtime_error>(!bound,
                                _context + "Failed to bind the server to the port: " + to_string(_port));
     }
-    LOGS(_log, LOG_LVL_INFO, _context + "started on port " + to_string(_port));
+    LOGS(_log, LOG_LVL_INFO,
+         _context + "started on port: " + to_string(_port) + " maxQueuedRequests: " +
+                 to_string(_maxQueuedRequests) + " numThreads: " + to_string(_numThreads) +
+                 " payloadMaxLength: " + to_string(_payloadMaxLength));
 }
 
 }  // namespace lsst::qserv::replica

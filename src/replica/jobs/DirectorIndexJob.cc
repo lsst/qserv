@@ -33,9 +33,20 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/ingest/TransactionContrib.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/proto/Protocol.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpDirectorIndexRequest.h"
+#else
+#include "replica/requests/DirectorIndexRequest.h"
+#endif
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpStopRequest.h"
+#else
 #include "replica/requests/StopRequest.h"
+#endif
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
@@ -49,9 +60,7 @@ using namespace std::chrono_literals;
 using json = nlohmann::json;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -60,11 +69,11 @@ using namespace database::mysql;
 
 json DirectorIndexJob::Result::toJson() const {
     json result;
-    for (auto&& workerItr : error) {
-        string const& worker = workerItr.first;
-        result[worker] = json::object();
-        json& workerJson = result[worker];
-        for (auto&& chunksItr : workerItr.second) {
+    for (auto const& workerItr : error) {
+        string const& workerName = workerItr.first;
+        result[workerName] = json::object();
+        json& workerJson = result[workerName];
+        for (auto const& chunksItr : workerItr.second) {
             unsigned int chunk = chunksItr.first;
             string const& errorMessage = chunksItr.second;
             workerJson[chunk] = errorMessage;
@@ -75,18 +84,20 @@ json DirectorIndexJob::Result::toJson() const {
 
 string DirectorIndexJob::typeName() { return "DirectorIndexJob"; }
 
-DirectorIndexJob::Ptr DirectorIndexJob::create(string const& databaseName, string const& directorTableName,
-                                               bool hasTransactions, TransactionId transactionId,
-                                               bool allWorkers, Controller::Ptr const& controller,
-                                               string const& parentJobId, CallbackType const& onFinish,
-                                               int priority) {
-    return Ptr(new DirectorIndexJob(databaseName, directorTableName, hasTransactions, transactionId,
-                                    allWorkers, controller, parentJobId, onFinish, priority));
+shared_ptr<DirectorIndexJob> DirectorIndexJob::create(string const& databaseName,
+                                                      string const& directorTableName, bool hasTransactions,
+                                                      TransactionId transactionId, bool allWorkers,
+                                                      shared_ptr<Controller> const& controller,
+                                                      string const& parentJobId, CallbackType const& onFinish,
+                                                      int priority) {
+    return shared_ptr<DirectorIndexJob>(new DirectorIndexJob(databaseName, directorTableName, hasTransactions,
+                                                             transactionId, allWorkers, controller,
+                                                             parentJobId, onFinish, priority));
 }
 
 DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& directorTableName,
                                    bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   shared_ptr<Controller> const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "INDEX", priority),
           _directorTableName(directorTableName),
@@ -134,11 +145,11 @@ list<std::pair<string, string>> DirectorIndexJob::extendedPersistentState() cons
 list<pair<string, string>> DirectorIndexJob::persistentLogData() const {
     // Report failed chunks only
     list<pair<string, string>> result;
-    for (auto&& workerItr : getResultData().error) {
-        auto&& workerName = workerItr.first;
-        for (auto&& chunkItr : workerItr.second) {
-            auto&& chunk = chunkItr.first;
-            auto&& error = chunkItr.second;
+    for (auto const& workerItr : getResultData().error) {
+        auto const& workerName = workerItr.first;
+        for (auto const& chunkItr : workerItr.second) {
+            auto const& chunk = chunkItr.first;
+            auto const& error = chunkItr.second;
             if (!error.empty()) {
                 result.emplace_back("worker=" + workerName + " chunk=" + to_string(chunk), "error=" + error);
             }
@@ -175,7 +186,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     bool const includeFileInfo = false;     // to speed up the query as we don't need file info
 
     map<unsigned int, list<string>> chunk2workers;
-    for (auto&& workerName : workerNames) {
+    for (auto const& workerName : workerNames) {
         // Scan for chunk replicas at the worker. The algorithm fills the data structure
         // used by the planner algorithm. The scanner has two flavors that depend on the input
         // parameters to the class.
@@ -207,7 +218,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
                 finish(lock, ExtendedState::FAILED);
                 return;
             }
-            for (auto&& contrib : contribs) {
+            for (auto const& contrib : contribs) {
                 chunkAndWorker.insert(make_pair(contrib.chunk, contrib.worker));
             }
 
@@ -219,7 +230,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
             vector<ReplicaInfo> replicas;
             databaseServices->findWorkerReplicas(replicas, workerName, database(), unusedAllDatabases,
                                                  unusedIsPublished, includeFileInfo);
-            for (auto&& replica : replicas) {
+            for (auto const& replica : replicas) {
                 chunk2workers[replica.chunk()].push_back(replica.worker());
             }
         }
@@ -236,18 +247,18 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     // in which chunks are being processed by the algorithm. Consider
     // a more sophisticated implementation which would be bias-free.
 
-    for (auto&& itr : chunk2workers) {
+    for (auto const& itr : chunk2workers) {
         unsigned int const chunk = itr.first;
-        auto&& workers = itr.second;
+        auto const& workers = itr.second;
 
         // Find the least loaded worker from those where chunk replicas
         // are residing.
         string workerName;
         size_t minNumChunks = numeric_limits<size_t>::max();
-        for (auto&& candidateWorker : workers) {
-            auto const numChunksAtCandidate = _chunks[candidateWorker].size();
+        for (auto const& candidateWorkerName : workers) {
+            auto const numChunksAtCandidate = _chunks[candidateWorkerName].size();
             if (numChunksAtCandidate < minNumChunks) {
-                workerName = candidateWorker;
+                workerName = candidateWorkerName;
                 minNumChunks = numChunksAtCandidate;
             }
         }
@@ -269,8 +280,8 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     // would be able to work on another batch of the data extraction requests while
     // results of the previous batch were being sent back to the Controller.
     size_t const maxRequestsPerWorker = config->get<size_t>("controller", "num-requests-per-worker");
-    for (auto&& workerName : workerNames) {
-        for (auto&& ptr : _launchRequests(lock, workerName, maxRequestsPerWorker)) {
+    for (auto const& workerName : workerNames) {
+        for (auto const& ptr : _launchRequests(lock, workerName, maxRequestsPerWorker)) {
             _inFlightRequests[ptr->id()] = ptr;
         }
     }
@@ -302,12 +313,17 @@ void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
     // by stopping the request at corresponding worker service.
     auto const noCallbackOnFinish = nullptr;
     bool const keepTracking = true;
-    for (auto&& itr : _inFlightRequests) {
-        auto&& ptr = itr.second;
+    for (auto const& itr : _inFlightRequests) {
+        auto const& ptr = itr.second;
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED) {
+        if (ptr->state() != RequestI::State::FINISHED) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+            HttpStopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                            priority(), keepTracking, id());
+#else
             StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
                                         priority(), keepTracking, id());
+#endif
         }
     }
     _inFlightRequests.clear();
@@ -318,7 +334,11 @@ void DirectorIndexJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<DirectorIndexJob>(lock, _onFinish);
 }
 
-void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+void DirectorIndexJob::_onRequestFinish(shared_ptr<HttpDirectorIndexRequest> const& request) {
+#else
+void DirectorIndexJob::_onRequestFinish(shared_ptr<DirectorIndexRequest> const& request) {
+#endif
     // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
     // in executing requests or processing data of the requests would result in
     // the job termination. The only exception from this rule is a scenario
@@ -333,11 +353,11 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
-    if (request->extendedState() == Request::SUCCESS) {
+    if (request->extendedState() == RequestI::SUCCESS) {
         // This request has data that will be loaded into the table.
         _completedRequests.push_back(request);
         _cv.notify_one();
-    } else if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
+    } else if (request->extendedServerStatus() == protocol::StatusExt::NO_SUCH_PARTITION) {
         // No contribution is expected into the non-existing (in this chunk) partition.
         // This is would be the normal situaton for many chunks. However, we still
         // need to increment the counter of the fully completed chunks.
@@ -352,7 +372,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     // results of the current one. This little optimization is meant to keep
     // workers busy as a compensatory mechanism for the non-negligible latencies
     // in processing data of the completed requests.
-    for (auto&& ptr : _launchRequests(lock, request->workerName())) {
+    for (auto const& ptr : _launchRequests(lock, request->workerName())) {
         _inFlightRequests[ptr->id()] = ptr;
     }
 
@@ -376,7 +396,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
 
     // Open MySQL connection using the RAII-style handler that would automatically
     // abort the transaction should any problem occurred when loading data into the table.
-    Connection::Ptr conn;
+    shared_ptr<Connection> conn;
     try {
         conn = Connection::open(config->qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
     } catch (exception const& ex) {
@@ -443,7 +463,11 @@ void DirectorIndexJob::_loadDataIntoTable() {
     }
 }
 
-DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+shared_ptr<HttpDirectorIndexRequest> DirectorIndexJob::_nextRequest() {
+#else
+shared_ptr<DirectorIndexRequest> DirectorIndexJob::_nextRequest() {
+#endif
     string const context_ = context() + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
@@ -458,7 +482,11 @@ DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
     chrono::milliseconds const jobStatusCheckIvalMsec{1s};
 
     // Pull the next request from the queue or wait.
-    DirectorIndexRequest::Ptr request;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    shared_ptr<HttpDirectorIndexRequest> request;
+#else
+    shared_ptr<DirectorIndexRequest> request;
+#endif
     while (request == nullptr) {
         if (state() == State::FINISHED) return nullptr;
         unique_lock<mutex> lock(_mtx);
@@ -512,25 +540,44 @@ DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
     return request;
 }
 
-list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
-                                                                  string const& workerName,
-                                                                  size_t maxRequests) {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpDirectorIndexRequest>> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
+                                                                             string const& workerName,
+                                                                             size_t maxRequests) {
+#else
+list<shared_ptr<DirectorIndexRequest>> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
+                                                                         string const& workerName,
+                                                                         size_t maxRequests) {
+#endif
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
     // queue.
-    list<DirectorIndexRequest::Ptr> requests;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    list<shared_ptr<HttpDirectorIndexRequest>> requests;
+#else
+    list<shared_ptr<DirectorIndexRequest>> requests;
+#endif
     auto const self = shared_from_base<DirectorIndexJob>();
     bool const keepTracking = true;
     while (_chunks[workerName].size() > 0 && requests.size() < maxRequests) {
         auto const chunk = _chunks[workerName].front();
         _chunks[workerName].pop();
-
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpDirectorIndexRequest::createAndStart(
+                controller(), workerName, database(), directorTable(), chunk, hasTransactions(),
+                transactionId(),
+                [self](shared_ptr<HttpDirectorIndexRequest> const& request) {
+                    self->_onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
+#else
         requests.push_back(DirectorIndexRequest::createAndStart(
                 controller(), workerName, database(), directorTable(), chunk, hasTransactions(),
                 transactionId(),
-                [self](DirectorIndexRequest::Ptr const& request) { self->_onRequestFinish(request); },
+                [self](shared_ptr<DirectorIndexRequest> const& request) { self->_onRequestFinish(request); },
                 priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

@@ -21,10 +21,14 @@ target_sources(replica_contr PRIVATE
     HttpReplicationLevelsModule.cc
     HttpRequestsModule.cc
     HttpSqlIndexModule.cc
+    HttpSqlPersistSubChunksModule.cc
     HttpSqlSchemaModule.cc
     HttpWorkerStatusModule.cc
     ReplicationTask.cc
     Task.cc
+)
+target_compile_definitions(replica_contr PRIVATE
+    QSERV_REPLICA_PROTOCOL_HTTP=1
 )
 target_link_libraries(replica_contr PUBLIC
     log

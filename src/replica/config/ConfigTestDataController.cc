@@ -42,6 +42,7 @@ map<string, set<string>> ConfigTestDataController::parameters() {
                "job-timeout-sec",
                "job-heartbeat-sec",
                "num-requests-per-worker",
+               "worker-response-size-limit",
                "max-repl-level",
                "health-probe-interval",
                "replication-interval",
@@ -96,6 +97,7 @@ json ConfigTestDataController::data() {
                                              {"job-timeout-sec", 200},
                                              {"job-heartbeat-sec", 300},
                                              {"num-requests-per-worker", 1},
+                                             {"worker-response-size-limit", 1024},
                                              {"max-repl-level", 2},
                                              {"health-probe-interval", 10},
                                              {"replication-interval", 120},
@@ -144,8 +146,6 @@ json ConfigTestDataController::data() {
         json worker = json::object({{"name", "worker-A"},
                                     {"is-enabled", 1},
                                     {"is-read-only", 0},
-                                    {"svc-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
-                                    {"svc-port", 51001},
                                     {"http-svc-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                     {"http-svc-port", 56001},
                                     {"fs-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
@@ -169,7 +169,6 @@ json ConfigTestDataController::data() {
         json worker = json::object({{"name", "worker-B"},
                                     {"is-enabled", 1},
                                     {"is-read-only", 1},
-                                    {"svc-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
                                     {"http-svc-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
                                     {"fs-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
                                     {"data-dir", "/data/B"},
@@ -187,7 +186,6 @@ json ConfigTestDataController::data() {
         json worker = json::object({{"name", "worker-C"},
                                     {"is-enabled", 0},
                                     {"is-read-only", 0},
-                                    {"svc-host", {{"addr", "168.1.1.1"}, {"name", "host-C1"}}},
                                     {"http-svc-host", {{"addr", "168.1.1.7"}, {"name", "host-C7"}}},
                                     {"fs-host", {{"addr", "168.1.1.2"}, {"name", "host-C2"}}},
                                     {"exporter-host", {{"addr", "168.1.1.4"}, {"name", "host-C4"}}},
@@ -225,6 +223,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table11"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 1},
                                        {"director_table", ""},
                                        {"director_key", "id11"},
                                        {"director_table2", ""},
@@ -250,6 +249,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "MetaTable11"},
                                        {"is_partitioned", 0},
+                                       {"persist_sub_chunks", 0},
                                        {"is_published", 1},
                                        {"create_time", 120},
                                        {"publish_time", 121}});
@@ -267,6 +267,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table21"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", ""},
                                        {"director_key", "id21"},
                                        {"director_table2", ""},
@@ -292,6 +293,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table22"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", "Table21"},
                                        {"director_key", "id22"},
                                        {"director_table2", ""},
@@ -316,6 +318,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "MetaTable21"},
                                        {"is_partitioned", 0},
+                                       {"persist_sub_chunks", 0},
                                        {"is_published", 1},
                                        {"create_time", 2210},
                                        {"publish_time", 2211}});
@@ -324,6 +327,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "MetaTable22"},
                                        {"is_partitioned", 0},
+                                       {"persist_sub_chunks", 0},
                                        {"is_published", 1},
                                        {"create_time", 2220},
                                        {"publish_time", 2221}});
@@ -341,6 +345,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table31"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", ""},
                                        {"director_key", "id31"},
                                        {"director_table2", ""},
@@ -366,6 +371,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table32"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", "Table31"},
                                        {"director_key", "id32"},
                                        {"director_table2", ""},
@@ -390,6 +396,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table33"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", "Table31"},
                                        {"director_key", "id33"},
                                        {"director_table2", ""},
@@ -412,6 +419,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "MetaTable31"},
                                        {"is_partitioned", 0},
+                                       {"persist_sub_chunks", 0},
                                        {"is_published", 1},
                                        {"create_time", 3310},
                                        {"publish_time", 3311}});
@@ -419,6 +427,7 @@ json ConfigTestDataController::data() {
         }
         {
             json table = json::object({{"name", "MetaTable32"},
+                                       {"persist_sub_chunks", 0},
                                        {"is_partitioned", 0},
                                        {"is_published", 1},
                                        {"create_time", 3320},
@@ -428,6 +437,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "MetaTable33"},
                                        {"is_partitioned", 0},
+                                       {"persist_sub_chunks", 0},
                                        {"is_published", 0},
                                        {"create_time", 3330},
                                        {"publish_time", 0}});
@@ -445,6 +455,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table41"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 1},
                                        {"director_table", ""},
                                        {"director_key", "id41"},
                                        {"director_table2", ""},
@@ -470,6 +481,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table42"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", ""},
                                        {"director_key", "id42"},
                                        {"director_table2", ""},
@@ -495,6 +507,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "RefMatch43"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 1},
                                        {"director_table", "Table41"},
                                        {"director_key", "Table41_id"},
                                        {"director_table2", "Table42"},
@@ -519,6 +532,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "RefMatch44"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", "db2.Table21"},
                                        {"director_key", "Table21_id"},
                                        {"director_table2", "db3.Table31"},
@@ -552,6 +566,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table51"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 1},
                                        {"director_table", ""},
                                        {"director_key", "id51"},
                                        {"director_table2", ""},
@@ -586,6 +601,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "Table61"},
                                        {"is_partitioned", 1},
+                                       {"persist_sub_chunks", 0},
                                        {"director_table", ""},
                                        {"director_key", "id61"},
                                        {"director_table2", ""},
@@ -611,6 +627,7 @@ json ConfigTestDataController::data() {
         {
             json table = json::object({{"name", "MetaTable61"},
                                        {"is_partitioned", 0},
+                                       {"persist_sub_chunks", 0},
                                        {"is_published", 1},
                                        {"create_time", 6610},
                                        {"publish_time", 6611}});

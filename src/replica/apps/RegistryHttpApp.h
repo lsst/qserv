@@ -40,8 +40,6 @@ namespace lsst::qserv::replica {
  */
 class RegistryHttpApp : public Application {
 public:
-    typedef std::shared_ptr<RegistryHttpApp> Ptr;
-
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.

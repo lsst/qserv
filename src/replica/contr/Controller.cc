@@ -37,8 +37,7 @@
 #include "replica/config/ConfigWorker.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
-#include "replica/requests/Messenger.h"
-#include "replica/requests/Request.h"
+#include "replica/requests/http/HttpMessenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
@@ -59,7 +58,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Controller");
 void tracker(weak_ptr<Controller> const& controller, string const& context) {
     LOGS(_log, LOG_LVL_INFO, context << "started tracking workers.");
     while (true) {
-        Controller::Ptr const ptr = controller.lock();
+        shared_ptr<Controller> const ptr = controller.lock();
         if (ptr == nullptr) break;
 
         auto const config = ptr->serviceProvider()->config();
@@ -78,7 +77,8 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
                     auto const prevWorker = config->worker(worker.name);
                     if (prevWorker != worker) {
                         LOGS(_log, LOG_LVL_INFO,
-                             context << "worker '" << worker.name << "' logged in from '" << worker.svcHost
+                             context << "worker '" << worker.name << "' logged in from '"
+                                     << worker.httpSvcHost
                                      << "'. Updating worker's record in the configuration.");
                         config->updateWorker(worker);
                     }
@@ -86,7 +86,8 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
                     if (autoRegisterWorkers) {
                         LOGS(_log, LOG_LVL_INFO,
                              context << "new worker '" << worker.name << "' logged in from '"
-                                     << worker.svcHost << "'. Registering new worker in the configuration.");
+                                     << worker.httpSvcHost
+                                     << "'. Registering new worker in the configuration.");
                         config->addWorker(worker);
                     }
                 }
@@ -143,8 +144,8 @@ ostream& operator<<(ostream& os, ControllerIdentity const& identity) {
     return os;
 }
 
-Controller::Ptr Controller::create(shared_ptr<ServiceProvider> const& serviceProvider) {
-    auto const ptr = Controller::Ptr(new Controller(serviceProvider));
+shared_ptr<Controller> Controller::create(shared_ptr<ServiceProvider> const& serviceProvider) {
+    auto const ptr = shared_ptr<Controller>(new Controller(serviceProvider));
 
     // The code below is starting the worker status tracking algorithm that would
     // be running in the detached thread. The thread will cache the weak pointer to
@@ -168,14 +169,14 @@ Controller::Controller(shared_ptr<ServiceProvider> const& serviceProvider)
         : _serviceProvider(serviceProvider),
           _identity({Generators::uniqueId(), boost::asio::ip::host_name(), getpid()}),
           _startTime(util::TimeUtils::now()),
-          _messenger(Messenger::create(serviceProvider->config(), serviceProvider->io_service())),
+          _httpMessenger(HttpMessenger::create(serviceProvider->config(), serviceProvider->io_service())),
           _qservMgtServices(QservMgtServices::create(_serviceProvider)) {
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }
 
 void Controller::stop() {
     // Cancel all outstanding requests to workers (if any)
-    _messenger->stop();
+    _httpMessenger->cancelAll();
 }
 
 string Controller::_context(string const& func) const {

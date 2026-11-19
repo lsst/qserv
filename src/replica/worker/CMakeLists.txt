@@ -4,32 +4,20 @@ target_sources(replica_worker PRIVATE
     FileClient.cc
     FileServer.cc
     FileServerConnection.cc
-    WorkerCreateReplicaHttpRequest.cc
-    WorkerDeleteReplicaHttpRequest.cc
-    WorkerDeleteRequest.cc
-    WorkerDirectorIndexHttpRequest.cc
-    WorkerDirectorIndexRequest.cc
-    WorkerEchoHttpRequest.cc
-    WorkerEchoRequest.cc
+    http/WorkerCreateReplicaHttpRequest.cc
+    http/WorkerDeleteReplicaHttpRequest.cc
+    http/WorkerDirectorIndexHttpRequest.cc
+    http/WorkerEchoHttpRequest.cc
+    http/WorkerFindAllReplicasHttpRequest.cc
+    http/WorkerFindReplicaHttpRequest.cc
+    http/WorkerHttpProcessor.cc
+    http/WorkerHttpProcessorThread.cc
+    http/WorkerHttpRequest.cc
+    http/WorkerHttpSvc.cc
+    http/WorkerHttpSvcMod.cc
+    http/WorkerSqlHttpRequest.cc
     WorkerExporterHttpSvc.cc
     WorkerExporterHttpSvcMod.cc
-    WorkerFindAllRequest.cc
-    WorkerFindAllReplicasHttpRequest.cc
-    WorkerFindReplicaHttpRequest.cc
-    WorkerFindRequest.cc
-    WorkerHttpProcessor.cc
-    WorkerHttpProcessorThread.cc
-    WorkerHttpRequest.cc
-    WorkerHttpSvc.cc
-    WorkerHttpSvcMod.cc
-    WorkerProcessor.cc
-    WorkerProcessorThread.cc
-    WorkerReplicationRequest.cc
-    WorkerRequest.cc
-    WorkerServer.cc
-    WorkerServerConnection.cc
-    WorkerSqlHttpRequest.cc
-    WorkerSqlRequest.cc
     WorkerUtils.cc
 )
 target_link_libraries(replica_worker PUBLIC
