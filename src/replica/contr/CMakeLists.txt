@@ -21,6 +21,7 @@ target_sources(replica_contr PRIVATE
     HttpReplicationLevelsModule.cc
     HttpRequestsModule.cc
     HttpSqlIndexModule.cc
+    HttpSqlPersistSubChunksModule.cc
     HttpSqlSchemaModule.cc
     HttpWorkerStatusModule.cc
     ReplicationTask.cc
