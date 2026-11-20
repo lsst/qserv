@@ -14,7 +14,11 @@ data:
       },
       "worker": {
         "ingest-num-retries": 4,
-        "num-async-loader-processing-threads": 32
+        "num-async-loader-processing-threads": 32,
+        "num-http-svc-threads": 32,
+        "num-svc-processing-threads": 32,
+        "num-http-loader-processing-threads": 32,
+        "exporter-threads": 32
       }
     }
 

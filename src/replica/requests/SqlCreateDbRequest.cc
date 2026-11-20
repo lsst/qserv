@@ -22,26 +22,25 @@
 // Class header
 #include "replica/requests/SqlCreateDbRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateDbRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlCreateDbRequest::Ptr SqlCreateDbRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                           string const& workerName,
-                                                           std::string const& database,
-                                                           CallbackType const& onFinish, int priority,
-                                                           bool keepTracking, string const& jobId,
-                                                           unsigned int requestExpirationIvalSec) {
-    auto ptr =
-            Ptr(new SqlCreateDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
+shared_ptr<SqlCreateDbRequest> SqlCreateDbRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                                  string const& workerName,
+                                                                  std::string const& database,
+                                                                  CallbackType const& onFinish, int priority,
+                                                                  bool keepTracking, string const& jobId,
+                                                                  unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<SqlCreateDbRequest>(
+            new SqlCreateDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -49,17 +48,14 @@ SqlCreateDbRequest::Ptr SqlCreateDbRequest::createAndStart(shared_ptr<Controller
 SqlCreateDbRequest::SqlCreateDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        std::string const& database, CallbackType const& onFinish,
                                        int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_CREATE_DATABASE", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_CREATE_DATABASE", protocol::SqlRequestType::CREATE_DATABASE, workerName,
+                     ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::CREATE_DATABASE);
     requestBody.set_database(database);
 }
 
 void SqlCreateDbRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlCreateDbRequest>(lock, _onFinish);
 }
 

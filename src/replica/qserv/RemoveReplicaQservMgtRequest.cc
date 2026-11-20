@@ -33,18 +33,16 @@ using namespace nlohmann;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RemoveReplicaQservMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
+shared_ptr<RemoveReplicaQservMgtRequest> RemoveReplicaQservMgtRequest::create(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName, unsigned int chunk,
         vector<string> const& databases, bool force,
         RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
-    return RemoveReplicaQservMgtRequest::Ptr(
+    return shared_ptr<RemoveReplicaQservMgtRequest>(
             new RemoveReplicaQservMgtRequest(serviceProvider, workerName, chunk, databases, force, onFinish));
 }
 

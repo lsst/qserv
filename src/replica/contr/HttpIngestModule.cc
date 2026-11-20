@@ -42,6 +42,7 @@
 #include "global/constants.h"
 #include "http/Exceptions.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/QservSyncJob.h"
@@ -54,6 +55,7 @@
 #include "replica/jobs/SqlGrantAccessJob.h"
 #include "replica/jobs/SqlEnableDbJob.h"
 #include "replica/jobs/SqlRemoveTablePartitionsJob.h"
+#include "replica/proto/Protocol.h"
 #include "replica/qserv/PostEventQservCzarMgtRequest.h"
 #include "replica/registry/Registry.h"
 #include "replica/requests/SqlResultSet.h"
@@ -72,7 +74,7 @@ using namespace lsst::qserv::replica;
 
 namespace {
 
-string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
+string jobCompletionErrorIfAny(shared_ptr<SqlJob> const& job, string const& prefix) {
     string error;
     switch (job->extendedState()) {
         case Job::ExtendedState::NONE:
@@ -126,15 +128,16 @@ using namespace database::mysql;
 string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
-void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+void HttpIngestModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                               shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
                                string const& subModuleName, http::AuthType const authType) {
     HttpIngestModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller, string const& taskName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpIngestModule::HttpIngestModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                   shared_ptr<qhttp::Request> const& req,
+                                   shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestModule::executeImpl(string const& subModuleName) {
@@ -882,9 +885,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
             job->getResultData().iterate([&](SqlJobResult::Worker const& worker,
                                              SqlJobResult::Scope const& internalTable,
                                              SqlResultSet::ResultSet const& resultSet) {
-                if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
+                if (resultSet.extendedStatus != protocol::StatusExt::NONE) {
                     errorExt["workers"][worker][internalTable] =
-                            json::object({{"status", ProtocolStatusExt_Name(resultSet.extendedStatus)},
+                            json::object({{"status", protocol::toString(resultSet.extendedStatus)},
                                           {"error", resultSet.error}});
                 }
             });

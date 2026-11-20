@@ -47,25 +47,11 @@ namespace lsst::qserv::replica {
  */
 class SqlDeleteTablePartitionRequest : public SqlRequest {
 public:
-    typedef std::shared_ptr<SqlDeleteTablePartitionRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
-
-    SqlDeleteTablePartitionRequest() = delete;
-    SqlDeleteTablePartitionRequest(SqlDeleteTablePartitionRequest const&) = delete;
-    SqlDeleteTablePartitionRequest& operator=(SqlDeleteTablePartitionRequest const&) = delete;
-
-    ~SqlDeleteTablePartitionRequest() final = default;
-
-    std::string const& database() const { return requestBody.database(); }
+    typedef std::function<void(std::shared_ptr<SqlDeleteTablePartitionRequest>)> CallbackType;
 
     /**
      * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
      *
      * Class-specific parameters are documented below:
      * @param database The name of an existing database where the table is residing.
@@ -73,20 +59,25 @@ public:
      *   the operation.
      * @param transactionId The unique identifier of a transaction which corresponds
      *   to a MySQL partition to be removed.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
+     * @see The very base class for the description of the common parameters of all subclasses.
      * @return pointer to the created object
      */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, std::vector<std::string> const& tables,
-                              TransactionId transactionId, CallbackType const& onFinish = nullptr,
-                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+    static std::shared_ptr<SqlDeleteTablePartitionRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, std::vector<std::string> const& tables, TransactionId transactionId,
+            CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+
+    SqlDeleteTablePartitionRequest() = delete;
+    SqlDeleteTablePartitionRequest(SqlDeleteTablePartitionRequest const&) = delete;
+    SqlDeleteTablePartitionRequest& operator=(SqlDeleteTablePartitionRequest const&) = delete;
+
+    virtual ~SqlDeleteTablePartitionRequest() final = default;
+
+    std::string const& database() const { return requestBody.database(); }
 
 protected:
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     SqlDeleteTablePartitionRequest(std::shared_ptr<Controller> const& controller,

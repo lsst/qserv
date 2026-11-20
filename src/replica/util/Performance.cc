@@ -22,6 +22,9 @@
 // Class header
 #include "replica/util/Performance.h"
 
+// System headers
+#include <stdexcept>
+
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
 #include "util/TimeUtils.h"
@@ -52,6 +55,15 @@ void Performance::update(ProtocolPerformance const& workerPerformanceInfo) {
     w_receive_time = workerPerformanceInfo.receive_time();
     w_start_time = workerPerformanceInfo.start_time();
     w_finish_time = workerPerformanceInfo.finish_time();
+}
+
+void Performance::update(nlohmann::json const& workerPerformanceInfo) {
+    if (!workerPerformanceInfo.is_object()) {
+        throw invalid_argument("Performance::" + string(__func__) + " Expected a JSON object");
+    }
+    w_receive_time = workerPerformanceInfo.at("receive_time").get<uint64_t>();
+    w_start_time = workerPerformanceInfo.at("start_time").get<uint64_t>();
+    w_finish_time = workerPerformanceInfo.at("finish_time").get<uint64_t>();
 }
 
 uint64_t Performance::setUpdateStart() {

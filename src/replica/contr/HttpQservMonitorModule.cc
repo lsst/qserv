@@ -44,10 +44,18 @@
 #include "replica/config/ConfigCzar.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigWorker.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/QservStatusJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLTypes.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/qserv/GetConfigQservCzarMgtRequest.h"
+#include "replica/qserv/GetConfigQservMgtRequest.h"
+#include "replica/qserv/GetDbStatusQservMgtRequest.h"
+#include "replica/qserv/GetQueryProgressQservCzarMgtRequest.h"
+#include "replica/qserv/GetResultFilesQservMgtRequest.h"
+#include "replica/qserv/GetStatusQservCzarMgtRequest.h"
+#include "replica/qserv/GetStatusQservMgtRequest.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -105,7 +113,7 @@ void parseFieldIntoJson(string const& context, Row const& row, string const& col
 /**
  * Extract rows selected from table qservMeta.QInfo into a JSON object.
  */
-void extractQInfo(Connection::Ptr const& conn, json& result) {
+void extractQInfo(shared_ptr<Connection> const& conn, json& result) {
     if (!conn->hasResult()) return;
 
     Row row;
@@ -143,9 +151,10 @@ json czarIdsToJson(map<CzarId, string> const& ids) {
 
 namespace lsst::qserv::replica {
 
-void HttpQservMonitorModule::process(Controller::Ptr const& controller, string const& taskName,
-                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName, http::AuthType const authType) {
+void HttpQservMonitorModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                     shared_ptr<qhttp::Request> const& req,
+                                     shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                     http::AuthType const authType) {
     HttpQservMonitorModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -158,9 +167,9 @@ void HttpQservMonitorModule::_throwIfNotSucceeded(string const& func,
     throw http::Error(func, msg);
 }
 
-HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller, string const& taskName,
-                                               qhttp::Request::Ptr const& req,
-                                               qhttp::Response::Ptr const& resp)
+HttpQservMonitorModule::HttpQservMonitorModule(shared_ptr<Controller> const& controller,
+                                               string const& taskName, shared_ptr<qhttp::Request> const& req,
+                                               shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
@@ -637,7 +646,7 @@ json HttpQservMonitorModule::_userQuery() {
     return result;
 }
 
-json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
+json HttpQservMonitorModule::_currentUserQueries(shared_ptr<Connection> const& conn,
                                                  map<QueryId, string> const& queryId2scheduler) {
     QueryGenerator const g(conn);
     string const query =
@@ -683,7 +692,7 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
     return result;
 }
 
-json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string const& constraint,
+json HttpQservMonitorModule::_pastUserQueries(shared_ptr<Connection> const& conn, string const& constraint,
                                               unsigned int limit4past, bool includeMessages,
                                               string const& searchDatabase, string const& searchTable) {
     json result = json::array();

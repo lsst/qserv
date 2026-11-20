@@ -29,6 +29,7 @@
 #include "replica/config/Config.h"
 #include "replica/util/Performance.h"
 #include "replica/util/ProtocolBuffer.h"
+#include "replica/services/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -99,14 +100,15 @@ namespace lsst::qserv::replica {
 
 atomic<unsigned int> WorkerServerConnection::_connectionIdSeries{0};
 
-WorkerServerConnection::Ptr WorkerServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
-                                                           WorkerProcessor::Ptr const& processor,
-                                                           boost::asio::io_service& io_service) {
-    return WorkerServerConnection::Ptr(new WorkerServerConnection(serviceProvider, processor, io_service));
+shared_ptr<WorkerServerConnection> WorkerServerConnection::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, shared_ptr<WorkerProcessor> const& processor,
+        boost::asio::io_service& io_service) {
+    return shared_ptr<WorkerServerConnection>(
+            new WorkerServerConnection(serviceProvider, processor, io_service));
 }
 
-WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                                               WorkerProcessor::Ptr const& processor,
+WorkerServerConnection::WorkerServerConnection(shared_ptr<ServiceProvider> const& serviceProvider,
+                                               shared_ptr<WorkerProcessor> const& processor,
                                                boost::asio::io_service& io_service)
         : _serviceProvider(serviceProvider),
           _connectionId(_connectionIdSeries++),
@@ -371,6 +373,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
             ProtocolRequestDispose request;
             if (!::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             ProtocolResponseDispose response;
+            response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
             if (_verifyInstance(hdr, response)) {
                 for (int i = 0; i < request.ids_size(); ++i) {
                     string const id = request.ids(i);
@@ -408,9 +411,9 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
                 // extra time for the processor's threads to finish on-going processing
                 _processor->stop();
                 _processor->setServiceResponse(response, hdr.id(),
-                                               _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING
-                                                       ? ProtocolStatus::FAILED
-                                                       : ProtocolStatus::SUCCESS);
+                                               _processor->state() == protocol::ServiceState::RUNNING
+                                                       ? protocol::Status::FAILED
+                                                       : protocol::Status::SUCCESS);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_RESUME: {
@@ -418,33 +421,33 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
                 // (or be denied) instantaneously.
                 _processor->run();
                 _processor->setServiceResponse(response, hdr.id(),
-                                               _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING
-                                                       ? ProtocolStatus::SUCCESS
-                                                       : ProtocolStatus::FAILED);
+                                               _processor->state() == protocol::ServiceState::RUNNING
+                                                       ? protocol::Status::SUCCESS
+                                                       : protocol::Status::FAILED);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_STATUS: {
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_REQUESTS: {
                 const bool extendedReport = true;  // to return detailed info on all known
                                                    // replica-related requests
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS, extendedReport);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_DRAIN: {
                 const bool extendedReport = true;  // to return detailed info on all known
                                                    // replica-related requests
                 _processor->drain();
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS, extendedReport);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_RECONFIG: {
                 const bool extendedReport = true;  // to return detailed info on all known
                                                    // replica-related requests
                 _processor->reconfig();
-                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), protocol::Status::SUCCESS, extendedReport);
                 break;
             }
             default:
@@ -470,6 +473,10 @@ void WorkerServerConnection::_sent(boost::system::error_code const& ec, size_t b
 
     // Go wait for another request
     _receive();
+}
+
+bool WorkerServerConnection::_instanceMatches(ProtocolRequestHeader const& hdr) const {
+    return hdr.instance_id() == _serviceProvider->config()->get<std::string>("security", "instance-id");
 }
 
 }  // namespace lsst::qserv::replica

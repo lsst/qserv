@@ -27,7 +27,7 @@
  */
 
 // System headers
-#include <cstdint>
+#include <cstddef>
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -38,6 +38,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class HttpMessenger;
 class Messenger;
 class QservMgtServices;
 class ServiceProvider;
@@ -78,17 +79,16 @@ std::ostream& operator<<(std::ostream& os, ControllerIdentity const& identity);
  */
 class Controller : public std::enable_shared_from_this<Controller> {
 public:
-    typedef std::shared_ptr<Controller> Ptr;
-
-    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider);
+    static std::shared_ptr<Controller> create(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     Controller() = delete;
     Controller(Controller const&) = delete;
     Controller& operator=(Controller const&) = delete;
-    ~Controller() = default;
+
+    virtual ~Controller() = default;
 
     ControllerIdentity const& identity() const { return _identity; }
-    uint64_t startTime() const { return _startTime; }
+    std::uint64_t startTime() const { return _startTime; }
     std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
     /**
@@ -100,7 +100,10 @@ public:
      */
     void verifyFolders(bool createMissingFolders = false) const;
 
-    /// @return a reference to worker messenger service (configured for controllers)
+    /// @return a reference to worker messenger service (HTTP+JSON)
+    std::shared_ptr<HttpMessenger> httpMessenger() const { return _httpMessenger; }
+
+    /// @return a reference to worker messenger service (TCP+PROTOBUF)
     std::shared_ptr<Messenger> messenger() const { return _messenger; }
 
     /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
@@ -124,8 +127,8 @@ private:
     /// the Controller was created.
     std::uint64_t const _startTime;
 
-    /// Worker messenger service
-    std::shared_ptr<Messenger> const _messenger;
+    std::shared_ptr<HttpMessenger> const _httpMessenger;  ///< The HTTP+JSON worker messenger service
+    std::shared_ptr<Messenger> const _messenger;          ///< The TCP+PROTOBUF worker messenger service
 
     /// Qserv management services
     std::shared_ptr<QservMgtServices> const _qservMgtServices;

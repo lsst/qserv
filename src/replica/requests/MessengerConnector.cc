@@ -59,10 +59,10 @@ string MessengerConnector::_state2string(MessengerConnector::State state) {
     throw logic_error("MessengerConnector::" + string(__func__) + "  incomplete implementation");
 }
 
-MessengerConnector::Ptr MessengerConnector::create(shared_ptr<Config> const& config,
-                                                   boost::asio::io_service& io_service,
-                                                   string const& workerName) {
-    return MessengerConnector::Ptr(new MessengerConnector(config, io_service, workerName));
+shared_ptr<MessengerConnector> MessengerConnector::create(shared_ptr<Config> const& config,
+                                                          boost::asio::io_service& io_service,
+                                                          string const& workerName) {
+    return shared_ptr<MessengerConnector>(new MessengerConnector(config, io_service, workerName));
 }
 
 MessengerConnector::MessengerConnector(shared_ptr<Config> const& config, boost::asio::io_service& io_service,
@@ -80,7 +80,7 @@ MessengerConnector::MessengerConnector(shared_ptr<Config> const& config, boost::
 void MessengerConnector::stop() {
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    list<MessageWrapperBase::Ptr> requests2notify;
+    list<shared_ptr<MessageWrapperBase>> requests2notify;
     {
         replica::Lock lock(_mtx, _context() + __func__);
 
@@ -160,7 +160,7 @@ bool MessengerConnector::exists(string const& id) const {
     return _requests.find(id) != nullptr;
 }
 
-void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
+void MessengerConnector::_sendImpl(shared_ptr<MessageWrapperBase> const& ptr) {
     replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
@@ -414,7 +414,7 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec, 
     // in the input queue. The simplest approach would be probably launch
     // the notification in a separate (new) thread.
 
-    MessageWrapperBase::Ptr request2notify;
+    shared_ptr<MessageWrapperBase> request2notify;
     {
         replica::Lock lock(_mtx, _context() + __func__);
 

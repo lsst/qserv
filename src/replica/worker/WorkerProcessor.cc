@@ -30,11 +30,13 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/worker/WorkerDeleteRequest.h"
 #include "replica/worker/WorkerEchoRequest.h"
 #include "replica/worker/WorkerFindRequest.h"
 #include "replica/worker/WorkerFindAllRequest.h"
+#include "replica/worker/WorkerProcessorThread.h"
 #include "replica/worker/WorkerReplicationRequest.h"
 #include "replica/worker/WorkerSqlRequest.h"
 #include "replica/worker/WorkerDirectorIndexRequest.h"
@@ -54,40 +56,28 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessor");
 
 namespace lsst::qserv::replica {
 
-string WorkerProcessor::state2string(State state) {
-    switch (state) {
-        case STATE_IS_RUNNING:
-            return "STATE_IS_RUNNING";
-        case STATE_IS_STOPPING:
-            return "STATE_IS_STOPPING";
-        case STATE_IS_STOPPED:
-            return "STATE_IS_STOPPED";
-    }
-    throw logic_error(_classMethodContext(__func__) + "  unhandled state " + to_string(state));
+shared_ptr<WorkerProcessor> WorkerProcessor::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                    string const& worker) {
+    return shared_ptr<WorkerProcessor>(new WorkerProcessor(serviceProvider, worker));
 }
 
-WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
-                                             string const& worker) {
-    return Ptr(new WorkerProcessor(serviceProvider, worker));
-}
-
-WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, string const& worker)
+WorkerProcessor::WorkerProcessor(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker)
         : _serviceProvider(serviceProvider),
           _worker(worker),
           _connectionPool(database::mysql::ConnectionPool::create(
                   _serviceProvider->config()->qservWorkerDbParams(),
                   serviceProvider->config()->get<size_t>("database", "services-pool-size"))),
-          _state(STATE_IS_STOPPED),
+          _state(protocol::ServiceState::SUSPENDED),
           _startTime(util::TimeUtils::now()) {}
 
 void WorkerProcessor::run() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     replica::Lock lock(_mtx, _context(__func__));
 
-    if (_state == STATE_IS_STOPPED) {
+    if (_state == protocol::ServiceState::SUSPENDED) {
         size_t const numThreads =
                 _serviceProvider->config()->get<size_t>("worker", "num-svc-processing-threads");
-        if (not numThreads) {
+        if (numThreads == 0) {
             throw out_of_range(_classMethodContext(__func__) +
                                "invalid configuration parameter for the number of processing threads. "
                                "The value of the parameter must be greater than 0");
@@ -102,10 +92,10 @@ void WorkerProcessor::run() {
         }
 
         // Tell each thread to run
-        for (auto&& t : _threads) {
+        for (auto& t : _threads) {
             t->run();
         }
-        _state = STATE_IS_RUNNING;
+        _state = protocol::ServiceState::RUNNING;
     }
 }
 
@@ -113,16 +103,16 @@ void WorkerProcessor::stop() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     replica::Lock lock(_mtx, _context(__func__));
 
-    if (_state == STATE_IS_RUNNING) {
+    if (_state == protocol::ServiceState::RUNNING) {
         // Tell each thread to stop.
-        for (auto&& t : _threads) {
+        for (auto& t : _threads) {
             t->stop();
         }
 
         // Begin transitioning to the final state via this intermediate one.
         // The transition will finish asynchronous when all threads will report
         // desired changes in their states.
-        _state = STATE_IS_STOPPING;
+        _state = protocol::ServiceState::SUSPEND_IN_PROGRESS;
     }
 }
 
@@ -164,13 +154,13 @@ void WorkerProcessor::enqueueForReplication(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -193,13 +183,13 @@ void WorkerProcessor::enqueueForDeletion(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -222,13 +212,13 @@ void WorkerProcessor::enqueueForFind(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -249,13 +239,13 @@ void WorkerProcessor::enqueueForFindAll(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -273,8 +263,8 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
-        response.set_status(ProtocolStatus::SUCCESS);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(performance.info().release());
         response.set_data(request.data());
         return;
@@ -289,14 +279,14 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
 
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -318,13 +308,13 @@ void WorkerProcessor::enqueueForSql(std::string const& id, int32_t priority,
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -349,13 +339,13 @@ void WorkerProcessor::enqueueForDirectorIndex(string const& id, int32_t priority
                 [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-        response.set_status(ProtocolStatus::QUEUED);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::QUEUED));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
         response.set_allocated_performance(ptr->performance().info().release());
         _setInfo(ptr, response);
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
+        setDefaultResponse(response, protocol::Status::BAD, protocol::StatusExt::INVALID_PARAM);
     }
 }
 
@@ -363,7 +353,7 @@ void WorkerProcessor::checkStatus(ProtocolRequestStatus const& request, Protocol
     replica::Lock lock(_mtx, _context(__func__));
 
     // Still waiting in the queue?
-    WorkerRequest::Ptr targetRequestPtr;
+    shared_ptr<WorkerRequest> targetRequestPtr;
     for (auto ptr : _newRequests) {
         if (ptr->id() == request.id()) {
             targetRequestPtr = ptr;
@@ -384,31 +374,31 @@ void WorkerProcessor::checkStatus(ProtocolRequestStatus const& request, Protocol
             }
             // No such request?
             if (targetRequestPtr == nullptr) {
-                response.set_status(ProtocolStatus::BAD);
-                response.set_status_ext(ProtocolStatusExt::INVALID_ID);
+                response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+                response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::INVALID_ID));
                 return;
             }
         }
     }
-    response.set_status(ProtocolStatus::SUCCESS);
-    response.set_status_ext(ProtocolStatusExt::NONE);
-    response.set_target_status(targetRequestPtr->status());
-    response.set_target_status_ext(targetRequestPtr->extendedStatus());
+    response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
+    response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
+    response.set_target_status(protocol::toUnsignedInt(targetRequestPtr->status()));
+    response.set_target_status_ext(protocol::toUnsignedInt(targetRequestPtr->extendedStatus()));
     response.set_allocated_target_performance(targetRequestPtr->performance().info().release());
 }
 
 void WorkerProcessor::dequeueOrCancel(ProtocolRequestStop const& request, ProtocolResponseStop& response) {
     replica::Lock lock(_mtx, _context(__func__));
     if (_dequeueOrCancelImpl(lock, request.id()) == nullptr) {
-        response.set_status(ProtocolStatus::BAD);
-        response.set_status_ext(ProtocolStatusExt::INVALID_ID);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::BAD));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::INVALID_ID));
     } else {
-        response.set_status(ProtocolStatus::SUCCESS);
-        response.set_status_ext(ProtocolStatusExt::NONE);
+        response.set_status(protocol::toUnsignedInt(protocol::Status::SUCCESS));
+        response.set_status_ext(protocol::toUnsignedInt(protocol::StatusExt::NONE));
     }
 }
 
-WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lock, string const& id) {
+shared_ptr<WorkerRequest> WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
@@ -426,14 +416,14 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
             ptr->cancel();
 
             switch (ptr->status()) {
-                case ProtocolStatus::CANCELLED: {
+                case protocol::Status::CANCELLED: {
                     _newRequests.remove(id);
                     _finishedRequests[ptr->id()] = ptr;
                     return ptr;
                 }
                 default:
                     throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                      WorkerRequest::status2string(ptr->status()) + " in new requests");
+                                      protocol::toString(ptr->status()) + " in new requests");
             }
         }
     }
@@ -452,8 +442,8 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
 
         switch (ptr->status()) {
             // These are the most typical states for request in this queue
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::IS_CANCELLING:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::IS_CANCELLING:
 
             // The following two states are also allowed here because
             // in-progress requests are still allowed to progress to the completed
@@ -463,12 +453,12 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
             // replica::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
             // queue as soon as replica::Lock lock(_mtx) will be released.
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
+                                  protocol::toString(ptr->status()) + " in in-progress requests");
         }
     }
 
@@ -480,21 +470,21 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
         // reporting the completion status of the request. It's up to a client
         // to figure out what to do about this situation.
         switch (ptr->status()) {
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in finished requests");
+                                  protocol::toString(ptr->status()) + " in finished requests");
         }
     }
 
     // No request found!
-    return WorkerRequest::Ptr();
+    return shared_ptr<WorkerRequest>();
 }
 
-WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock, string const& id) {
+shared_ptr<WorkerRequest> WorkerProcessor::_trackRequestImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
@@ -502,11 +492,11 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
         if (ptr->id() == id) {
             switch (ptr->status()) {
                 // This state requirement is strict for the non-active requests
-                case ProtocolStatus::CREATED:
+                case protocol::Status::CREATED:
                     return ptr;
                 default:
                     throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                      WorkerRequest::status2string(ptr->status()) + " in new requests");
+                                      protocol::toString(ptr->status()) + " in new requests");
             }
         }
     }
@@ -517,8 +507,8 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
         auto ptr = itrInProgress->second;
         switch (ptr->status()) {
             // These are the most typical states for request in this queue
-            case ProtocolStatus::IS_CANCELLING:
-            case ProtocolStatus::IN_PROGRESS:
+            case protocol::Status::IS_CANCELLING:
+            case protocol::Status::IN_PROGRESS:
 
             // The following three states are also allowed here because
             // in-progress requests are still allowed to progress to the completed
@@ -528,13 +518,13 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
             // replica::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
             // queue as soon as replica::Lock lock(_mtx) will be released.
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
+                                  protocol::toString(ptr->status()) + " in in-progress requests");
         }
     }
 
@@ -544,39 +534,28 @@ WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock,
         auto ptr = itrFinished->second;
         switch (ptr->status()) {
             // This state requirement is strict for the completed requests
-            case ProtocolStatus::CANCELLED:
-            case ProtocolStatus::SUCCESS:
-            case ProtocolStatus::FAILED:
+            case protocol::Status::CANCELLED:
+            case protocol::Status::SUCCESS:
+            case protocol::Status::FAILED:
                 return ptr;
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
-                                  WorkerRequest::status2string(ptr->status()) + " in finished requests");
+                                  protocol::toString(ptr->status()) + " in finished requests");
         }
     }
 
     // No request found!
-    return WorkerRequest::Ptr();
+    return shared_ptr<WorkerRequest>();
 }
 
 void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, string const& id,
-                                         ProtocolStatus status, bool extendedReport) {
+                                         protocol::Status status, bool extendedReport) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     replica::Lock lock(_mtx, _context(__func__));
 
-    response.set_status(status);
+    response.set_status(protocol::toUnsignedInt(status));
     response.set_start_time(_startTime);
-
-    switch (state()) {
-        case WorkerProcessor::State::STATE_IS_RUNNING:
-            response.set_service_state(ProtocolServiceResponse::RUNNING);
-            break;
-        case WorkerProcessor::State::STATE_IS_STOPPING:
-            response.set_service_state(ProtocolServiceResponse::SUSPEND_IN_PROGRESS);
-            break;
-        case WorkerProcessor::State::STATE_IS_STOPPED:
-            response.set_service_state(ProtocolServiceResponse::SUSPENDED);
-            break;
-    }
+    response.set_service_state(protocol::toUnsignedInt(state()));
     response.set_num_new_requests(_newRequests.size());
     response.set_num_in_progress_requests(_inProgressRequests.size());
     response.set_num_finished_requests(_finishedRequests.size());
@@ -594,7 +573,7 @@ void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, stri
     }
 }
 
-void WorkerProcessor::_setServiceResponseInfo(WorkerRequest::Ptr const& request,
+void WorkerProcessor::_setServiceResponseInfo(shared_ptr<WorkerRequest> const& request,
                                               ProtocolServiceResponseInfo* info) const {
     if (nullptr != dynamic_pointer_cast<WorkerReplicationRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
@@ -648,8 +627,8 @@ size_t WorkerProcessor::numFinishedRequests() const {
 
 string WorkerProcessor::_classMethodContext(string const& func) { return "WorkerProcessor::" + func; }
 
-WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThread::Ptr const& processorThread,
-                                                            unsigned int timeoutMilliseconds) {
+shared_ptr<WorkerRequest> WorkerProcessor::_fetchNextForProcessing(
+        shared_ptr<WorkerProcessorThread> const& processorThread, unsigned int timeoutMilliseconds) {
     LOGS(_log, LOG_LVL_TRACE,
          _context(__func__) << "  thread: " << processorThread->id() << "  timeout: " << timeoutMilliseconds);
 
@@ -669,8 +648,8 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
         // the wait.
         {
             replica::Lock lock(_mtx, _context(__func__));
-            if (not _newRequests.empty()) {
-                WorkerRequest::Ptr request = _newRequests.top();
+            if (!_newRequests.empty()) {
+                shared_ptr<WorkerRequest> request = _newRequests.top();
                 _newRequests.pop();
                 request->start();
                 _inProgressRequests[request->id()] = request;
@@ -683,10 +662,10 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
     // Return null pointer since noting has been found within the specified
     // timeout.
 
-    return WorkerRequest::Ptr();
+    return shared_ptr<WorkerRequest>();
 }
 
-void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
+void WorkerProcessor::_processingRefused(shared_ptr<WorkerRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << request->id());
     replica::Lock lock(_mtx, _context(__func__));
 
@@ -701,10 +680,10 @@ void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
     }
 }
 
-void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
+void WorkerProcessor::_processingFinished(shared_ptr<WorkerRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context(__func__) << "  id: " << request->id()
-                            << "  status: " << WorkerRequest::status2string(request->status()));
+                            << "  status: " << protocol::toString(request->status()));
     replica::Lock lock(_mtx, _context(__func__));
 
     // Note that disposed requests won't be found in any queue.
@@ -715,22 +694,23 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
     }
 }
 
-void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread) {
+void WorkerProcessor::_processorThreadStopped(shared_ptr<WorkerProcessorThread> const& processorThread) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  thread: " << processorThread->id());
     replica::Lock lock(_mtx, _context(__func__));
-    if (_state == STATE_IS_STOPPING) {
+    if (_state == protocol::ServiceState::SUSPEND_IN_PROGRESS) {
         // Complete state transition if all threads are stopped
         for (auto&& t : _threads) {
             if (t->isRunning()) return;
         }
-        _state = STATE_IS_STOPPED;
+        _state = protocol::ServiceState::SUSPENDED;
     }
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseReplicate& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request,
+                               ProtocolResponseReplicate& response) {
     if (nullptr == request) return;
     auto ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerReplicationRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -739,9 +719,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDelete& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseDelete& response) {
     auto ptr = dynamic_pointer_cast<WorkerDeleteRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerDeleteRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -750,9 +730,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseFind& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseFind& response) {
     auto ptr = dynamic_pointer_cast<WorkerFindRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerFindRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -761,9 +741,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseFindAll& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseFindAll& response) {
     auto ptr = dynamic_pointer_cast<WorkerFindAllRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerFindAllRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -772,9 +752,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseEcho& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseEcho& response) {
     auto ptr = dynamic_pointer_cast<WorkerEchoRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerEchoRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -783,9 +763,9 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseSql& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request, ProtocolResponseSql& response) {
     auto ptr = dynamic_pointer_cast<WorkerSqlRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerSqlRequest)"
                           "  incorrect dynamic type of request id: " +
@@ -794,9 +774,10 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response) {
+void WorkerProcessor::_setInfo(shared_ptr<WorkerRequest> const& request,
+                               ProtocolResponseDirectorIndex& response) {
     auto ptr = dynamic_pointer_cast<WorkerDirectorIndexRequest>(request);
-    if (not ptr) {
+    if (!ptr) {
         throw logic_error(_classMethodContext(__func__) +
                           "(WorkerDirectorIndexRequest)"
                           "  incorrect dynamic type of request id: " +

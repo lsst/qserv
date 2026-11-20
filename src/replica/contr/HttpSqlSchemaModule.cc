@@ -33,11 +33,13 @@
 #include "css/DbInterfaceMySql.h"
 #include "http/Exceptions.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/jobs/SqlAlterTablesJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/requests/SqlResultSet.h"
+#include "replica/services/ServiceProvider.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -46,15 +48,17 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-void HttpSqlSchemaModule::process(Controller::Ptr const& controller, string const& taskName,
-                                  qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                  string const& subModuleName, http::AuthType const authType) {
+void HttpSqlSchemaModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                  shared_ptr<qhttp::Request> const& req,
+                                  shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                  http::AuthType const authType) {
     HttpSqlSchemaModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpSqlSchemaModule::HttpSqlSchemaModule(Controller::Ptr const& controller, string const& taskName,
-                                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpSqlSchemaModule::HttpSqlSchemaModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                         shared_ptr<qhttp::Request> const& req,
+                                         shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {

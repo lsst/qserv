@@ -1,0 +1,49 @@
+#fwk-controller-stats-controls label {
+    font-weight:    bold;
+}
+table#fwk-controller-stats caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-controller-stats {
+    position: relative;
+}
+table#fwk-controller-stats > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+
+table#fwk-controller-stats th.right-aligned,
+table#fwk-controller-stats td.right-aligned {
+    text-align:     right;
+}
+table#fwk-controller-stats th.center-aligned,
+table#fwk-controller-stats td.center-aligned {
+    text-align: center;
+}
+table#fwk-controller-stats tbody th,
+table#fwk-controller-stats tbody td {
+    vertical-align:top;
+}
+table#fwk-controller-stats pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-controller-stats tbody pre.database:hover,
+table#fwk-controller-stats tbody pre.database_table:hover,
+table#fwk-controller-stats tbody pre.request_id:hover,
+table#fwk-controller-stats tbody pre.transaction_id:hover {
+    cursor:pointer;
+}
+table#fwk-controller-stats tbody pre.database,
+table#fwk-controller-stats tbody pre.database_table,
+table#fwk-controller-stats tbody pre.request_id,
+table#fwk-controller-stats tbody pre.transaction_id {
+    /* text-decoration: underline; */
+    color:#007bff;
+}
+table#fwk-controller-stats-status caption.updating {
+    background-color: #ffeeba;
+}

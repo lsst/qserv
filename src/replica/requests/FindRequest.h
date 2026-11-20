@@ -46,23 +46,33 @@ namespace lsst::qserv::replica {
  */
 class FindRequest : public Request {
 public:
-    typedef std::shared_ptr<FindRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<FindRequest>)> CallbackType;
+
+    /**
+     * Create a new request with specified parameters.
+     *
+     * Class-specific parameters are documented below:
+     * @param database The name of a database.
+     * @param chunk The number of a chunk to find (implies all relevant tables)
+     * @see The very base class for the description of the common parameters of all subclasses.
+     * @return A pointer to the created object.
+     */
+    static std::shared_ptr<FindRequest> createAndStart(
+            std::shared_ptr<Controller> const& controller, std::string const& workerName,
+            std::string const& database, unsigned int chunk, CallbackType const& onFinish = nullptr,
+            int priority = PRIORITY_NORMAL, bool computeCheckSum = false, bool keepTracking = true,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     FindRequest() = delete;
     FindRequest(FindRequest const&) = delete;
     FindRequest& operator=(FindRequest const&) = delete;
 
-    ~FindRequest() final = default;
+    virtual ~FindRequest() final = default;
 
     std::string const& database() const { return _database; }
     unsigned int chunk() const { return _chunk; }
     bool computeCheckSum() const { return _computeCheckSum; }
-
-    /// @return target request specific parameters
-    FindRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
      * @note This operation will return a sensible result only if the operation
@@ -71,35 +81,13 @@ public:
      */
     ReplicaInfo const& responseData() const;
 
-    /**
-     * Create a new request with specified parameters.
-     *
-     * Static factory method is needed to prevent issue with the lifespan
-     * and memory management of instances created otherwise (as values or via
-     * low-level pointers).
-     *
-     * Class-specific parameters are documented below:
-     * @param database The name of a database.
-     * @param chunk The number of a chunk to find (implies all relevant tables)
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
-     *
-     * @return A pointer to the created object.
-     */
-    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
-                              std::string const& database, unsigned int chunk,
-                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
-                              bool computeCheckSum = false, bool keepTracking = true,
-                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
-
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void notify(replica::Lock const& lock) final;
-    void savePersistentState(replica::Lock const& lock) final;
-    void awaken(boost::system::error_code const& ec) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
+    virtual void savePersistentState(replica::Lock const& lock) final;
+    virtual void awaken(boost::system::error_code const& ec) final;
 
 private:
     FindRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
@@ -108,7 +96,7 @@ private:
 
     /**
      * Send the serialized content of the buffer to a worker
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on RequestI::mtx must be acquired before calling this method
      */
     void _send(replica::Lock const& lock);
 
@@ -125,9 +113,6 @@ private:
     unsigned int const _chunk;
     bool const _computeCheckSum;
     CallbackType _onFinish;  ///< @note is reset when the request finishes
-
-    /// Request-specific parameters of the target request
-    FindRequestParams _targetRequestParams;
 
     /// The results reported by a worker service
     ReplicaInfo _replicaInfo;

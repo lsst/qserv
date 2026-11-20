@@ -98,8 +98,6 @@ class IngestRequestTimerExpired : public std::runtime_error {
  */
 class IngestRequestMgr : public std::enable_shared_from_this<IngestRequestMgr> {
 public:
-    typedef std::shared_ptr<IngestRequestMgr> Ptr;
-
     /**
      * The factory method for instantiating the manager.
      * @param serviceProvider The provider is needed to access various services of

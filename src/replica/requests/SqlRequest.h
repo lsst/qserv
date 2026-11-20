@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/Request.h"
 #include "replica/requests/SqlResultSet.h"
 #include "replica/util/Common.h"
@@ -55,18 +56,20 @@ namespace lsst::qserv::replica {
  */
 class SqlRequest : public Request {
 public:
-    typedef std::shared_ptr<SqlRequest> Ptr;
+    /**
+     * Make an extended print of the request which would include a result set.
+     * The method will also make a call to RequestI::defaultPrinter().
+     * @param ptr  an object to be printed
+     */
+    static void extendedPrinter(std::shared_ptr<SqlRequest> const& ptr);
 
     SqlRequest() = delete;
     SqlRequest(SqlRequest const&) = delete;
     SqlRequest& operator=(SqlRequest const&) = delete;
 
-    ~SqlRequest() override = default;
+    virtual ~SqlRequest() override = default;
 
-    uint64_t maxRows() const { return requestBody.max_rows(); }
-
-    /// @return target request specific parameters
-    SqlRequestParams const& targetRequestParams() const { return _targetRequestParams; }
+    std::uint64_t maxRows() const { return requestBody.max_rows(); }
 
     /**
      * @note This operation will return a sensible result only if the operation
@@ -75,15 +78,7 @@ public:
      */
     SqlResultSet const& responseData() const;
 
-    /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /**
-     * Make an extended print of the request which would include a result set.
-     * The method will also make a call to Request::defaultPrinter().
-     * @param ptr  an object to be printed
-     */
-    static void extendedPrinter(Ptr const& ptr);
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     /**
@@ -95,16 +90,17 @@ protected:
      *   explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
-     *
-     * @see The very base class Request for the description of the common parameters
-     *   of all subclasses.
+     * @see The very base class for the description of the common parameters of all subclasses.
      */
     SqlRequest(std::shared_ptr<Controller> const& controller, std::string const& requestName,
-               std::string const& workerName, uint64_t maxRows, int priority, bool keepTracking);
+               protocol::SqlRequestType type, std::string const& workerName, std::uint64_t maxRows,
+               int priority, bool keepTracking);
 
-    void startImpl(replica::Lock const& lock) final;
-    void savePersistentState(replica::Lock const& lock) final;
-    void awaken(boost::system::error_code const& ec) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void savePersistentState(replica::Lock const& lock) final;
+    virtual void awaken(boost::system::error_code const& ec) final;
+
+    protocol::SqlRequestType const requestType;  ///< The type of the SQL request.
 
     /**
      * Request body to be sent to the worker. The content of the request is partially
@@ -116,7 +112,7 @@ protected:
 private:
     /**
      * Send the serialized content of the buffer to a worker
-     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     * @param lock a lock on RequestI::mtx must be acquired before calling this method
      */
     void _send(replica::Lock const& lock);
 
@@ -126,9 +122,6 @@ private:
      * @param response response from a worker (if success)
      */
     void _analyze(bool success, ProtocolResponseSql const& response);
-
-    /// Request-specific parameters of the target request
-    SqlRequestParams _targetRequestParams;
 
     /// The results reported by a worker service
     SqlResultSet _responseData;

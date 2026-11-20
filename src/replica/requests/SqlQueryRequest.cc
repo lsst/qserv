@@ -22,27 +22,19 @@
 // Class header
 #include "replica/requests/SqlQueryRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
-namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlQueryRequest");
-
-}  // namespace
-
 namespace lsst::qserv::replica {
 
-SqlQueryRequest::Ptr SqlQueryRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                     string const& workerName, std::string const& query,
-                                                     std::string const& user, std::string const& password,
-                                                     uint64_t maxRows, CallbackType const& onFinish,
-                                                     int priority, bool keepTracking, string const& jobId,
-                                                     unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlQueryRequest(controller, workerName, query, user, password, maxRows, onFinish,
-                                       priority, keepTracking));
+shared_ptr<SqlQueryRequest> SqlQueryRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, std::string const& query,
+        std::string const& user, std::string const& password, uint64_t maxRows, CallbackType const& onFinish,
+        int priority, bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<SqlQueryRequest>(new SqlQueryRequest(controller, workerName, query, user, password,
+                                                               maxRows, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -51,18 +43,16 @@ SqlQueryRequest::SqlQueryRequest(shared_ptr<Controller> const& controller, strin
                                  std::string const& query, std::string const& user,
                                  std::string const& password, uint64_t maxRows, CallbackType const& onFinish,
                                  int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_QUERY", workerName, maxRows, priority, keepTracking),
+        : SqlRequest(controller, "SQL_QUERY", protocol::SqlRequestType::QUERY, workerName, maxRows, priority,
+                     keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::QUERY);
     requestBody.set_query(query);
     requestBody.set_user(user);
     requestBody.set_password(password);
 }
 
 void SqlQueryRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlQueryRequest>(lock, _onFinish);
 }
 

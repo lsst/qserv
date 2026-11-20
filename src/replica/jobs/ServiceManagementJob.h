@@ -22,17 +22,26 @@
 #define LSST_QSERV_REPLICA_SERVICEMANAGEMENTJOB_H
 
 // System headers
+#include <cstddef>
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 #include <string>
 
 // Qserv headers
-#include "replica/config/Config.h"
-#include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSvcMgtRequest.h"
+#else
 #include "replica/requests/ServiceManagementRequest.h"
-#include "replica/services/ServiceProvider.h"
+#endif
+#include "replica/util/ServiceStateInfo.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -43,7 +52,7 @@ namespace lsst::qserv::replica {
  */
 struct ServiceManagementJobResult {
     /// Result sets for each worker
-    std::map<std::string, ServiceState> serviceState;
+    std::map<std::string, ServiceStateInfo> serviceState;
 
     /// Per-worker flags indicating which workers responded to the requests
     std::map<std::string, bool> workers;
@@ -56,9 +65,6 @@ struct ServiceManagementJobResult {
  */
 class ServiceManagementBaseJob : public Job {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementBaseJob> Ptr;
-
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
@@ -66,7 +72,7 @@ public:
     ServiceManagementBaseJob(ServiceManagementBaseJob const&) = delete;
     ServiceManagementBaseJob& operator=(ServiceManagementBaseJob const&) = delete;
 
-    ~ServiceManagementBaseJob() override = default;
+    virtual ~ServiceManagementBaseJob() override = default;
 
     bool allWorkers() const { return _allWorkers; }
     unsigned int requestExpirationIvalSec() const { return _requestExpirationIvalSec; }
@@ -84,8 +90,8 @@ public:
     ServiceManagementJobResult const& getResultData() const;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-    void cancelImpl(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
 
     /**
      * @param requestName the name of a specific request (as defined by a subclass)
@@ -99,21 +105,29 @@ protected:
      * @param priority defines the job priority
      */
     ServiceManagementBaseJob(std::string const& requestName, bool allWorkers,
-                             unsigned int requestExpirationIvalSec, Controller::Ptr const& controller,
-                             std::string const& parentJobId, int priority);
+                             unsigned int requestExpirationIvalSec,
+                             std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+                             int priority);
 
     /**
      * Submit type-specific request
      * @param worker  the name of a worker to which the request will be sent
      * @return a newly created & submitted object
      */
-    virtual ServiceManagementRequestBase::Ptr submitRequest(std::string const& worker) = 0;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    virtual std::shared_ptr<HttpSvcMgtRequestBase> submitRequest(std::string const& worker) = 0;
+#else
+    virtual std::shared_ptr<ServiceManagementRequestBase> submitRequest(std::string const& worker) = 0;
+#endif
 
     /**
-     * The callback function to be invoked on a completion of requests
-     * targeting workers.
+     * The callback function to be invoked on a completion of requests targeting workers.
      */
-    void onRequestFinish(ServiceManagementRequestBase::Ptr const& request);
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    void onRequestFinish(std::shared_ptr<HttpSvcMgtRequestBase> const& request);
+#else
+    void onRequestFinish(std::shared_ptr<ServiceManagementRequestBase> const& request);
+#endif
 
 private:
     // Input parameters
@@ -122,11 +136,15 @@ private:
     unsigned int _requestExpirationIvalSec;
 
     /// A collection of requests implementing the operation
-    std::list<ServiceManagementRequestBase::Ptr> _requests;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    std::list<std::shared_ptr<HttpSvcMgtRequestBase>> _requests;
+#else
+    std::list<std::shared_ptr<ServiceManagementRequestBase>> _requests;
+#endif
 
     /// This counter is used for tracking a condition for completing the job
     /// before computing its final state.
-    size_t _numFinished = 0;
+    std::size_t _numFinished = 0;
 
     /// The result of the operation (gets updated as requests are finishing)
     ServiceManagementJobResult _resultData;
@@ -140,11 +158,8 @@ private:
 template <class REQUEST>
 class ServiceManagementJob : public ServiceManagementBaseJob {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<ServiceManagementJob<REQUEST>> Ptr;
-
     /// The function type for notifications on the completion of the job
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<ServiceManagementJob<REQUEST>>)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName() {
@@ -155,14 +170,13 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
-     * @see ServiceManagementBaseJob::ServiceManagementBaseJob()
      */
-    static Ptr create(bool allWorkers, unsigned int requestExpirationIvalSec,
-                      Controller::Ptr const& controller, std::string const& parentJobId,
-                      CallbackType const& onFinish, int priority) {
-        return Ptr(new ServiceManagementJob(allWorkers, requestExpirationIvalSec, controller, parentJobId,
-                                            onFinish, priority));
+    static std::shared_ptr<ServiceManagementJob<REQUEST>> create(
+            bool allWorkers, unsigned int requestExpirationIvalSec,
+            std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
+            CallbackType const& onFinish, int priority) {
+        return std::shared_ptr<ServiceManagementJob<REQUEST>>(new ServiceManagementJob(
+                allWorkers, requestExpirationIvalSec, controller, parentJobId, onFinish, priority));
     }
 
     // Default construction and copy semantics are prohibited
@@ -171,27 +185,34 @@ public:
     ServiceManagementJob(ServiceManagementJob const&) = delete;
     ServiceManagementJob& operator=(ServiceManagementJob const&) = delete;
 
-    ~ServiceManagementJob() final = default;
+    virtual ~ServiceManagementJob() final = default;
 
 protected:
-    void notify(replica::Lock const& lock) final {
+    virtual void notify(replica::Lock const& lock) final {
         notifyDefaultImpl<ServiceManagementJob<REQUEST>>(lock, _onFinish);
     }
 
-    /// @see ServiceManagementBaseJob::submitRequest()
-    ServiceManagementRequestBase::Ptr submitRequest(std::string const& worker) final {
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+    virtual std::shared_ptr<HttpSvcMgtRequestBase> submitRequest(std::string const& worker) final {
         return REQUEST::createAndStart(
                 controller(), worker,
-                [self = shared_from_base<ServiceManagementJob<REQUEST>>()](typename REQUEST::Ptr const& ptr) {
-                    self->onRequestFinish(ptr);
-                },
+                [self = shared_from_base<ServiceManagementJob<REQUEST>>()](
+                        std::shared_ptr<REQUEST> const& ptr) { self->onRequestFinish(ptr); },
                 priority(), id(), requestExpirationIvalSec());
     }
+#else
+    virtual std::shared_ptr<ServiceManagementRequestBase> submitRequest(std::string const& worker) final {
+        return REQUEST::createAndStart(
+                controller(), worker,
+                [self = shared_from_base<ServiceManagementJob<REQUEST>>()](
+                        std::shared_ptr<REQUEST> const& ptr) { self->onRequestFinish(ptr); },
+                priority(), id(), requestExpirationIvalSec());
+    }
+#endif
 
 private:
-    /// @see ServiceManagementJob::create())
     ServiceManagementJob(bool allWorkers, unsigned int requestExpirationIvalSec,
-                         Controller::Ptr const& controller, std::string const& parentJobId,
+                         std::shared_ptr<Controller> const& controller, std::string const& parentJobId,
                          CallbackType const& onFinish, int priority)
             : ServiceManagementBaseJob(REQUEST::Policy::requestName(), allWorkers, requestExpirationIvalSec,
                                        controller, parentJobId, priority),
@@ -199,15 +220,24 @@ private:
 
     // Input parameters
 
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 };
 
-typedef ServiceManagementJob<ServiceStatusRequest> ServiceStatusJob;
-typedef ServiceManagementJob<ServiceRequestsRequest> ServiceRequestsJob;
-typedef ServiceManagementJob<ServiceSuspendRequest> ServiceSuspendJob;
-typedef ServiceManagementJob<ServiceResumeRequest> ServiceResumeJob;
-typedef ServiceManagementJob<ServiceDrainRequest> ServiceDrainJob;
-typedef ServiceManagementJob<ServiceReconfigRequest> ServiceReconfigJob;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+using ServiceStatusJob = ServiceManagementJob<HttpSvcStatusRequest>;
+using ServiceRequestsJob = ServiceManagementJob<HttpSvcRequestsRequest>;
+using ServiceSuspendJob = ServiceManagementJob<HttpSvcSuspendRequest>;
+using ServiceResumeJob = ServiceManagementJob<HttpSvcResumeRequest>;
+using ServiceDrainJob = ServiceManagementJob<HttpSvcDrainRequest>;
+using ServiceReconfigJob = ServiceManagementJob<HttpSvcReconfigRequest>;
+#else
+using ServiceStatusJob = ServiceManagementJob<ServiceStatusRequest>;
+using ServiceRequestsJob = ServiceManagementJob<ServiceRequestsRequest>;
+using ServiceSuspendJob = ServiceManagementJob<ServiceSuspendRequest>;
+using ServiceResumeJob = ServiceManagementJob<ServiceResumeRequest>;
+using ServiceDrainJob = ServiceManagementJob<ServiceDrainRequest>;
+using ServiceReconfigJob = ServiceManagementJob<ServiceReconfigRequest>;
+#endif
 
 }  // namespace lsst::qserv::replica
 

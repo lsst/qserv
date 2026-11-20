@@ -30,196 +30,438 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica::protocol {
 
-SqlRequestType parseSqlRequestType(string const& str) {
+SqlRequestType toSqlRequestType(string const& str) {
+    using enum SqlRequestType;
     if (str == "QUERY") {
-        return SqlRequestType::QUERY;
+        return QUERY;
     } else if (str == "CREATE_DATABASE") {
-        return SqlRequestType::CREATE_DATABASE;
+        return CREATE_DATABASE;
     } else if (str == "DROP_DATABASE") {
-        return SqlRequestType::DROP_DATABASE;
+        return DROP_DATABASE;
     } else if (str == "ENABLE_DATABASE") {
-        return SqlRequestType::ENABLE_DATABASE;
+        return ENABLE_DATABASE;
     } else if (str == "DISABLE_DATABASE") {
-        return SqlRequestType::DISABLE_DATABASE;
+        return DISABLE_DATABASE;
     } else if (str == "GRANT_ACCESS") {
-        return SqlRequestType::GRANT_ACCESS;
+        return GRANT_ACCESS;
     } else if (str == "CREATE_TABLE") {
-        return SqlRequestType::CREATE_TABLE;
+        return CREATE_TABLE;
     } else if (str == "DROP_TABLE") {
-        return SqlRequestType::DROP_TABLE;
+        return DROP_TABLE;
     } else if (str == "REMOVE_TABLE_PARTITIONING") {
-        return SqlRequestType::REMOVE_TABLE_PARTITIONING;
+        return REMOVE_TABLE_PARTITIONING;
     } else if (str == "DROP_TABLE_PARTITION") {
-        return SqlRequestType::DROP_TABLE_PARTITION;
+        return DROP_TABLE_PARTITION;
     } else if (str == "GET_TABLE_INDEX") {
-        return SqlRequestType::GET_TABLE_INDEX;
+        return GET_TABLE_INDEX;
     } else if (str == "CREATE_TABLE_INDEX") {
-        return SqlRequestType::CREATE_TABLE_INDEX;
+        return CREATE_TABLE_INDEX;
     } else if (str == "DROP_TABLE_INDEX") {
-        return SqlRequestType::DROP_TABLE_INDEX;
+        return DROP_TABLE_INDEX;
     } else if (str == "ALTER_TABLE") {
-        return SqlRequestType::ALTER_TABLE;
+        return ALTER_TABLE;
     } else if (str == "TABLE_ROW_STATS") {
-        return SqlRequestType::TABLE_ROW_STATS;
+        return TABLE_ROW_STATS;
     }
     throw invalid_argument("Unknown SQL request type: '" + str + "'");
 }
 
+SqlRequestType toSqlRequestType(unsigned int value) {
+    if (value < static_cast<unsigned int>(SqlRequestType::_FIRST) ||
+        value > static_cast<unsigned int>(SqlRequestType::_LAST)) {
+        throw invalid_argument("Unknown SQL request type value: " + to_string(value));
+    }
+    return static_cast<SqlRequestType>(value);
+}
+
 string toString(SqlRequestType status) {
+    using enum SqlRequestType;
     switch (status) {
-        case SqlRequestType::QUERY:
+        case QUERY:
             return "QUERY";
-        case SqlRequestType::CREATE_DATABASE:
+        case CREATE_DATABASE:
             return "CREATE_DATABASE";
-        case SqlRequestType::DROP_DATABASE:
+        case DROP_DATABASE:
             return "DROP_DATABASE";
-        case SqlRequestType::ENABLE_DATABASE:
+        case ENABLE_DATABASE:
             return "ENABLE_DATABASE";
-        case SqlRequestType::DISABLE_DATABASE:
+        case DISABLE_DATABASE:
             return "DISABLE_DATABASE";
-        case SqlRequestType::GRANT_ACCESS:
+        case GRANT_ACCESS:
             return "GRANT_ACCESS";
-        case SqlRequestType::CREATE_TABLE:
+        case CREATE_TABLE:
             return "CREATE_TABLE";
-        case SqlRequestType::DROP_TABLE:
+        case DROP_TABLE:
             return "DROP_TABLE";
-        case SqlRequestType::REMOVE_TABLE_PARTITIONING:
+        case REMOVE_TABLE_PARTITIONING:
             return "REMOVE_TABLE_PARTITIONING";
-        case SqlRequestType::DROP_TABLE_PARTITION:
+        case DROP_TABLE_PARTITION:
             return "DROP_TABLE_PARTITION";
-        case SqlRequestType::GET_TABLE_INDEX:
+        case GET_TABLE_INDEX:
             return "GET_TABLE_INDEX";
-        case SqlRequestType::CREATE_TABLE_INDEX:
+        case CREATE_TABLE_INDEX:
             return "CREATE_TABLE_INDEX";
-        case SqlRequestType::DROP_TABLE_INDEX:
+        case DROP_TABLE_INDEX:
             return "DROP_TABLE_INDEX";
-        case SqlRequestType::ALTER_TABLE:
+        case ALTER_TABLE:
             return "ALTER_TABLE";
-        case SqlRequestType::TABLE_ROW_STATS:
+        case TABLE_ROW_STATS:
             return "TABLE_ROW_STATS";
         default:
             throw logic_error("Unhandled SQL request type: " + to_string(static_cast<int>(status)));
     }
 }
 
-string toString(Status status) {
+unsigned int toUnsignedInt(SqlRequestType status) { return static_cast<unsigned int>(status); }
+
+QueuedRequestType toQueuedRequestType(std::string const& str) {
+    using enum QueuedRequestType;
+    if (str == "REPLICA_CREATE") {
+        return REPLICA_CREATE;
+    } else if (str == "REPLICA_DELETE") {
+        return REPLICA_DELETE;
+    } else if (str == "REPLICA_FIND") {
+        return REPLICA_FIND;
+    } else if (str == "REPLICA_FIND_ALL") {
+        return REPLICA_FIND_ALL;
+    } else if (str == "TEST_ECHO") {
+        return TEST_ECHO;
+    } else if (str == "SQL") {
+        return SQL;
+    } else if (str == "INDEX") {
+        return INDEX;
+    }
+    throw invalid_argument("Unknown queued request type: '" + str + "'");
+}
+
+QueuedRequestType toQueuedRequestType(unsigned int value) {
+    if (value < static_cast<unsigned int>(QueuedRequestType::_FIRST) ||
+        value > static_cast<unsigned int>(QueuedRequestType::_LAST)) {
+        throw invalid_argument("Unknown queued request type value: " + to_string(value));
+    }
+    return static_cast<QueuedRequestType>(value);
+}
+
+std::string toString(QueuedRequestType status) {
+    using enum QueuedRequestType;
     switch (status) {
-        case Status::CREATED:
+        case REPLICA_CREATE:
+            return "REPLICA_CREATE";
+        case REPLICA_DELETE:
+            return "REPLICA_DELETE";
+        case REPLICA_FIND:
+            return "REPLICA_FIND";
+        case REPLICA_FIND_ALL:
+            return "REPLICA_FIND_ALL";
+        case TEST_ECHO:
+            return "TEST_ECHO";
+        case SQL:
+            return "SQL";
+        case INDEX:
+            return "INDEX";
+        default:
+            throw logic_error("Unhandled queued request type: " + to_string(static_cast<int>(status)));
+    }
+}
+
+unsigned int toUnsignedInt(QueuedRequestType status) { return static_cast<unsigned int>(status); }
+
+SqlIndexSpec toSqlIndexSpec(std::string const& str) {
+    using enum SqlIndexSpec;
+    if (str == "DEFAULT") {
+        return DEFAULT;
+    } else if (str == "UNIQUE") {
+        return UNIQUE;
+    } else if (str == "FULLTEXT") {
+        return FULLTEXT;
+    } else if (str == "SPATIAL") {
+        return SPATIAL;
+    }
+    throw invalid_argument("Unknown SQL index specification: '" + str + "'");
+}
+
+SqlIndexSpec toSqlIndexSpec(unsigned int value) {
+    if (value < static_cast<unsigned int>(SqlIndexSpec::_FIRST) ||
+        value > static_cast<unsigned int>(SqlIndexSpec::_LAST)) {
+        throw invalid_argument("Unknown SQL index specification value: " + to_string(value));
+    }
+    return static_cast<SqlIndexSpec>(value);
+}
+
+std::string toString(SqlIndexSpec spec) {
+    using enum SqlIndexSpec;
+    switch (spec) {
+        case DEFAULT:
+            return "DEFAULT";
+        case UNIQUE:
+            return "UNIQUE";
+        case FULLTEXT:
+            return "FULLTEXT";
+        case SPATIAL:
+            return "SPATIAL";
+        default:
+            throw logic_error("Unhandled SQL index specification: " + to_string(static_cast<int>(spec)));
+    }
+}
+
+unsigned int toUnsignedInt(SqlIndexSpec spec) { return static_cast<unsigned int>(spec); }
+
+Status toStatus(std::string const& statusStr) {
+    using enum Status;
+    if (statusStr == "CREATED") return CREATED;
+    if (statusStr == "SUCCESS") return SUCCESS;
+    if (statusStr == "QUEUED") return QUEUED;
+    if (statusStr == "IN_PROGRESS") return IN_PROGRESS;
+    if (statusStr == "IS_CANCELLING") return IS_CANCELLING;
+    if (statusStr == "BAD") return BAD;
+    if (statusStr == "FAILED") return FAILED;
+    if (statusStr == "CANCELLED") return CANCELLED;
+    throw invalid_argument("Unknown status string: " + statusStr);
+}
+
+Status toStatus(unsigned int value) {
+    if (value < static_cast<unsigned int>(Status::_FIRST) ||
+        value > static_cast<unsigned int>(Status::_LAST)) {
+        throw invalid_argument("Unknown status value: " + to_string(value));
+    }
+    return static_cast<Status>(value);
+}
+
+string toString(Status status) {
+    using enum Status;
+    switch (status) {
+        case CREATED:
             return "CREATED";
-        case Status::SUCCESS:
+        case SUCCESS:
             return "SUCCESS";
-        case Status::QUEUED:
+        case QUEUED:
             return "QUEUED";
-        case Status::IN_PROGRESS:
+        case IN_PROGRESS:
             return "IN_PROGRESS";
-        case Status::IS_CANCELLING:
+        case IS_CANCELLING:
             return "IS_CANCELLING";
-        case Status::BAD:
+        case BAD:
             return "BAD";
-        case Status::FAILED:
+        case FAILED:
             return "FAILED";
-        case Status::CANCELLED:
+        case CANCELLED:
             return "CANCELLED";
         default:
             throw logic_error("Unhandled status: " + to_string(static_cast<int>(status)));
     }
 }
 
+unsigned int toUnsignedInt(Status status) { return static_cast<unsigned int>(status); }
+
+StatusExt toStatusExt(string const& str) {
+    using enum StatusExt;
+    if (str == "NONE") return NONE;
+    if (str == "INVALID_PARAM") return INVALID_PARAM;
+    if (str == "INVALID_ID") return INVALID_ID;
+    if (str == "FOLDER_STAT") return FOLDER_STAT;
+    if (str == "FOLDER_CREATE") return FOLDER_CREATE;
+    if (str == "FILE_STAT") return FILE_STAT;
+    if (str == "FILE_SIZE") return FILE_SIZE;
+    if (str == "FOLDER_READ") return FOLDER_READ;
+    if (str == "FILE_READ") return FILE_READ;
+    if (str == "FILE_ROPEN") return FILE_ROPEN;
+    if (str == "FILE_CREATE") return FILE_CREATE;
+    if (str == "FILE_OPEN") return FILE_OPEN;
+    if (str == "FILE_RESIZE") return FILE_RESIZE;
+    if (str == "FILE_WRITE") return FILE_WRITE;
+    if (str == "FILE_COPY") return FILE_COPY;
+    if (str == "FILE_DELETE") return FILE_DELETE;
+    if (str == "FILE_RENAME") return FILE_RENAME;
+    if (str == "FILE_EXISTS") return FILE_EXISTS;
+    if (str == "SPACE_REQ") return SPACE_REQ;
+    if (str == "NO_FOLDER") return NO_FOLDER;
+    if (str == "NO_FILE") return NO_FILE;
+    if (str == "NO_ACCESS") return NO_ACCESS;
+    if (str == "NO_SPACE") return NO_SPACE;
+    if (str == "FILE_MTIME") return FILE_MTIME;
+    if (str == "MYSQL_ERROR") return MYSQL_ERROR;
+    if (str == "LARGE_RESULT") return LARGE_RESULT;
+    if (str == "NO_SUCH_TABLE") return NO_SUCH_TABLE;
+    if (str == "NOT_PARTITIONED_TABLE") return NOT_PARTITIONED_TABLE;
+    if (str == "NO_SUCH_PARTITION") return NO_SUCH_PARTITION;
+    if (str == "MULTIPLE") return MULTIPLE;
+    if (str == "OTHER_EXCEPTION") return OTHER_EXCEPTION;
+    if (str == "FOREIGN_INSTANCE") return FOREIGN_INSTANCE;
+    if (str == "DUPLICATE_KEY") return DUPLICATE_KEY;
+    if (str == "CANT_DROP_KEY") return CANT_DROP_KEY;
+    if (str == "CONFIG_NO_SUCH_DB") return CONFIG_NO_SUCH_DB;
+    if (str == "CONFIG_NO_SUCH_TABLE") return CONFIG_NO_SUCH_TABLE;
+    throw invalid_argument("Unknown extended status string: " + str);
+}
+
+StatusExt toStatusExt(unsigned int value) {
+    if (value < static_cast<unsigned int>(StatusExt::_FIRST) ||
+        value > static_cast<unsigned int>(StatusExt::_LAST)) {
+        throw invalid_argument("Unknown extended status value: " + to_string(value));
+    }
+    return static_cast<StatusExt>(value);
+}
+
 string toString(StatusExt extendedStatus) {
+    using enum StatusExt;
     switch (extendedStatus) {
-        case StatusExt::NONE:
+        case NONE:
             return "NONE";
-        case StatusExt::INVALID_PARAM:
+        case INVALID_PARAM:
             return "INVALID_PARAM";
-        case StatusExt::INVALID_ID:
+        case INVALID_ID:
             return "INVALID_ID";
-        case StatusExt::FOLDER_STAT:
+        case FOLDER_STAT:
             return "FOLDER_STAT";
-        case StatusExt::FOLDER_CREATE:
+        case FOLDER_CREATE:
             return "FOLDER_CREATE";
-        case StatusExt::FILE_STAT:
+        case FILE_STAT:
             return "FILE_STAT";
-        case StatusExt::FILE_SIZE:
+        case FILE_SIZE:
             return "FILE_SIZE";
-        case StatusExt::FOLDER_READ:
+        case FOLDER_READ:
             return "FOLDER_READ";
-        case StatusExt::FILE_READ:
+        case FILE_READ:
             return "FILE_READ";
-        case StatusExt::FILE_ROPEN:
+        case FILE_ROPEN:
             return "FILE_ROPEN";
-        case StatusExt::FILE_CREATE:
+        case FILE_CREATE:
             return "FILE_CREATE";
-        case StatusExt::FILE_OPEN:
+        case FILE_OPEN:
             return "FILE_OPEN";
-        case StatusExt::FILE_RESIZE:
+        case FILE_RESIZE:
             return "FILE_RESIZE";
-        case StatusExt::FILE_WRITE:
+        case FILE_WRITE:
             return "FILE_WRITE";
-        case StatusExt::FILE_COPY:
+        case FILE_COPY:
             return "FILE_COPY";
-        case StatusExt::FILE_DELETE:
+        case FILE_DELETE:
             return "FILE_DELETE";
-        case StatusExt::FILE_RENAME:
+        case FILE_RENAME:
             return "FILE_RENAME";
-        case StatusExt::FILE_EXISTS:
+        case FILE_EXISTS:
             return "FILE_EXISTS";
-        case StatusExt::SPACE_REQ:
+        case SPACE_REQ:
             return "SPACE_REQ";
-        case StatusExt::NO_FOLDER:
+        case NO_FOLDER:
             return "NO_FOLDER";
-        case StatusExt::NO_FILE:
+        case NO_FILE:
             return "NO_FILE";
-        case StatusExt::NO_ACCESS:
+        case NO_ACCESS:
             return "NO_ACCESS";
-        case StatusExt::NO_SPACE:
+        case NO_SPACE:
             return "NO_SPACE";
-        case StatusExt::FILE_MTIME:
+        case FILE_MTIME:
             return "FILE_MTIME";
-        case StatusExt::MYSQL_ERROR:
+        case MYSQL_ERROR:
             return "MYSQL_ERROR";
-        case StatusExt::LARGE_RESULT:
+        case LARGE_RESULT:
             return "LARGE_RESULT";
-        case StatusExt::NO_SUCH_TABLE:
+        case NO_SUCH_TABLE:
             return "NO_SUCH_TABLE";
-        case StatusExt::NOT_PARTITIONED_TABLE:
+        case NOT_PARTITIONED_TABLE:
             return "NOT_PARTITIONED_TABLE";
-        case StatusExt::NO_SUCH_PARTITION:
+        case NO_SUCH_PARTITION:
             return "NO_SUCH_PARTITION";
-        case StatusExt::MULTIPLE:
+        case MULTIPLE:
             return "MULTIPLE";
-        case StatusExt::OTHER_EXCEPTION:
+        case OTHER_EXCEPTION:
             return "OTHER_EXCEPTION";
-        case StatusExt::FOREIGN_INSTANCE:
+        case FOREIGN_INSTANCE:
             return "FOREIGN_INSTANCE";
-        case StatusExt::DUPLICATE_KEY:
+        case DUPLICATE_KEY:
             return "DUPLICATE_KEY";
-        case StatusExt::CANT_DROP_KEY:
+        case CANT_DROP_KEY:
             return "CANT_DROP_KEY";
-        case StatusExt::CONFIG_NO_SUCH_DB:
+        case CONFIG_NO_SUCH_DB:
             return "CONFIG_NO_SUCH_DB";
-        case StatusExt::CONFIG_NO_SUCH_TABLE:
+        case CONFIG_NO_SUCH_TABLE:
             return "CONFIG_NO_SUCH_TABLE";
         default:
-            throw logic_error("Unhandled extended status: " + to_string(static_cast<int>(extendedStatus)));
+            throw invalid_argument("Unknown extended status enum value: " +
+                                   to_string(static_cast<unsigned int>(extendedStatus)));
     }
 }
 
-string toString(Status status, StatusExt extendedStatus) {
+unsigned int toUnsignedInt(StatusExt extendedStatus) { return static_cast<unsigned int>(extendedStatus); }
+
+std::string toString(Status status, StatusExt extendedStatus) {
     return toString(status) + "::" + toString(extendedStatus);
 }
 
+ServiceRequestType toServiceRequestType(std::string const& str) {
+    using enum ServiceRequestType;
+    if (str == "SERVICE_SUSPEND") return SERVICE_SUSPEND;
+    if (str == "SERVICE_RESUME") return SERVICE_RESUME;
+    if (str == "SERVICE_STATUS") return SERVICE_STATUS;
+    if (str == "SERVICE_REQUESTS") return SERVICE_REQUESTS;
+    if (str == "SERVICE_DRAIN") return SERVICE_DRAIN;
+    if (str == "SERVICE_RECONFIG") return SERVICE_RECONFIG;
+    throw invalid_argument("Unknown service request type string: " + str);
+}
+
+ServiceRequestType toServiceRequestType(unsigned int value) {
+    if (value < static_cast<unsigned int>(ServiceRequestType::_FIRST) ||
+        value > static_cast<unsigned int>(ServiceRequestType::_LAST)) {
+        throw invalid_argument("Unknown service request type value: " + to_string(value));
+    }
+    return static_cast<ServiceRequestType>(value);
+}
+
+std::string toString(ServiceRequestType requestType) {
+    using enum ServiceRequestType;
+    switch (requestType) {
+        case SERVICE_SUSPEND:
+            return "SERVICE_SUSPEND";
+        case SERVICE_RESUME:
+            return "SERVICE_RESUME";
+        case SERVICE_STATUS:
+            return "SERVICE_STATUS";
+        case SERVICE_REQUESTS:
+            return "SERVICE_REQUESTS";
+        case SERVICE_DRAIN:
+            return "SERVICE_DRAIN";
+        case SERVICE_RECONFIG:
+            return "SERVICE_RECONFIG";
+        default:
+            throw invalid_argument("Unknown service request type: " +
+                                   to_string(static_cast<unsigned int>(requestType)));
+    }
+}
+
+unsigned int toUnsignedInt(ServiceRequestType requestType) { return static_cast<unsigned int>(requestType); }
+
+ServiceState toServiceState(string const& str) {
+    using enum ServiceState;
+    if (str == "SUSPEND_IN_PROGRESS") return SUSPEND_IN_PROGRESS;
+    if (str == "SUSPENDED") return SUSPENDED;
+    if (str == "RUNNING") return RUNNING;
+    throw invalid_argument("Unknown service state string: " + str);
+}
+
+ServiceState toServiceState(unsigned int value) {
+    if (value < static_cast<unsigned int>(ServiceState::_FIRST) ||
+        value > static_cast<unsigned int>(ServiceState::_LAST)) {
+        throw invalid_argument("Unknown service state value: " + to_string(value));
+    }
+    return static_cast<ServiceState>(value);
+}
+
 string toString(ServiceState state) {
+    using enum ServiceState;
     switch (state) {
-        case ServiceState::SUSPEND_IN_PROGRESS:
+        case SUSPEND_IN_PROGRESS:
             return "SUSPEND_IN_PROGRESS";
-        case ServiceState::SUSPENDED:
+        case SUSPENDED:
             return "SUSPENDED";
-        case ServiceState::RUNNING:
+        case RUNNING:
             return "RUNNING";
         default:
             throw logic_error("Unhandled service state: " + to_string(static_cast<int>(state)));
     }
 }
+
+unsigned int toUnsignedInt(ServiceState state) { return static_cast<unsigned int>(state); }
 
 #define _THROW_INVALID_PARAM(name, msg)                                                                    \
     throw invalid_argument("protocol::RequestParams::" + string(__func__) + " parameter '" + name + "' " + \

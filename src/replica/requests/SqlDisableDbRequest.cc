@@ -22,26 +22,23 @@
 // Class header
 #include "replica/requests/SqlDisableDbRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDisableDbRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlDisableDbRequest::Ptr SqlDisableDbRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                             string const& workerName,
-                                                             std::string const& database,
-                                                             CallbackType const& onFinish, int priority,
-                                                             bool keepTracking, string const& jobId,
-                                                             unsigned int requestExpirationIvalSec) {
-    auto ptr =
-            Ptr(new SqlDisableDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
+shared_ptr<SqlDisableDbRequest> SqlDisableDbRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, std::string const& database,
+        CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<SqlDisableDbRequest>(
+            new SqlDisableDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -49,17 +46,14 @@ SqlDisableDbRequest::Ptr SqlDisableDbRequest::createAndStart(shared_ptr<Controll
 SqlDisableDbRequest::SqlDisableDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                          std::string const& database, CallbackType const& onFinish,
                                          int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_DISABLE_DATABASE", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_DISABLE_DATABASE", protocol::SqlRequestType::DISABLE_DATABASE,
+                     workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DISABLE_DATABASE);
     requestBody.set_database(database);
 }
 
 void SqlDisableDbRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlDisableDbRequest>(lock, _onFinish);
 }
 
