@@ -1152,7 +1152,7 @@ BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     std::string stmt =
             " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
     char const expectedErr[] =
-            "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv "
+            "ParseException:Unsupported SQL construct: identifier \"_chunkId\", Identifiers in Qserv "
             "may not start with an underscore.";
     qsTest.sqlConfig = SqlConfig(
             SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS", "_chunkId"}}}}}));
@@ -1801,30 +1801,12 @@ BOOST_AUTO_TEST_CASE(ImplicitJoin) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(NoSpec) {
-    std::string stmt =
-            "SELECT s1.foo, s2.foo AS s2_foo "
-            "FROM Source s1 NATURAL LEFT JOIN Source s2 "
-            "WHERE s1.bar = s2.bar;";
-    std::string expected =
-            "SELECT `s1`.`foo` AS `s1.foo`,`s2`.`foo` AS `s2_foo` "
-            "FROM `LSST`.`Source_100` AS `s1` NATURAL LEFT OUTER JOIN `LSST`.`Source_100` AS `s2` "
-            "WHERE `s1`.`bar`=`s2`.`bar`";
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"foo", "bar"}}}}}));
-    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    qs->addChunk(ChunkSpec::makeFake(100, true));
-    auto i = qs->cQueryBegin();
-    auto e = qs->cQueryEnd();
-    BOOST_REQUIRE(i != e);
-    auto queryTemplates = qs->makeQueryTemplates();
-    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
-    BOOST_CHECK_EQUAL(first->queries->getTemplates().size(), 1U);
-    BOOST_CHECK_EQUAL(first->queries->getTemplates()[0], expected);
-    BOOST_CHECK_EQUAL(first->subChunkTables.size(), 0U);
-    BOOST_CHECK_EQUAL(first->db, "LSST");
-    BOOST_CHECK_EQUAL(first->chunkId, 100);
-    ++i;
-    BOOST_CHECK(i == e);
+BOOST_AUTO_TEST_CASE(NaturalJoinRejected) {
+    // Verify that the parser rejection is reported through QuerySession before query analysis.
+    auto qs =
+            queryAnaHelper.buildQuerySession(qsTest, "SELECT o.objectId FROM Object o NATURAL JOIN Source s");
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "ParseException:Unsupported SQL construct: NATURAL JOIN; use USING or ON");
 }
 
 BOOST_AUTO_TEST_CASE(Cross) {
@@ -1945,7 +1927,8 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     char const* expectedErr =
-            "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
+            "ParseException:Unsupported SQL construct: functions in ORDER BY. Select "
+            "the expression under "
             "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".";
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
@@ -1961,7 +1944,8 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     char const* expectedErr =
-            "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
+            "ParseException:Unsupported SQL construct: functions in ORDER BY. Select "
+            "the expression under "
             "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".";
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
@@ -2154,7 +2138,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
             "FROM Object WHERE rFlux_PS > 10;";
 
     // CASE in column spec is illegal.
-    char const* expectedErr = "ParseException:qserv cannot parse query: CASE expressions are not supported.";
+    char const* expectedErr = "ParseException:Unsupported SQL construct: CASE expressions";
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }

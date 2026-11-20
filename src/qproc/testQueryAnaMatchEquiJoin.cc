@@ -205,8 +205,6 @@ BOOST_AUTO_TEST_CASE(OverlapSubChunkReferences) {
             "SELECT t.subChunkId AS sc" + from + " ORDER BY sc LIMIT 5",
             "SELECT t.subChunkId+1" + from,
             "SELECT o.objectIdObjTest FROM Object o "
-            "JOIN RefObjMatch m ON o.objectIdObjTest=m.objectId NATURAL JOIN SimRefObject t",
-            "SELECT o.objectIdObjTest FROM Object o "
             "JOIN RefObjMatch m ON o.objectIdObjTest=m.objectId "
             "JOIN SimRefObject t USING(subChunkId) WHERE t.refObjectId=m.refObjectId",
     };

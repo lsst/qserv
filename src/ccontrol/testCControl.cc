@@ -68,7 +68,8 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
         // rejected. This is true for Qserv too.
         ParseErrorQueryInfo("SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and "
                             "0.1 ORDER BY ABS(iE1_SG)",
-                            "ParseException:qserv does not support functions in ORDER BY. Select the "
+                            "ParseException:Unsupported SQL construct: functions in "
+                            "ORDER BY. Select the "
                             "expression under an alias and order by the alias instead, e.g. \"SELECT ..., "
                             "f(x) AS fx ... ORDER BY fx\"."),
 
@@ -89,30 +90,34 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
 
         ParseErrorQueryInfo(
                 "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
-                "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start "
+                "ParseException:Unsupported SQL construct: identifier \"_chunkId\", Identifiers in Qserv may "
+                "not start "
                 "with an underscore."),
 
+        ParseErrorQueryInfo("SELECT objectId AS _objectId FROM Object;",
+                            "ParseException:Unsupported SQL construct: identifier \"_objectId\", Identifiers "
+                            "in Qserv may not "
+                            "start with an underscore."),
+
+        ParseErrorQueryInfo("SELECT objectId FROM Object AS _qserv_overlap_dup;",
+                            "ParseException:Unsupported SQL construct: identifier \"_qserv_overlap_dup\", "
+                            "Identifiers in Qserv "
+                            "may not start with an underscore."),
+
         ParseErrorQueryInfo(
-                "SELECT objectId AS _objectId FROM Object;",
-                "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv may not "
+                "SELECT _ra FROM Object;",
+                "ParseException:Unsupported SQL construct: identifier \"_ra\", Identifiers in Qserv may not "
                 "start with an underscore."),
 
         ParseErrorQueryInfo(
-                "SELECT objectId FROM Object AS _qserv_overlap_dup;",
-                "ParseException:Error parsing query, near \"_qserv_overlap_dup\", Identifiers in Qserv "
+                "SELECT `_ra` FROM Object;",
+                "ParseException:Unsupported SQL construct: identifier \"_ra\", Identifiers in Qserv "
                 "may not start with an underscore."),
 
-        ParseErrorQueryInfo("SELECT _ra FROM Object;",
-                            "ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv may not "
-                            "start with an underscore."),
-
-        ParseErrorQueryInfo("SELECT `_ra` FROM Object;",
-                            "ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv "
-                            "may not start with an underscore."),
-
-        ParseErrorQueryInfo("SELECT objectId AS `_objectId` FROM Object;",
-                            "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv "
-                            "may not start with an underscore."),
+        ParseErrorQueryInfo(
+                "SELECT objectId AS `_objectId` FROM Object;",
+                "ParseException:Unsupported SQL construct: identifier \"_objectId\", Identifiers in Qserv "
+                "may not start with an underscore."),
 
         ParseErrorQueryInfo(
                 "LECT sce.filterName,sce.field "
@@ -126,8 +131,7 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
         ParseErrorQueryInfo("SELECT  COUNT(*) AS totalCount, "
                             "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
                             "FROM Object WHERE rFlux_PS > 10;",
-                            "ParseException:qserv cannot parse query: CASE expressions are not "
-                            "supported."),
+                            "ParseException:Unsupported SQL construct: CASE expressions"),
 };
 
 BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
