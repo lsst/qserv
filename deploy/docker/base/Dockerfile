@@ -14,7 +14,7 @@
 # packages are preferred whenever suitable, though some here require source builds.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM almalinux:10.2 AS qserv-build-base
+FROM almalinux:10.3 AS qserv-build-base
 
 LABEL org.opencontainers.image.source=https://github.com/lsst/qserv
 LABEL org.opencontainers.image.description="Build env base image for the Qserv distributed database system"
@@ -144,7 +144,7 @@ RUN cd /tmp \
 RUN cd /tmp \
     && git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp \
     && cd aws-sdk-cpp \
-    && git checkout tags/1.11.729 \
+    && git checkout tags/1.11.933 \
     && mkdir build \
     && cd build \
     && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_ONLY="s3" -DUSE_TLS_V1_3=on -DCPP_STANDARD=23 \
@@ -200,7 +200,7 @@ CMD ["tail", "-f", "/dev/null"]
 # DO NOT BLOAT THE RUN BASE
 #-------------------------------------------------------------------------------------------------------------
 
-FROM almalinux:10.2 AS qserv-run-base
+FROM almalinux:10.3 AS qserv-run-base
 
 LABEL org.opencontainers.image.source=https://github.com/lsst/qserv
 LABEL org.opencontainers.image.description="Runtime base image for the Qserv distributed database system"
