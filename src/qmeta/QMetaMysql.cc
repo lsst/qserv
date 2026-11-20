@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <set>
 #include <stdexcept>
 
 // Third-party headers
@@ -330,16 +331,15 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     // return value of the auto-increment column
     QueryId queryId = static_cast<QueryId>(_conn->getInsertId());
 
-    // register all tables, first remove all duplicates from a list
-    TableNames uniqueTables = tables;
-    auto end = unique(uniqueTables.begin(), uniqueTables.end());
-    for (auto itr = uniqueTables.begin(); itr != end; ++itr) {
+    // register all tables, ignoring duplicate db-table pairs.
+    std::set<TableNames::value_type> const uniqueTables(tables.begin(), tables.end());
+    for (auto const& [dbName, tableName] : uniqueTables) {
         query = "INSERT INTO QTable (queryId, dbName, tblName) VALUES (";
         query += to_string(queryId);
         query += ", '";
-        query += _conn->escapeString(itr->first);
+        query += _conn->escapeString(dbName);
         query += "', '";
-        query += _conn->escapeString(itr->second);
+        query += _conn->escapeString(tableName);
         query += "')";
 
         LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
