@@ -22,6 +22,9 @@ mariadbUpgrade:
 
 podManagementPolicy: Parallel  # Parallel | OrderedReady
 
+
+openshift: false
+
 czars:
   replicas: 1
   # tier: []

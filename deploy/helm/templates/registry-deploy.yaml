@@ -32,6 +32,9 @@ spec:
                     operator: In
                     values: {{ .Values.replication.tier | toJson }}
       {{- end }}
+      {{- if .Values.openshift }}
+      serviceAccountName: rsp-qserv-czar
+      {{- end }}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
