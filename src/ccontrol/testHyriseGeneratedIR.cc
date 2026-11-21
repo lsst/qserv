@@ -1519,81 +1519,6 @@ static const vector<HyriseTestQueries> HYRISE_TEST_QUERIES = {
                             nullptr, 0, -1);
                 },
                 "SELECT (f(`one`)/f2(`two`)) FROM `Object` WHERE qserv_areaspec_box(0,0,1,1)"),
-        // test NATURAL LEFT JOIN
-        HyriseTestQueries(
-                "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 NATURAL LEFT JOIN Source s2 WHERE s1.bar = "
-                "s2.bar;",
-                []() -> shared_ptr<query::SelectStmt> {
-                    return SelectStmt(
-                            SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s1", "foo")),
-                                                              query::ValueExpr::NONE)),
-                                       ValueExpr("s2_foo", FactorOp(ValueFactor(ColumnRef("", "s2", "foo")),
-                                                                    query::ValueExpr::NONE))),
-                            FromList(TableRef("", "Source", "s1",
-                                              JoinRef(TableRef("", "Source", "s2"), query::JoinRef::LEFT,
-                                                      NATURAL, nullptr))),
-                            WhereClause(OrTerm(AndTerm(BoolFactor(
-                                    IS,
-                                    CompPredicate(
-                                            ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s1", "bar")),
-                                                                   query::ValueExpr::NONE)),
-                                            query::CompPredicate::EQUALS_OP,
-                                            ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s2", "bar")),
-                                                                   query::ValueExpr::NONE))))))),
-                            nullptr, nullptr, nullptr, 0, -1);
-                },
-                "SELECT `s1`.`foo`,`s2`.`foo` AS `s2_foo` FROM `Source` AS `s1` NATURAL LEFT OUTER JOIN "
-                "`Source` AS `s2` WHERE `s1`.`bar`=`s2`.`bar`"),
-        // test NATURAL RIGHT JOIN
-        HyriseTestQueries(
-                "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 NATURAL RIGHT JOIN Source s2 WHERE s1.bar = "
-                "s2.bar;",
-                []() -> shared_ptr<query::SelectStmt> {
-                    return SelectStmt(
-                            SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s1", "foo")),
-                                                              query::ValueExpr::NONE)),
-                                       ValueExpr("s2_foo", FactorOp(ValueFactor(ColumnRef("", "s2", "foo")),
-                                                                    query::ValueExpr::NONE))),
-                            FromList(TableRef("", "Source", "s1",
-                                              JoinRef(TableRef("", "Source", "s2"), query::JoinRef::RIGHT,
-                                                      NATURAL, nullptr))),
-                            WhereClause(OrTerm(AndTerm(BoolFactor(
-                                    IS,
-                                    CompPredicate(
-                                            ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s1", "bar")),
-                                                                   query::ValueExpr::NONE)),
-                                            query::CompPredicate::EQUALS_OP,
-                                            ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s2", "bar")),
-                                                                   query::ValueExpr::NONE))))))),
-                            nullptr, nullptr, nullptr, 0, -1);
-                },
-                "SELECT `s1`.`foo`,`s2`.`foo` AS `s2_foo` FROM `Source` AS `s1` NATURAL RIGHT OUTER JOIN "
-                "`Source` AS `s2` WHERE `s1`.`bar`=`s2`.`bar`"),
-        // test NATURAL JOIN
-        HyriseTestQueries(
-                "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 NATURAL JOIN Source s2 WHERE s1.bar = "
-                "s2.bar;",
-                []() -> shared_ptr<query::SelectStmt> {
-                    return SelectStmt(
-                            SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s1", "foo")),
-                                                              query::ValueExpr::NONE)),
-                                       ValueExpr("s2_foo", FactorOp(ValueFactor(ColumnRef("", "s2", "foo")),
-                                                                    query::ValueExpr::NONE))),
-                            FromList(TableRef("", "Source", "s1",
-                                              JoinRef(TableRef("", "Source", "s2"), query::JoinRef::DEFAULT,
-                                                      NATURAL, nullptr))),
-                            WhereClause(OrTerm(AndTerm(BoolFactor(
-                                    IS,
-                                    CompPredicate(
-                                            ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s1", "bar")),
-                                                                   query::ValueExpr::NONE)),
-                                            query::CompPredicate::EQUALS_OP,
-                                            ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s2", "bar")),
-                                                                   query::ValueExpr::NONE))))))),
-                            nullptr, nullptr, nullptr, 0, -1);
-                },
-                "SELECT `s1`.`foo`,`s2`.`foo` AS `s2_foo` FROM `Source` AS `s1` NATURAL JOIN `Source` AS "
-                "`s2` WHERE `s1`.`bar`=`s2`.`bar`"),
         // test LEFT JOIN ... ON
         HyriseTestQueries(
                 "SELECT o.objectId, s.objectId FROM Object o LEFT JOIN Source s ON o.objectId = s.objectId",
@@ -2652,7 +2577,7 @@ BOOST_AUTO_TEST_CASE(AreaRestrictorAgainstColumnNotSupported) {
 
 bool areaRestrictorNotAllowed(ccontrol::ParseException const& err) {
     return std::string(err.what())
-                   .find("qserv area restrictors are only supported in conjunctive (AND) contexts") !=
+                   .find("area restrictors are only supported in conjunctive (AND) contexts") !=
            std::string::npos;
 }
 
@@ -2728,6 +2653,23 @@ BOOST_AUTO_TEST_CASE(AreaRestrictorUnderNotRejected) {
                                   "SELECT objectId FROM Object "
                                   "WHERE NOT (qserv_areaspec_box(0, 0, 3, 10) OR filterName='g')"),
                           ccontrol::ParseException, areaRestrictorNotAllowed);
+}
+
+// NATURAL JOINs should be rejected.
+BOOST_AUTO_TEST_CASE(NaturalJoinRejected) {
+    auto naturalNotSupported = [](ccontrol::ParseException const& e) {
+        return std::string(e.what()).find("Unsupported SQL construct: NATURAL JOIN; use USING or ON") !=
+               std::string::npos;
+    };
+    for (char const* stmt : {"SELECT s1.foo FROM Source s1 NATURAL JOIN Source s2",
+                             "SELECT s1.foo FROM Source s1 NATURAL LEFT JOIN Source s2",
+                             "SELECT o.objectId FROM Object o NATURAL JOIN Source s "
+                             "JOIN Filter f ON s.filterId = f.filterId"}) {
+        BOOST_TEST_CONTEXT(stmt) {
+            BOOST_CHECK_EXCEPTION(ccontrol::HyriseAdapter::makeSelectStmt(stmt), ccontrol::ParseException,
+                                  naturalNotSupported);
+        }
+    }
 }
 
 // NOT precedence: implicit precedence vs explicit precedence enforced by parentheses.
