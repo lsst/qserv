@@ -250,7 +250,7 @@ void SqlJob::onRequestFinish(shared_ptr<SqlRequest> const& request) {
                     // These special conditions are counted as a success for tables
                     // that might be successfully processed before by another instance
                     // the same job.
-                    auto const& responseData = request->responseData();
+                    auto const& responseData = ptr->responseData();
                     if (responseData.hasErrors()) {
                         if (ignoreNonPartitioned()) {
                             if (responseData.allErrorsOf(protocol::StatusExt::NOT_PARTITIONED_TABLE)) {
@@ -262,6 +262,8 @@ void SqlJob::onRequestFinish(shared_ptr<SqlRequest> const& request) {
                                 numSuccess++;
                             }
                         }
+                    } else {
+                        numSuccess++;
                     }
                 }
             }
