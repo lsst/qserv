@@ -31,6 +31,11 @@
 // Qserv headers
 #include "replica/contr/HttpModule.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class DatabaseFamilyInfo;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -43,9 +48,11 @@ public:
     typedef std::shared_ptr<HttpJobsModule> Ptr;
 
     /**
-     * @note supported values for parameter 'subModuleName' are
-     * the empty string (for pulling info on all known Jobs),
-     * or 'SELECT-ONE-BY-ID' for a single job.
+     * @note supported values for parameter 'subModuleName':
+     *
+     *   ''                     Pulling info on all known jobs
+     *   'SELECT-ONE-BY-ID'     Get information on a single job
+     *   'SUBMIT'               Submit a new job
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -69,6 +76,9 @@ private:
 
     nlohmann::json _jobs();
     nlohmann::json _oneJob();
+    nlohmann::json _submit();
+    nlohmann::json _submitPurgeJob(DatabaseFamilyInfo const& databaseFamily);
+    nlohmann::json _submitRebalanceJob(DatabaseFamilyInfo const& databaseFamily);
 };
 
 }  // namespace lsst::qserv::replica

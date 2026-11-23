@@ -184,6 +184,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "qserv-sync-force") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "chunk-map-update") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "purge-excess-replicas") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "enable-replica-rebalance") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "permanent-worker-delete") == 1);
     BOOST_CHECK(config->get<string>("controller", "http-root") == "/tmp/http");
     BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
@@ -417,6 +418,9 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "purge-excess-replicas", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "purge-excess-replicas") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "enable-replica-rebalance", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "enable-replica-rebalance") == 0);
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "permanent-worker-delete", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "permanent-worker-delete") == 0);

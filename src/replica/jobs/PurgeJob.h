@@ -29,6 +29,9 @@
 #include <queue>
 #include <string>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/jobs/DeleteReplicaJob.h"
 #include "replica/jobs/FindAllJob.h"
@@ -42,6 +45,9 @@ namespace lsst::qserv::replica {
  * from worker services upon a completion of the job.
  */
 struct PurgeJobResult {
+    /// @return The JSON representation of the object
+    nlohmann::json toJson() const;
+
     /// Results reported by workers upon the successful completion
     /// of the corresponding jobs
     std::list<ReplicaInfo> replicas;
