@@ -17,7 +17,8 @@ data:
         "ingest-job-monitor-ival-sec": 1,
         "auto-register-workers": 1,
         "chunk-map-update": 1,
-        "purge-excess-replicas": 1,
+        "purge-excess-replicas": 0,
+        "enable-replica-rebalance": 0,
         "http-root": "/usr/local/qserv/www/"
       },
       "xrootd": {
