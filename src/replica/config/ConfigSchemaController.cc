@@ -177,6 +177,10 @@ json ConfigSchemaController::_build() {
              " where the number of replicas exceeds the required replication level."},
             {"empty-allowed", 1},
             {"default", 0}};
+    controller["enable-replica-rebalance"] = {
+            {"description", "The flag if not 0 would enable the replica rebalancing mechanism."},
+            {"empty-allowed", 1},
+            {"default", 1}};
     controller["permanent-worker-delete"] = {
             {"description",
              "The flag if not 0 would result in permanently removing the evicted workers"
