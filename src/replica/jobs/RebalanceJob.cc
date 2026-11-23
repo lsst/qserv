@@ -38,6 +38,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -46,6 +47,54 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RebalanceJob");
 }  // namespace
 
 namespace lsst::qserv::replica {
+
+json RebalanceJobResult::toJson() const {
+    json j;
+    j["created-replicas"] = json::array();
+    for (auto const& replica : createdReplicas) {
+        j["created-replicas"].push_back(replica.toJson());
+    }
+    j["created-chunks"] = json::object();
+    for (auto const& chunk : createdChunks) {
+        j["created-chunks"][to_string(chunk.first)] = json::object();
+        for (auto const& db : chunk.second) {
+            j["created-chunks"][to_string(chunk.first)][db.first] = json::object();
+            for (auto const& worker : db.second) {
+                j["created-chunks"][to_string(chunk.first)][db.first][worker.first] = worker.second.toJson();
+            }
+        }
+    }
+    j["deleted-replicas"] = json::array();
+    for (auto&& replica : deletedReplicas) {
+        j["deleted-replicas"].push_back(replica.toJson());
+    }
+    j["deleted-chunks"] = json::object();
+    for (auto const& chunk : deletedChunks) {
+        j["deleted-chunks"][to_string(chunk.first)] = json::object();
+        for (auto const& db : chunk.second) {
+            j["deleted-chunks"][to_string(chunk.first)][db.first] = json::object();
+            for (auto const& worker : db.second) {
+                j["deleted-chunks"][to_string(chunk.first)][db.first][worker.first] = worker.second.toJson();
+            }
+        }
+    }
+    j["workers"] = json::object();
+    for (auto const& worker : workers) {
+        j["workers"][worker.first] = worker.second;
+    }
+    j["plan"] = json::object();
+    for (auto const& chunk : plan) {
+        j["plan"][to_string(chunk.first)] = json::object();
+        for (auto const& src : chunk.second) {
+            j["plan"][to_string(chunk.first)][src.first] = src.second;
+        }
+    }
+    j["total-workers"] = totalWorkers;
+    j["total-good-chunks"] = totalGoodChunks;
+    j["avg-chunks"] = avgChunks;
+
+    return j;
+}
 
 string RebalanceJob::typeName() { return "RebalanceJob"; }
 

@@ -28,8 +28,14 @@
 // Qserv headers
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
+#include "replica/config/Config.h"
+#include "replica/config/ConfigDatabaseFamily.h"
+#include "replica/contr/Controller.h"
+#include "replica/jobs/RebalanceJob.h"
+#include "replica/jobs/PurgeJob.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
+#include "replica/util/Common.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -52,6 +58,8 @@ json HttpJobsModule::executeImpl(string const& subModuleName) {
         return _jobs();
     else if (subModuleName == "SELECT-ONE-BY-ID")
         return _oneJob();
+    else if (subModuleName == "SUBMIT")
+        return _submit();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
@@ -99,6 +107,74 @@ json HttpJobsModule::_oneJob() {
     } catch (DatabaseServicesNotFound const& ex) {
         throw http::ErrorNotFound404(__func__, "no such job found, id: " + id);
     }
+}
+
+json HttpJobsModule::_submit() {
+    debug(__func__);
+    checkApiVersion(__func__, 63);
+
+    auto const jobType = body().required<string>("type");
+    auto const databaseFamilyName = body().required<string>("database_family");
+
+    debug(__func__, "type=" + jobType);
+    debug(__func__, "database_family=" + databaseFamilyName);
+
+    // This will throw an exception if no such entry existsor if the name is empty.
+    auto const databaseFamily =
+            controller()->serviceProvider()->config()->databaseFamilyInfo(databaseFamilyName);
+
+    if (jobType == "PurgeJob") {
+        return _submitPurgeJob(databaseFamily);
+    } else if (jobType == "RebalanceJob") {
+        return _submitRebalanceJob(databaseFamily);
+    }
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported job type: '" + jobType + "'");
+}
+
+json HttpJobsModule::_submitPurgeJob(DatabaseFamilyInfo const& databaseFamily) {
+    unsigned int numReplicas = body().optional<unsigned int>("num_replicas", 0);
+    debug(__func__, "num_replicas=" + to_string(numReplicas));
+
+    string const noParentJobId;
+    PurgeJob::CallbackType const onFinish = nullptr;
+    int const priority = PRIORITY_NORMAL;
+
+    auto const job = PurgeJob::create(databaseFamily.name, numReplicas, controller(), noParentJobId, onFinish,
+                                      priority);
+    job->start();
+    logJobStartedEvent(PurgeJob::typeName(), job, databaseFamily.name);
+    job->wait();
+    logJobFinishedEvent(PurgeJob::typeName(), job, databaseFamily.name);
+
+    auto const& resultData = job->getReplicaData();
+    json result = json::object();
+    result["job_result"] = json::object({{"state", Job::state2string(job->state(), job->extendedState())},
+                                         {"progress", job->progress().toJson()},
+                                         {"result", resultData.toJson()}});
+    return result;
+}
+
+json HttpJobsModule::_submitRebalanceJob(DatabaseFamilyInfo const& databaseFamily) {
+    auto const estimateOnly = body().optional<int>("estimate_only", 0) != 0;
+    debug(__func__, "estimate_only=" + string(estimateOnly ? "1" : "0"));
+
+    string const noParentJobId;
+    RebalanceJob::CallbackType const onFinish = nullptr;
+    int const priority = PRIORITY_NORMAL;
+
+    auto const job = RebalanceJob::create(databaseFamily.name, estimateOnly, controller(), noParentJobId,
+                                          onFinish, priority);
+    job->start();
+    logJobStartedEvent(RebalanceJob::typeName(), job, databaseFamily.name);
+    job->wait();
+    logJobFinishedEvent(RebalanceJob::typeName(), job, databaseFamily.name);
+
+    auto const& resultData = job->getReplicaData();
+    json result = json::object();
+    result["job_result"] = json::object({{"state", Job::state2string(job->state(), job->extendedState())},
+                                         {"progress", job->progress().toJson()},
+                                         {"result", resultData.toJson()}});
+    return result;
 }
 
 }  // namespace lsst::qserv::replica
