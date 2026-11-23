@@ -64,9 +64,11 @@ bool ReplicationTask::onRun() {
     launch<ReplicateJob>(priority, numReplicas);
     sync();
 
-    bool const estimateOnly = false;
-    launch<RebalanceJob>(priority, estimateOnly);
-    sync();
+    if (config->get<unsigned int>("controller", "enable-replica-rebalance") != 0) {
+        bool const estimateOnly = false;
+        launch<RebalanceJob>(priority, estimateOnly);
+        sync();
+    }
 
     if (config->get<unsigned int>("controller", "purge-excess-replicas") != 0) {
         launch<PurgeJob>(priority, numReplicas);
