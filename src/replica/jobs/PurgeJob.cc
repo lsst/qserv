@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -43,6 +44,31 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.PurgeJob");
 }  // namespace
 
 namespace lsst::qserv::replica {
+
+json PurgeJobResult::toJson() const {
+    json j;
+    j["replicas"] = json::array();
+    for (auto const& replica : replicas) {
+        j["replicas"].push_back(replica.toJson());
+    }
+    j["chunks"] = json::object();
+    for (auto const& [chunk, dbMap] : chunks) {
+        json dbJson;
+        for (auto const& [db, workerMap] : dbMap) {
+            json workerJson;
+            for (auto const& [worker, replicaInfo] : workerMap) {
+                workerJson[worker] = replicaInfo.toJson();
+            }
+            dbJson[db] = workerJson;
+        }
+        j["chunks"][to_string(chunk)] = dbJson;
+    }
+    j["workers"] = json::object();
+    for (auto const& [worker, count] : workers) {
+        j["workers"][worker] = count;
+    }
+    return j;
+}
 
 string PurgeJob::typeName() { return "PurgeJob"; }
 
