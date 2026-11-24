@@ -38,9 +38,11 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -2235,6 +2237,30 @@ BOOST_AUTO_TEST_CASE(NestedNegationSecondaryIndexRestrictions) {
             BOOST_REQUIRE(qs->getError().empty());
             auto const restrictors = qs->getSecIdxRestrictors();
             BOOST_CHECK_EQUAL(restrictors && !restrictors->empty(), shouldRestrict);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(SecondaryIndexChildLocality) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest"}}, {"Source2", {"objectIdObjTest"}}}}}));
+    for (auto const& stmt : {"SELECT c.objectIdObjTest FROM Source2 c WHERE c.objectIdObjTest=1",
+                             "SELECT c.objectIdObjTest FROM Source2 c JOIN Object o USING(objectIdObjTest) "
+                             "WHERE c.objectIdObjTest=1 AND o.objectIdObjTest=1",
+                             "SELECT c.objectIdObjTest FROM Source2 c WHERE c.OBJECTIDOBJTEST=1",
+                             "SELECT c.objectIdObjTest FROM Source2 c WHERE 1=c.objectidobjtest",
+                             "SELECT c.objectIdObjTest FROM Source2 c WHERE c.ObjectIdObjTest IN (1,2)"}) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+            auto restrictors = qs->getSecIdxRestrictors();
+            BOOST_REQUIRE(restrictors);
+            BOOST_CHECK_EQUAL(restrictors->size(),
+                              std::string(stmt).find("JOIN") == std::string::npos ? 1U : 2U);
+            auto const& restrictor = *restrictors->front();
+            BOOST_CHECK_EQUAL(restrictor.getSecIdxColumnRef()->getTable(), "Object");
+            BOOST_CHECK_EQUAL(restrictor.getSecIdxColumnRef()->getColumn(), "objectIdObjTest");
+            BOOST_CHECK_EQUAL(restrictor.getSourceColumnRef()->getTableAlias(), "c");
+            BOOST_CHECK_EQUAL(restrictor.getSourceColumnRef()->getColumn(), "objectIdObjTest");
         }
     }
 }

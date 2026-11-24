@@ -35,6 +35,7 @@ class Region;
 }
 namespace lsst::qserv::query {
 class BoolFactor;
+class ColumnRef;
 class QueryTemplate;
 }  // namespace lsst::qserv::query
 
@@ -81,6 +82,18 @@ public:
      */
     std::string sqlFragment() const;
 
+    /// @brief Get source column references.
+    /// @see _sourceColumnRefs
+    std::vector<std::shared_ptr<ColumnRef const>> const& getSourceColumnRefs() const {
+        return _sourceColumnRefs;
+    }
+
+    /// @brief Add a table + column pair to this restriction's source column refs.
+    /// @see _sourceColumnRefs
+    void addSourceColumnRef(std::shared_ptr<ColumnRef const> const& column) {
+        _sourceColumnRefs.push_back(column);
+    }
+
 protected:
     AreaRestrictor() = default;
 
@@ -91,6 +104,11 @@ protected:
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
     virtual bool isEqual(const AreaRestrictor& rhs) const = 0;
+
+private:
+    /// @brief Table + column refs this restriction applies to. `RelationGraph` uses these to choose the
+    /// query's core table and to compute how far to dilate the region (see `DispatchArea`).
+    std::vector<std::shared_ptr<ColumnRef const>> _sourceColumnRefs;
 };
 
 class AreaRestrictorBox : public AreaRestrictor {

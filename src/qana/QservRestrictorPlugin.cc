@@ -76,9 +76,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
 
 /// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
-    RestrictorEntry(std::string const& alias_, StringPair const& chunkColumns_,
-                    std::string const& secIndexColumn_)
-            : alias(alias_), chunkColumns(chunkColumns_), secIndexColumn(secIndexColumn_) {}
+    RestrictorEntry(std::string const& db_, std::string const& table_, std::string const& alias_,
+                    StringPair const& chunkColumns_, std::string const& secIndexColumn_)
+            : db(db_),
+              table(table_),
+              alias(alias_),
+              chunkColumns(chunkColumns_),
+              secIndexColumn(secIndexColumn_) {}
+    std::string const db;
+    std::string const table;
     std::string const alias;  //< The alias of the chunked table.
     StringPair const chunkColumns;
     std::string const secIndexColumn;
@@ -119,7 +125,7 @@ public:
             throw qana::AnalysisBug("Unexpected unaliased table reference");
         }
         std::vector<std::string> pCols = partParam.partitionCols();
-        RestrictorEntry se(alias, StringPair(pCols[0], pCols[1]), pCols[2]);
+        RestrictorEntry se(db, table, alias, StringPair(pCols[0], pCols[1]), pCols[2]);
         _chunkedTables.push_back(se);
         for (auto const& joinRef : t.getJoins()) {
             (*this)(joinRef->getRight());
@@ -194,6 +200,13 @@ bool isAdmissibleAreaRestrictor(query::ColumnRef const& lonColumnRef, query::Col
            boost::iequals(latColumnRef.getColumn(), partParam.latColName);
 }
 
+/// @brief Copy a column ref with CSS naming conventions
+std::shared_ptr<query::ColumnRef const> withCssColumnName(query::ColumnRef const& columnRef,
+                                                          std::string const& cssName) {
+    return std::make_shared<query::ColumnRef>(columnRef.getDb(), columnRef.getTable(),
+                                              columnRef.getTableAlias(), cssName);
+}
+
 std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const& scisqlFunc,
                                                           query::QueryContext const& context) {
     auto const& funcParams = scisqlFunc.getParams();
@@ -232,21 +245,28 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
             return nullptr;
         }
     }
+    std::shared_ptr<query::AreaRestrictor> restrictor;
     try {
         auto&& name = scisqlFunc.getName();
         if (name == "scisql_s2PtInBox") {
-            return std::make_shared<query::AreaRestrictorBox>(std::move(parameters));
+            restrictor = std::make_shared<query::AreaRestrictorBox>(std::move(parameters));
         } else if (name == "scisql_s2PtInCircle") {
-            return std::make_shared<query::AreaRestrictorCircle>(std::move(parameters));
+            restrictor = std::make_shared<query::AreaRestrictorCircle>(std::move(parameters));
         } else if (name == "scisql_s2PtInEllipse") {
-            return std::make_shared<query::AreaRestrictorEllipse>(std::move(parameters));
+            restrictor = std::make_shared<query::AreaRestrictorEllipse>(std::move(parameters));
         } else if (name == "scisql_s2PtInCPoly") {
-            return std::make_shared<query::AreaRestrictorPoly>(std::move(parameters));
+            restrictor = std::make_shared<query::AreaRestrictorPoly>(std::move(parameters));
         }
     } catch (std::logic_error const& err) {
         throw std::runtime_error("Wrong number of arguments for " + scisqlFunc.getName());
     }
-    return nullptr;
+    // Store the column ref so RelationGraph knows it has been restricted
+    if (restrictor) {
+        auto const& partParam =
+                context.css->getPartTableParams(lonColumnRef->getDb(), lonColumnRef->getTable());
+        restrictor->addSourceColumnRef(withCssColumnName(*lonColumnRef, partParam.lonColName));
+    }
+    return restrictor;
 }
 
 /**
@@ -336,8 +356,11 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(query::CompP
         return nullptr;
     }
 
-    return std::make_shared<query::AreaRestrictorCircle>(centerLon->getConstVal(), centerLat->getConstVal(),
-                                                         radiusSide->getConstVal());
+    auto restrictor = std::make_shared<query::AreaRestrictorCircle>(
+            centerLon->getConstVal(), centerLat->getConstVal(), radiusSide->getConstVal());
+    auto const& partParam = context.css->getPartTableParams(lonColumnRef->getDb(), lonColumnRef->getTable());
+    restrictor->addSourceColumnRef(withCssColumnName(*lonColumnRef, partParam.lonColName));
+    return restrictor;
 }
 
 /**
@@ -443,6 +466,9 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> co
         for (auto const& chunkedTable : chunkedTables) {
             newTerm->_terms.push_back(
                     areaRestrictor->asSciSqlFactor(chunkedTable.alias, chunkedTable.chunkColumns));
+            areaRestrictor->addSourceColumnRef(
+                    std::make_shared<query::ColumnRef>(chunkedTable.db, chunkedTable.table,
+                                                       chunkedTable.alias, chunkedTable.chunkColumns.first));
         }
     }
     LOGS(_log, LOG_LVL_TRACE,
@@ -451,24 +477,32 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> co
 }
 
 /**
- * @brief Find out if the given ColumnRef represents a valid secondary index column.
+ * @brief Get CSS name of the specified director-index column, or empty if none. Ignores case.
  */
-bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::ColumnRef> cr) {
+std::string secIndexColName(query::QueryContext const& context, std::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the secondary index column for a
     // database's partitioning strategy.
-    if (nullptr == cr || nullptr == context.css) return false;
+    if (nullptr == cr || nullptr == context.css) return {};
     if (not context.css->containsDb(cr->getDb()) ||
         not context.css->containsTable(cr->getDb(), cr->getTable())) {
         throw qana::AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
     }
     if (cr->getColumn().empty()) {
-        return false;
+        return {};
     }
     std::vector<std::string> sics =
             context.css->getPartTableParams(cr->getDb(), cr->getTable()).secIndexColNames();
     std::string const& column = cr->getColumn();
-    return std::find_if(sics.begin(), sics.end(),
-                        [&column](auto const& str) { return boost::iequals(column, str); }) != sics.end();
+    auto const match = std::find_if(sics.begin(), sics.end(),
+                                    [&column](auto const& str) { return boost::iequals(column, str); });
+    return match == sics.end() ? std::string() : *match;
+}
+
+/**
+ * @brief Find out if the given ColumnRef represents a valid secondary index column.
+ */
+bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::ColumnRef> cr) {
+    return !secIndexColName(context, cr).empty();
 }
 
 query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& context,
@@ -478,7 +512,7 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
             context.css->getPartTableParams(columnRef->getDb(), columnRef->getTable());
     // Get the director column name
     std::string dirCol = partitionTableParams.dirColName;
-    if (columnRef->getColumn() == dirCol) {
+    if (boost::iequals(columnRef->getColumn(), dirCol)) {
         // columnRef may be a column in a child table, in which case we must figure
         // out the corresponding column in the child's director to properly
         // generate a secondary index restrictor.
@@ -612,6 +646,11 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
     std::vector<std::shared_ptr<query::SecIdxRestrictor>> result;
     if (not andTerm) return result;
 
+    auto const setSource = [&context](query::SecIdxRestrictor& restrictor,
+                                      std::shared_ptr<query::ColumnRef> const& column) {
+        restrictor.setSourceColumnRef(withCssColumnName(*column, secIndexColName(context, column)));
+    };
+
     for (auto&& term : andTerm->_terms) {
         auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
@@ -621,10 +660,17 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
                 if (inPredicate->hasNot) continue;  // NOT IN (...) also can't restrict
                 restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
+                if (restrictor) setSource(*restrictor, inPredicate->value->getColumnRef());
             } else if (auto const compPredicate =
                                std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 if (compPredicate->op == query::CompPredicate::EQUALS_OP) {
                     restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
+                    if (restrictor) {
+                        // The column can be on either side of `=`.
+                        setSource(*restrictor, compPredicate->left->isConstVal()
+                                                       ? compPredicate->right->getColumnRef()
+                                                       : compPredicate->left->getColumnRef());
+                    }
                 }
             }
             if (restrictor) {
