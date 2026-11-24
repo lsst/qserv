@@ -6,10 +6,13 @@ metadata:
   labels:
     {{- include "qserv.labels" . | nindent 4 }}
 data:
-
   default.conf: |
     server {
+      {{- if .Values.openshift }}
+      listen 8080;
+      {{- else }}
       listen 80;
+      {{- end }}
       server_name localhost;
       location / {
         root /qserv/data/html;

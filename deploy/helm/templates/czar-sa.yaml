@@ -1,0 +1,6 @@
+{{ if .Values.openshift }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rsp-qserv-czar
+{{ end }}
