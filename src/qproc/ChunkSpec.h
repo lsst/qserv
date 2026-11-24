@@ -58,8 +58,6 @@ public:
     Int32Vector subChunks;
 
     /// @return the intersection with the chunk.
-    /// If both ChunkSpecs have non-empty subChunks, but do not intersect,
-    /// chunkId is set to be invalid (-1)
     ChunkSpec intersect(ChunkSpec const& cs) const;
     /// Restrict the existing ChunkSpec to contain no more than another
     /// (in-place intersection). Both must be normalized.
