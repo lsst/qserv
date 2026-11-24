@@ -144,6 +144,11 @@ void HttpProcessor::registerServices() {
                                  HttpRequestsModule::process(self->controller(), self->name(), req, resp,
                                                              "SELECT-ONE-BY-ID");
                              });
+    httpServer()->addHandler("POST", "/replication/job",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpJobsModule::process(self->controller(), self->name(), req, resp,
+                                                         "SUBMIT", http::AuthType::REQUIRED);
+                             });
     httpServer()->addHandler("GET", "/replication/job",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpJobsModule::process(self->controller(), self->name(), req, resp);
