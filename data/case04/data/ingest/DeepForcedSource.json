@@ -6,8 +6,8 @@
     "is_partitioned":1,
     "director_table":"DeepSource",
     "director_key":"deepSourceId",
-    "latitude_key":"decl",
-    "longitude_key":"ra",
+    "latitude_key":"declDeepSource",
+    "longitude_key":"raDeepSource",
     "schema":[
         {"name":"deepForcedSourceId", "type":"bigint(20) NOT NULL"},
         {"name":"scienceCcdExposureId", "type":"bigint(20) NOT NULL"},
