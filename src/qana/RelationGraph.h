@@ -285,6 +285,10 @@
 /// with min(Σα) > 0). This is critical information for the query rewriting
 /// stage, described in more detail later.
 ///
+/// Restrictions must cover every partition containing a matching row of the
+/// initial vertex. Qserv first tries vertices with index restrictions followed
+/// by area restrictions to make them directly usable for partition selection.
+///
 /// A more formal description of the algorithm is below, followed by a pair
 /// of illustrative examples.
 ///
@@ -552,6 +556,9 @@ struct Vertex {
     /// of the table referenced by `tr`. This member is used during query
     /// validation and rewriting.
     double overlap;
+    /// True if this table reference is the null-supplying side of an outer join, e.g., in `A LEFT JOIN B`, B
+    /// is null-supplying because its columns are filled with NULL when no B row matches.
+    bool nullable = false;
     /// `edges` is the set of edges incident to this vertex, implemented
     /// as a sorted vector. It will contain at most one edge to another
     /// vertex in the relation graph, and will never contain a loop.
@@ -611,9 +618,17 @@ public:
 
     /// This constructor creates a relation graph from a query.
     /// If the query is not evaluable, an exception is thrown.
-    RelationGraph(query::SelectStmt& stmt, TableInfoPool& pool);
+    RelationGraph(query::SelectStmt& stmt, TableInfoPool& pool,
+                  query::SecIdxRestrictorVecPtr restrictors = nullptr,
+                  query::AreaRestrictorVecPtr areaRestrictors = nullptr);
 
-    /// `empty` returns `true` if this graph has no vertices.
+    /// Determines which area restrictors can be used for chunk selection, each paired
+    /// with the distance to dilate its region by: the smallest overlap required by the table
+    /// references it applies to, so 0 if one of them is the core table. Restrictions whose
+    /// references can't be resolved are left out; their predicates still filter rows on the workers.
+    query::DispatchAreaVec makeDispatchAreas(query::AreaRestrictorVecPtr const& restrictors) const;
+
+    /// `empty` returns `true` if the query has no partitioned table references.
     bool empty() const { return _vertices.empty(); }
 
     /// `rewrite` rewrites the input query into a set of output queries.
@@ -645,7 +660,8 @@ private:
     void _dumpGraph() const;
 
     // Graph validation
-    bool _validate();
+    bool _validate(query::SecIdxRestrictorVecPtr const& restrictors,
+                   query::AreaRestrictorVecPtr const& areaRestrictors);
 };
 
 }  // namespace lsst::qserv::qana

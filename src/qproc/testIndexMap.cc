@@ -35,6 +35,7 @@
 #include <iterator>
 #include <list>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 
@@ -42,9 +43,12 @@
 #include "boost/algorithm/string.hpp"
 
 // Qserv headers
+#include "css/StripingParams.h"
 #include "global/intTypes.h"
 #include "qproc/ChunkSpec.h"
+#include "qproc/IndexMap.h"
 #include "qproc/SecondaryIndex.h"
+#include "query/AreaRestrictor.h"
 #include "query/InPredicate.h"
 #include "query/SecIdxRestrictor.h"
 #include "query/ValueExpr.h"
@@ -94,6 +98,29 @@ BOOST_AUTO_TEST_CASE(SecLookup) {
     BOOST_CHECK_EQUAL(csv[0], ChunkSpec(100, {1, 2, 3}));
     BOOST_CHECK_EQUAL(csv[1], ChunkSpec(101, {1, 2, 3}));
     BOOST_CHECK_EQUAL(csv[2], ChunkSpec(102, {1, 2, 3}));
+}
+
+BOOST_AUTO_TEST_CASE(AreaNeighborsDilation) {
+    qproc::IndexMap indexMap(css::StripingParams(50, 4, 0, 0.01), std::make_shared<SecondaryIndex>());
+    auto subChunks = [](ChunkSpecVector const& specs) {
+        std::set<std::pair<int, int>> ids;
+        for (auto const& spec : specs) {
+            for (auto subChunk : spec.subChunks) ids.emplace(spec.chunkId, subChunk);
+        }
+        return ids;
+    };
+    std::vector<std::shared_ptr<query::AreaRestrictor>> areas = {
+            std::make_shared<query::AreaRestrictorCircle>("10", "0.5", "0.1"),
+            std::make_shared<query::AreaRestrictorBox>("10", "0.4", "10.2", "0.6"),
+            std::make_shared<query::AreaRestrictorCircle>("0", "-89.9", "0.05")};
+    for (auto const& area : areas) {
+        BOOST_TEST_CONTEXT(*area) {
+            auto const local = subChunks(indexMap.getChunks({{area, 0.0}}, nullptr));
+            auto const dilated = subChunks(indexMap.getChunks({{area, 2.0}}, nullptr));
+            BOOST_CHECK_GT(dilated.size(), local.size());
+            BOOST_CHECK(std::includes(dilated.begin(), dilated.end(), local.begin(), local.end()));
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(IndLookupArea) {

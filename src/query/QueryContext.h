@@ -41,6 +41,7 @@
 #include "global/stringTypes.h"
 #include "query/ScanTableInfo.h"
 #include "qana/QueryMapping.h"
+#include "query/AreaRestrictor.h"
 #include "query/FromList.h"
 #include "query/typedefs.h"
 #include "query/ValueExpr.h"
@@ -156,8 +157,13 @@ public:
     void addAreaRestrictors(AreaRestrictorVec const& newRestrictors);
     void addSecIdxRestrictors(SecIdxRestrictorVec const& newRestrictors);
 
+    // Query restrictions (before dispatch planning)
     AreaRestrictorVecPtr areaRestrictors;
     SecIdxRestrictorVecPtr secIdxRestrictors;
+
+    // Restrictions usable for chunk dispatch
+    DispatchAreaVec dispatchAreas;
+    SecIdxRestrictorVecPtr dispatchSecIdxRestrictors;
 
     /**
      * @brief Get and cache database schema information for all the tables in the passed-in FROM list.

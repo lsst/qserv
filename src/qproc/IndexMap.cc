@@ -44,7 +44,10 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "lsst/sphgeom/Angle.h"
+#include "lsst/sphgeom/Box.h"
 #include "lsst/sphgeom/Chunker.h"
+#include "lsst/sphgeom/Circle.h"
 
 // Qserv headers
 #include "global/intTypes.h"
@@ -70,6 +73,16 @@ lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
     cs.subChunks.resize(sc.subChunkIds.size());
     std::copy(sc.subChunkIds.begin(), sc.subChunkIds.end(), cs.subChunks.begin());
     return cs;
+}
+
+/// Dilate `region` by `radiusDeg`. Boxes are dilated exactly, while other shapes are dilated by their
+/// bounding circle.
+std::shared_ptr<Region> dilated(Region const& region, double radiusDeg) {
+    auto const radius = lsst::sphgeom::Angle::fromDegrees(radiusDeg);
+    if (auto const* box = dynamic_cast<lsst::sphgeom::Box const*>(&region)) {
+        return std::make_shared<lsst::sphgeom::Box>(box->dilatedBy(radius));
+    }
+    return std::make_shared<lsst::sphgeom::Circle>(region.getBoundingCircle().dilatedBy(radius));
 }
 
 }  // anonymous namespace
@@ -137,7 +150,7 @@ IndexMap::IndexMap(css::StripingParams const& sp, std::shared_ptr<SecondaryIndex
 ChunkSpecVector IndexMap::getAllChunks() { return _pm->getAllChunks(); }
 
 //  Compute chunks coverage of spatial and secondary index restrictors
-ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestrictors,
+ChunkSpecVector IndexMap::getChunks(query::DispatchAreaVec const& dispatchAreas,
                                     query::SecIdxRestrictorVecPtr const& secIdxRestrictors) {
     // Secondary Index lookups
     if (!_si) {
@@ -155,10 +168,13 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
 
     // Spatial area lookups
     RegionPtrVector rv;
-    if (areaRestrictors != nullptr) {
-        for (auto const& areaRestrictor : *areaRestrictors) {
-            rv.push_back(areaRestrictor->getRegion());
+    for (auto const& [restrictor, dilationDeg] : dispatchAreas) {
+        auto region = restrictor->getRegion();
+        if (dilationDeg > 0.0) {
+            region = dilated(*region, dilationDeg);
+            LOGS(_log, LOG_LVL_DEBUG, "Area " << *restrictor << " dilated by " << dilationDeg << " degrees");
         }
+        rv.push_back(region);
     }
     SubChunksVector scv;
     try {

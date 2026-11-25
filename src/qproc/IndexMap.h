@@ -62,14 +62,14 @@ public:
      *   combined with OR, but the cumulative index restrictors are ANDed with
      *   the cumulative spatial restrictors.
      *
-     *   @param areaRestrictors: Restrictors issued from SQL query.
+     *   @param dispatchAreas: Area restrictions with the distance to dilate region(s) by.
      *   @param secIdxRestrictors: Restrictors issued for secondary index columns.
      *   @returns:  list of chunk queried by all secondary index search and spatial (i.e. UDF) restrictors.
      *
      *   FIXME: Index and spatial lookup composition is only supported using SQL "AND"
      *          operator for now. "OR" support has to be added, see DM-2888, DM-4017.
      */
-    ChunkSpecVector getChunks(query::AreaRestrictorVecPtr const& areaRestrictors,
+    ChunkSpecVector getChunks(query::DispatchAreaVec const& dispatchAreas,
                               query::SecIdxRestrictorVecPtr const& secIdxRestrictors);
 
     class PartitioningMap;

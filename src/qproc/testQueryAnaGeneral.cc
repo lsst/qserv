@@ -2241,6 +2241,87 @@ BOOST_AUTO_TEST_CASE(NestedNegationSecondaryIndexRestrictions) {
     }
 }
 
+// Force the match table equi-join chunk rewrite optimization off for these tests
+struct NoMatchEquiJoinRewrite {
+    NoMatchEquiJoinRewrite() { lsst::qserv::qana::forceMatchEquiJoinRewrite(false); }
+    ~NoMatchEquiJoinRewrite() { lsst::qserv::qana::forceMatchEquiJoinRewrite(std::nullopt); }
+};
+
+// Ref-match join with an index lookup on the director that isn't the initial vertex.
+BOOST_AUTO_TEST_CASE(SecondaryIndexMatchCoreTable) {
+    NoMatchEquiJoinRewrite const noRewrite;
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST",
+                                                      {{"Object", {"objectIdObjTest"}},
+                                                       {"SimRefObject", {"refObjectId"}},
+                                                       {"RefObjMatch", {"objectId", "refObjectId"}},
+                                                       {"RefSource", {"refObjectIdSourceTest"}}}}}));
+    std::vector<std::string> const joins = {
+            "Object o JOIN RefObjMatch m ON o.objectIdObjTest=m.objectId "
+            "JOIN SimRefObject r ON m.refObjectId=r.refObjectId",
+            "SimRefObject r JOIN RefObjMatch m ON r.refObjectId=m.refObjectId "
+            "JOIN Object o ON m.objectId=o.objectIdObjTest"};
+    for (auto const& join : joins) {
+        for (auto const& predicate : {"r.refObjectId=1", "r.refObjectId IN (1)", "1=r.refObjectId",
+                                      "r.refObjectId=1 AND o.objectIdObjTest=2", "c.refObjectIdSourceTest=1",
+                                      "o.objectIdObjTest=2", "o.objectIdObjTest IN (2)"}) {
+            BOOST_TEST_CONTEXT(join << " WHERE " << predicate) {
+                bool const child = std::string(predicate).find("c.") == 0;
+                bool const objectIsCore = std::string(predicate).find("o.") == 0;
+                auto qs = queryAnaHelper.buildQuerySession(
+                        qsTest,
+                        "SELECT o.objectIdObjTest, r.refObjectId FROM " + join +
+                                (child ? " JOIN RefSource c ON c.refObjectIdSourceTest=r.refObjectId" : "") +
+                                " WHERE " + predicate);
+                qs->addChunk(ChunkSpec::makeFake(100, true));
+                auto templates = qs->makeQueryTemplates();
+                auto spec = qs->buildChunkQuerySpec(templates, *qs->cQueryBegin());
+                auto const& queries = spec->queries->getTemplates();
+                BOOST_REQUIRE_EQUAL(queries.size(), 2U);
+                BOOST_CHECK(queries[1].find(objectIsCore ? "`SimRefObjectFullOverlap_100_"
+                                                         : "`ObjectFullOverlap_100_") != std::string::npos);
+                BOOST_CHECK(queries[1].find(objectIsCore ? "`ObjectFullOverlap"
+                                                         : "`SimRefObjectFullOverlap") == std::string::npos);
+                BOOST_CHECK(queries[1].find("`r`.`refObjectId`") != std::string::npos);
+                if (std::string(predicate).find("AND") != std::string::npos) {
+                    BOOST_CHECK(queries[1].find("`o`.`objectIdObjTest`=2") != std::string::npos);
+                }
+            }
+        }
+    }
+}
+
+// Index lookup + area lookup, different director tables
+BOOST_AUTO_TEST_CASE(SecondaryIndexAndAreaOnDifferentDirectors) {
+    NoMatchEquiJoinRewrite const noRewrite;
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST",
+                                            {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+                                             {"SimRefObject", {"refObjectId"}},
+                                             {"RefObjMatch", {"objectId", "refObjectId"}}}}}));
+    auto qs = queryAnaHelper.buildQuerySession(
+            qsTest,
+            "SELECT r.refObjectId FROM Object o "
+            "JOIN RefObjMatch m ON o.objectIdObjTest=m.objectId "
+            "JOIN SimRefObject r ON m.refObjectId=r.refObjectId "
+            "WHERE scisql_s2PtInCircle(o.ra_Test,o.decl_Test,55,-1,0.001)=1 AND r.refObjectId=1");
+    auto restrictors = qs->getSecIdxRestrictors();
+    BOOST_REQUIRE(restrictors);
+    BOOST_REQUIRE_EQUAL(restrictors->size(), 1U);
+    auto areas = qs->getAreaRestrictors();
+    BOOST_REQUIRE(areas);
+    BOOST_REQUIRE_EQUAL(areas->size(), 1U);
+    BOOST_REQUIRE_EQUAL(qs->getDispatchAreas().size(), 1U);
+    BOOST_CHECK_GT(qs->getDispatchAreas().front().dilationDeg, 0.0);
+    qs->addChunk(ChunkSpec::makeFake(100, true));
+    auto templates = qs->makeQueryTemplates();
+    auto spec = qs->buildChunkQuerySpec(templates, *qs->cQueryBegin());
+    auto const& queries = spec->queries->getTemplates();
+    BOOST_REQUIRE_EQUAL(queries.size(), 2U);
+    BOOST_CHECK(queries[1].find("`ObjectFullOverlap_100_") != std::string::npos);
+    BOOST_CHECK(queries[1].find("SimRefObjectFullOverlap_100_") == std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(SecondaryIndexChildLocality) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
             {{"LSST", {{"Object", {"objectIdObjTest"}}, {"Source2", {"objectIdObjTest"}}}}}));
@@ -2263,6 +2344,26 @@ BOOST_AUTO_TEST_CASE(SecondaryIndexChildLocality) {
             BOOST_CHECK_EQUAL(restrictor.getSourceColumnRef()->getColumn(), "objectIdObjTest");
         }
     }
+}
+
+// Spatial self-join with lookups on both sides
+BOOST_AUTO_TEST_CASE(SecondaryIndexSpatialSelfJoinCoreTable) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    auto qs = queryAnaHelper.buildQuerySession(
+            qsTest,
+            "SELECT a.objectIdObjTest, b.objectIdObjTest FROM Object a, Object b "
+            "WHERE scisql_angSep(a.ra_Test,a.decl_Test,b.ra_Test,b.decl_Test)<0.01 "
+            "AND b.objectIdObjTest=1 AND a.objectIdObjTest=2");
+    BOOST_REQUIRE(qs->getSecIdxRestrictors());
+    BOOST_CHECK_EQUAL(qs->getSecIdxRestrictors()->size(), 2U);
+    qs->addChunk(ChunkSpec::makeFake(100, true));
+    auto templates = qs->makeQueryTemplates();
+    auto spec = qs->buildChunkQuerySpec(templates, *qs->cQueryBegin());
+    auto const& queries = spec->queries->getTemplates();
+    BOOST_REQUIRE_EQUAL(queries.size(), 2U);
+    BOOST_CHECK(queries[1].find("`ObjectFullOverlap_100_%S\007S%` AS `a`") != std::string::npos);
+    BOOST_CHECK(queries[1].find("`Object_100_%S\007S%` AS `b`") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(DirectorChildSpatialJoin) {
@@ -2382,6 +2483,88 @@ BOOST_AUTO_TEST_CASE(MatchTableSpatialPredicateRejected) {
             {{"LSST", {{"RefObjMatch", {"refObjectId"}}, {"Object", {"ra_Test", "decl_Test"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+// An area on one side of a spatial self-join: that side becomes the initial vertex and
+// is read from its plain sub-chunk table, so the region needs no dilation. Both FROM orders
+// and both extraction paths (s2PtInCircle and constant-center angSep) give the same plan.
+BOOST_AUTO_TEST_CASE(AreaSpatialSelfJoinCoreTable) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    for (auto const& from : {"Object a, Object b", "Object b, Object a"}) {
+        for (auto const& area : {"scisql_s2PtInCircle(b.ra_Test,b.decl_Test,55,-1,0.001)=1",
+                                 "scisql_angSep(55,-1,b.ra_Test,b.decl_Test)<0.001"}) {
+            BOOST_TEST_CONTEXT(from << " / " << area) {
+                auto qs = queryAnaHelper.buildQuerySession(
+                        qsTest, std::string("SELECT a.objectIdObjTest, b.objectIdObjTest FROM ") + from +
+                                        " WHERE scisql_angSep(a.ra_Test,a.decl_Test,b.ra_Test,b.decl_Test)"
+                                        "<0.01 AND " +
+                                        area);
+                auto areas = qs->getAreaRestrictors();
+                BOOST_REQUIRE(areas);
+                BOOST_REQUIRE_EQUAL(areas->size(), 1U);
+                BOOST_REQUIRE_EQUAL(areas->front()->getSourceColumnRefs().size(), 1U);
+                BOOST_CHECK_EQUAL(areas->front()->getSourceColumnRefs().front()->getTableAlias(), "b");
+                BOOST_REQUIRE_EQUAL(qs->getDispatchAreas().size(), 1U);
+                BOOST_CHECK_EQUAL(qs->getDispatchAreas().front().dilationDeg, 0.0);
+                qs->addChunk(ChunkSpec::makeFake(100, true));
+                auto templates = qs->makeQueryTemplates();
+                auto spec = qs->buildChunkQuerySpec(templates, *qs->cQueryBegin());
+                auto const& queries = spec->queries->getTemplates();
+                BOOST_REQUIRE_EQUAL(queries.size(), 2U);
+                BOOST_CHECK(queries[1].find("`ObjectFullOverlap_100_%S\007S%` AS `a`") != std::string::npos);
+                BOOST_CHECK(queries[1].find("`Object_100_%S\007S%` AS `b`") != std::string::npos);
+            }
+        }
+    }
+}
+
+// A child has no overlap, so it is the initial vertex of a director-child spatial join. An area
+// restriction on the director is dilated by the join distance
+BOOST_AUTO_TEST_CASE(AreaDirectorChildNeighbors) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+               {"Source", {"raObjectTest", "declObjectTest", "subChunkId"}}}}}));
+    for (auto const& from : {"LSST.Object o, LSST.Source s", "LSST.Source s, LSST.Object o"}) {
+        for (auto const& [area, alias, radius] :
+             {std::tuple{"scisql_s2PtInCircle(o.ra_Test,o.decl_Test,55,-1,0.001)=1", "o", 0.02},
+              std::tuple{"scisql_s2PtInCircle(s.raObjectTest,s.declObjectTest,55,-1,0.001)=1", "s", 0.0}}) {
+            BOOST_TEST_CONTEXT(from << " / " << area) {
+                auto qs = queryAnaHelper.buildQuerySession(
+                        qsTest, std::string("SELECT o.objectIdObjTest FROM ") + from +
+                                        " WHERE scisql_angSep(o.ra_Test, o.decl_Test, s.raObjectTest, "
+                                        "s.declObjectTest) < 0.02 AND " +
+                                        area);
+                auto areas = qs->getAreaRestrictors();
+                BOOST_REQUIRE(areas);
+                BOOST_REQUIRE_EQUAL(areas->size(), 1U);
+                BOOST_CHECK_EQUAL(areas->front()->getSourceColumnRefs().front()->getTableAlias(), alias);
+                BOOST_REQUIRE_EQUAL(qs->getDispatchAreas().size(), 1U);
+                BOOST_CHECK_CLOSE(qs->getDispatchAreas().front().dilationDeg + 1.0, radius + 1.0, 1e-9);
+            }
+        }
+    }
+}
+
+// qserv_areaspec_* adds a predicate on every chunked reference, including the initial vertex,
+// so the region needs no dilation.
+BOOST_AUTO_TEST_CASE(AreaspecSpatialSelfJoin) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    auto qs = queryAnaHelper.buildQuerySession(
+            qsTest,
+            "SELECT a.objectIdObjTest, b.objectIdObjTest FROM Object a, Object b "
+            "WHERE qserv_areaspec_circle(55,-1,0.001) "
+            "AND scisql_angSep(a.ra_Test,a.decl_Test,b.ra_Test,b.decl_Test)<0.01");
+    auto areas = qs->getAreaRestrictors();
+    BOOST_REQUIRE(areas);
+    BOOST_REQUIRE_EQUAL(areas->size(), 1U);
+    std::set<std::string> aliases;
+    for (auto const& source : areas->front()->getSourceColumnRefs()) aliases.insert(source->getTableAlias());
+    BOOST_CHECK(aliases == (std::set<std::string>{"a", "b"}));
+    BOOST_REQUIRE_EQUAL(qs->getDispatchAreas().size(), 1U);
+    BOOST_CHECK_EQUAL(qs->getDispatchAreas().front().dilationDeg, 0.0);
 }
 
 BOOST_AUTO_TEST_CASE(DirectorChildPtInCircleSpatialJoin) {

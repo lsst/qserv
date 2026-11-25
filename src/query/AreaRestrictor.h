@@ -111,6 +111,15 @@ private:
     std::vector<std::shared_ptr<ColumnRef const>> _sourceColumnRefs;
 };
 
+/// @brief A `DispatchArea` encapsulates an area restrictor, plus some amount of dilation for scenarios where
+/// the table is not the core table and its overlap is being used to resolve the query.
+struct DispatchArea {
+    std::shared_ptr<AreaRestrictor const> restrictor;
+    double dilationDeg = 0.0;  ///< Degrees to dilate region by; 0 for none.
+};
+
+std::ostream& operator<<(std::ostream& os, DispatchArea const& area);
+
 class AreaRestrictorBox : public AreaRestrictor {
 public:
     AreaRestrictorBox(std::string const& lonMinDegree, std::string const& latMinDegree,
