@@ -759,6 +759,13 @@ void RelationGraph::_fuse(JoinRef::Type joinType, bool natural, JoinSpec::Ptr co
         // provided later (e.g. in the WHERE clause).
         throw QueryNotEvaluableError("Unable to evaluate query by joining only partition-local data");
     }
+    // Track references that may be absent from an outer-join result (the NULL-supplying side).
+    if (joinType == JoinRef::LEFT || joinType == JoinRef::FULL) {
+        for (auto& vertex : g._vertices) vertex.nullable = true;
+    }
+    if (joinType == JoinRef::RIGHT || joinType == JoinRef::FULL) {
+        for (auto& vertex : _vertices) vertex.nullable = true;
+    }
     // Splice g into this graph.
     LOGS(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " (" << this << ") splicing in verticies from (" << &g

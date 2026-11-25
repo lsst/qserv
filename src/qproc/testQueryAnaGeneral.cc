@@ -2454,6 +2454,100 @@ BOOST_AUTO_TEST_CASE(ChildFirstDirectorSecondSpatialJoin) {
     BOOST_CHECK(actual.find("`LSST`.`Source_100` AS `s`") != std::string::npos);
 }
 
+// Spatially joined pair on the NULL-extended side of a RIGHT JOIN should be rejected
+BOOST_AUTO_TEST_CASE(OuterJoinAroundSpatialPairRejected) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    for (auto const& stmt :
+         {"SELECT k.objectIdObjTest FROM Object k JOIN Object i "
+          "ON scisql_angSep(k.ra_Test,k.decl_Test,i.ra_Test,i.decl_Test)<0.01 "
+          "RIGHT JOIN Object p ON k.objectIdObjTest=p.objectIdObjTest WHERE i.objectIdObjTest=1",
+          "SELECT k.objectIdObjTest FROM Object i JOIN Object k "
+          "ON scisql_angSep(k.ra_Test,k.decl_Test,i.ra_Test,i.decl_Test)<0.01 "
+          "RIGHT JOIN Object p ON k.objectIdObjTest=p.objectIdObjTest"}) {
+        BOOST_TEST_CONTEXT(stmt) {
+            auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+            BOOST_CHECK_EQUAL(
+                    qs->getError(),
+                    "AnalysisError:Cannot safely evaluate this combination of outer and spatial joins");
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(OuterJoinNotSplitByOverlap) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    for (auto const& where : {" AND scisql_s2PtInCircle(c.ra_Test,c.decl_Test,55,-1,0.001)=1", ""}) {
+        BOOST_TEST_CONTEXT(where) {
+            auto qs = queryAnaHelper.buildQuerySession(
+                    qsTest,
+                    std::string("SELECT a.objectIdObjTest, b.objectIdObjTest FROM Object c, Object a "
+                                "LEFT JOIN Object b ON a.objectIdObjTest=b.objectIdObjTest "
+                                "WHERE scisql_angSep(c.ra_Test,c.decl_Test,a.ra_Test,a.decl_Test)<0.01") +
+                            where);
+            BOOST_REQUIRE(qs->getError().empty());
+            if (*where) {
+                auto areas = qs->getAreaRestrictors();
+                BOOST_REQUIRE(areas);
+                BOOST_REQUIRE_EQUAL(qs->getDispatchAreas().size(), 1U);
+                BOOST_CHECK_GT(qs->getDispatchAreas().front().dilationDeg, 0.0);
+            }
+            qs->addChunk(ChunkSpec::makeFake(100, true));
+            auto templates = qs->makeQueryTemplates();
+            auto spec = qs->buildChunkQuerySpec(templates, *qs->cQueryBegin());
+            auto const& queries = spec->queries->getTemplates();
+            BOOST_REQUIRE_EQUAL(queries.size(), 2U);
+            for (auto const& query : queries) {
+                BOOST_CHECK(query.find("`Object_100_%S\007S%` AS `a`") != std::string::npos);
+                BOOST_CHECK(query.find("`Object_100_%S\007S%` AS `b`") != std::string::npos);
+            }
+            BOOST_CHECK(queries[1].find("`ObjectFullOverlap_100_%S\007S%` AS `c`") != std::string::npos);
+        }
+    }
+    auto qs = queryAnaHelper.buildQuerySession(
+            qsTest,
+            "SELECT a.objectIdObjTest, b.objectIdObjTest FROM Object c, Object a "
+            "LEFT JOIN Object b ON a.objectIdObjTest=b.objectIdObjTest "
+            "WHERE scisql_angSep(c.ra_Test,c.decl_Test,a.ra_Test,a.decl_Test)<0.01 AND c.objectIdObjTest=1");
+    BOOST_REQUIRE(qs->getError().empty());
+    BOOST_REQUIRE(qs->getSecIdxRestrictors());
+    BOOST_CHECK_EQUAL(qs->getSecIdxRestrictors()->size(), 1U);
+    BOOST_CHECK(!qs->getDispatchSecIdxRestrictors());
+    BOOST_CHECK(qs->getDispatchAreas().empty());
+    checkFullScanDispatch(*qs);
+    BOOST_CHECK(queryAnaHelper.buildFirstParallelQuery().find("`c`.`objectIdObjTest`=1") !=
+                std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(OuterJoinNullableMatchTable) {
+    NoMatchEquiJoinRewrite const noRewrite;
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST",
+                                                      {{"Object", {"objectIdObjTest"}},
+                                                       {"RefObjMatch", {"objectId", "refObjectId"}},
+                                                       {"Source", {"objectIdSourceTest"}}}}}));
+    auto qs =
+            queryAnaHelper.buildQuerySession(qsTest,
+                                             "SELECT s.objectIdSourceTest, m.refObjectId FROM RefObjMatch m "
+                                             "JOIN Object o ON m.objectId=o.objectIdObjTest "
+                                             "RIGHT JOIN Source s ON o.objectIdObjTest=s.objectIdSourceTest");
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+}
+
+BOOST_AUTO_TEST_CASE(OuterJoinsNeedingOverlapRejected) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}}}}}));
+    auto qs = queryAnaHelper.buildQuerySession(
+            qsTest,
+            "SELECT a.objectIdObjTest FROM Object a LEFT JOIN Object b ON "
+            "a.objectIdObjTest=b.objectIdObjTest, "
+            "Object c LEFT JOIN Object d ON c.objectIdObjTest=d.objectIdObjTest "
+            "WHERE scisql_angSep(a.ra_Test,a.decl_Test,c.ra_Test,c.decl_Test)<0.01",
+            true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:Cannot safely evaluate this combination of outer and spatial joins");
+}
+
 BOOST_AUTO_TEST_CASE(ChildChildSpatialJoinNotEvaluable) {
     // Reject child joins when overlap cannot be established
     std::string stmt =

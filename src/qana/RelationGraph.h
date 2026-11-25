@@ -156,6 +156,13 @@
 /// For now, Qserv does not support LEFT or RIGHT joins with near-neighbor
 /// predicates.
 ///
+/// Outer equi-joins have the same issue if the director on the null-supplying
+/// side needs overlap. For `A LEFT JOIN B`, reading B's subchunk and overlap
+/// tables in separate queries can produce "false negatives": one returns a
+/// match, but the other returns extra NULL results. Qserv therefore selects a
+/// plan where null-supplying directors need no overlap, and rejects the query
+/// if that is not possible (see Vertex::nullable).
+///
 /// Match Table Joins
 /// -----------------
 ///
