@@ -32,7 +32,13 @@
 #include "replica/contr/HttpModule.h"
 
 // Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
 namespace lsst::qserv::replica {
+class Controller;
 class ControllerInfo;
 }  // namespace lsst::qserv::replica
 
@@ -45,19 +51,19 @@ namespace lsst::qserv::replica {
  */
 class HttpControllersModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpControllersModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
      *   the empty string  for pulling info on all known Controllers
      *   SELECT-ONE-BY-ID  for extended info (including events log) a single controller
      *   LOG-DICT          for a dictionary of unique keys from controller's events log
+     *   STATS             for retrieving controller statistics
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -65,18 +71,20 @@ public:
     HttpControllersModule(HttpControllersModule const&) = delete;
     HttpControllersModule& operator=(HttpControllersModule const&) = delete;
 
-    ~HttpControllersModule() final = default;
+    virtual ~HttpControllersModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpControllersModule(Controller::Ptr const& controller, std::string const& taskName,
-                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpControllersModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                          std::shared_ptr<qhttp::Request> const& req,
+                          std::shared_ptr<qhttp::Response> const& resp);
 
     nlohmann::json _controllers();
     nlohmann::json _oneController();
     nlohmann::json _eventLogDict();
+    nlohmann::json _stats();
 
     ControllerInfo _getControllerFromParamOrThrow404(std::string const& func);
 };

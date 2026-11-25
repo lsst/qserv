@@ -23,6 +23,7 @@
 
 // System headers
 #include <atomic>
+#include <cstddef>
 #include <exception>
 #include <functional>
 #include <memory>
@@ -32,11 +33,16 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
+#include "replica/proto/Protocol.h"
 #include "replica/proto/protocol.pb.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/Performance.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -59,17 +65,9 @@ public:
  */
 class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
 public:
-    typedef std::shared_ptr<WorkerRequest> Ptr;
-
     /// The function type for notifications on the expiration of the request
     /// given its unique identifier.
     typedef std::function<void(std::string const&)> ExpirationCallbackType;
-
-    /// @return the string representation of the status
-    static std::string status2string(ProtocolStatus status);
-
-    /// @return the string representation of the full status
-    static std::string status2string(ProtocolStatus status, ProtocolStatusExt extendedStatus);
 
     WorkerRequest() = delete;
     WorkerRequest(WorkerRequest const&) = delete;
@@ -82,7 +80,7 @@ public:
 
     // Trivial getter methods
 
-    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
     std::string const& worker() const { return _worker; }
     std::string const& type() const { return _type; }
@@ -90,15 +88,15 @@ public:
 
     int priority() const { return _priority; }
 
-    ProtocolStatus status() const { return _status; }
+    protocol::Status status() const { return _status; }
 
-    ProtocolStatusExt extendedStatus() const { return _extendedStatus; }
+    protocol::StatusExt extendedStatus() const { return _extendedStatus; }
 
     /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
 
     /**
-     * This method is called from the initial state ProtocolStatus::CREATED in order
+     * This method is called from the initial state protocol::Status::CREATED in order
      * to start the request expiration timer. It's safe to call this operation
      * multiple times. Each invocation of the method will result in cancelling
      * the previously set timer (if any) and starting a new one.
@@ -106,10 +104,10 @@ public:
     void init();
 
     /**
-     * This method is called from the initial state ProtocolStatus::CREATED in order
+     * This method is called from the initial state protocol::Status::CREATED in order
      * to prepare the request for processing (to respond to methods 'execute',
      * 'cancel', 'rollback' or 'reset'. The final state upon the completion
-     * of the method should be ProtocolStatus::IN_PROGRESS.
+     * of the method should be protocol::Status::IN_PROGRESS.
      */
     void start();
 
@@ -119,7 +117,7 @@ public:
      * may mean both success or failure, depending on the completion status
      * of the request.
      *
-     * This method is required to be called while the request state is ProtocolStatus::IN_PROGRESS.
+     * This method is required to be called while the request state is protocol::Status::IN_PROGRESS.
      * The method will throw custom exception WorkerRequestCancelled when it detects a cancellation request.
      *
      * @return result of the operation as explained above
@@ -133,8 +131,8 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     * {ProtocolStatus::CREATED,ProtocolStatus::CANCELLED} -> ProtocolStatus::CANCELLED
-     * {ProtocolStatus::IN_PROGRESS,ProtocolStatus::IS_CANCELLING} -> ProtocolStatus::IS_CANCELLING
+     * {protocol::Status::CREATED,protocol::Status::CANCELLED} -> protocol::Status::CANCELLED
+     * {protocol::Status::IN_PROGRESS,protocol::Status::IS_CANCELLING} -> protocol::Status::IS_CANCELLING
      * {*} -> throw std::logic_error
      */
     virtual void cancel();
@@ -147,15 +145,15 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     * {ProtocolStatus::CREATED, ProtocolStatus::IN_PROGRESS} -> ProtocolStatus::CREATED
-     * {ProtocolStatus::IS_CANCELLING} -> ProtocolStatus::CANCELLED -> throw WorkerRequestCancelled
+     * {protocol::Status::CREATED, protocol::Status::IN_PROGRESS} -> protocol::Status::CREATED
+     * {protocol::Status::IS_CANCELLING} -> protocol::Status::CANCELLED -> throw WorkerRequestCancelled
      * {*} -> throw std::logic_error
      */
     virtual void rollback();
 
     /**
      * This method is called from *ANY* initial state in order to turn
-     * the request back into the initial ProtocolStatus::CREATED.
+     * the request back into the initial protocol::Status::CREATED.
      * @param func (optional) the name of a function/method which requested the context string
      */
     void stop();
@@ -180,14 +178,14 @@ public:
      * @param status primary status to be set
      * @param extendedStatus secondary status to be set
      */
-    void setStatus(ProtocolStatus status, ProtocolStatusExt extendedStatus = ProtocolStatusExt::NONE) {
+    void setStatus(protocol::Status status, protocol::StatusExt extendedStatus = protocol::StatusExt::NONE) {
         replica::Lock const lock(_mtx, context(__func__));
         setStatus(lock, status, extendedStatus);
     }
 
     /// @return the context string
     std::string context(std::string const& func = std::string()) const {
-        return id() + "  " + type() + "  " + status2string(status()) + "  " + func;
+        return id() + "  " + type() + "  " + protocol::toString(status()) + "  " + func;
     }
 
 protected:
@@ -209,7 +207,7 @@ protected:
      *   the Config.
      * @throws std::invalid_argument if the worker is unknown
      */
-    WorkerRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    WorkerRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                   std::string const& type, std::string const& id, int priority,
                   ExpirationCallbackType const& onExpired = nullptr,
                   unsigned int requestExpirationIvalSec = 0);
@@ -218,8 +216,8 @@ protected:
      * The method is used to check if the request is entered the cancellation state.
      * The implementation assumes the following transitions:
      *
-     * {ProtocolStatus::IN_PROGRESS} -> ProtocolStatus::IN_PROGRESS
-     * {ProtocolStatus::IS_CANCELLING} -> ProtocolStatus::CANCELLED -> throw WorkerRequestCancelled
+     * {protocol::Status::IN_PROGRESS} -> protocol::Status::IN_PROGRESS
+     * {protocol::Status::IS_CANCELLING} -> protocol::Status::CANCELLED -> throw WorkerRequestCancelled
      * {*} -> throw std::logic_error
      *
      * @param lock a lock on _mtx which acquired before calling this method
@@ -238,8 +236,8 @@ protected:
      * @param status primary status to be set
      * @param extendedStatus secondary status to be set
      */
-    void setStatus(replica::Lock const& lock, ProtocolStatus status,
-                   ProtocolStatusExt extendedStatus = ProtocolStatusExt::NONE);
+    void setStatus(replica::Lock const& lock, protocol::Status status,
+                   protocol::StatusExt extendedStatus = protocol::StatusExt::NONE);
 
     /**
      * Structure ErrorContext is used for tracking errors reported by
@@ -248,9 +246,9 @@ protected:
     struct ErrorContext {
         // State of the object
         bool failed;
-        ProtocolStatusExt extendedStatus;
+        protocol::StatusExt extendedStatus;
 
-        ErrorContext() : failed(false), extendedStatus(ProtocolStatusExt::NONE) {}
+        ErrorContext() : failed(false), extendedStatus(protocol::StatusExt::NONE) {}
 
         /**
          * Merge the context of another object into the current one.
@@ -284,7 +282,8 @@ protected:
      * @return the context object encapsulating values passed in parameters
      *   'condition' and 'extendedStatus'
      */
-    ErrorContext reportErrorIf(bool condition, ProtocolStatusExt extendedStatus, std::string const& errorMsg);
+    ErrorContext reportErrorIf(bool condition, protocol::StatusExt extendedStatus,
+                               std::string const& errorMsg);
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -294,7 +293,7 @@ protected:
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
 
     std::string const _worker;
     std::string const _type;
@@ -317,8 +316,8 @@ protected:
 
     // 2-layer state of a request
 
-    std::atomic<ProtocolStatus> _status;
-    std::atomic<ProtocolStatusExt> _extendedStatus;
+    std::atomic<protocol::Status> _status;
+    std::atomic<protocol::StatusExt> _extendedStatus;
 
     /// Performance counters
     WorkerPerformance _performance;
@@ -348,7 +347,7 @@ private:
     void _expired(boost::system::error_code const& ec);
 
     // For memory usage monitoring and memory leak diagnostic.
-    static std::atomic<size_t> _numInstances;
+    static std::atomic<std::size_t> _numInstances;
 };
 
 /**
@@ -362,7 +361,8 @@ struct WorkerRequestCompare {
      * @param rhs pointer to a request on the right side of a logical comparison
      * @return 'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
      */
-    bool operator()(WorkerRequest::Ptr const& lhs, WorkerRequest::Ptr const& rhs) const {
+    bool operator()(std::shared_ptr<WorkerRequest> const& lhs,
+                    std::shared_ptr<WorkerRequest> const& rhs) const {
         return lhs->priority() < rhs->priority();
     }
 };

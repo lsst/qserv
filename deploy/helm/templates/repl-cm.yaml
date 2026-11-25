@@ -19,7 +19,12 @@ data:
         "chunk-map-update": 1,
         "purge-excess-replicas": 0,
         "enable-replica-rebalance": 0,
-        "http-root": "/usr/local/qserv/www/"
+        "http-root": "/usr/local/qserv/www/",
+        "http-server-threads": 32,
+        "num-requests-per-worker": 32,
+        "worker-response-size-limit": 4294967296,
+        "request-timeout-sec": 28800,
+        "job-timeout-sec": 86400
       },
       "xrootd": {
         "auto-notify": 0

@@ -39,8 +39,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
 
 namespace lsst::qserv::replica {
 
-Messenger::Ptr Messenger::create(shared_ptr<Config> const& config, boost::asio::io_service& io_service) {
-    return Messenger::Ptr(new Messenger(config, io_service));
+shared_ptr<Messenger> Messenger::create(shared_ptr<Config> const& config,
+                                        boost::asio::io_service& io_service) {
+    return shared_ptr<Messenger>(new Messenger(config, io_service));
 }
 
 Messenger::Messenger(shared_ptr<Config> const& config, boost::asio::io_service& io_service)
@@ -63,7 +64,7 @@ bool Messenger::exists(string const& workerName, string const& id) {
     return _connector(workerName)->exists(id);
 }
 
-MessengerConnector::Ptr const& Messenger::_connector(string const& workerName) {
+shared_ptr<MessengerConnector> const& Messenger::_connector(string const& workerName) {
     replica::Lock lock(_mtx, _context(workerName));
 
     if (auto const itr = _workerConnector.find(workerName); itr != _workerConnector.end()) {

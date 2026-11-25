@@ -42,15 +42,15 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-void HttpJobsModule::process(Controller::Ptr const& controller, string const& taskName,
-                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+void HttpJobsModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                             shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
                              string const& subModuleName, http::AuthType const authType) {
     HttpJobsModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpJobsModule::HttpJobsModule(Controller::Ptr const& controller, string const& taskName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpJobsModule::HttpJobsModule(shared_ptr<Controller> const& controller, string const& taskName,
+                               shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpJobsModule::executeImpl(string const& subModuleName) {

@@ -32,6 +32,16 @@
 #include "replica/contr/HttpModule.h"
 #include "replica/util/Common.h"
 
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -41,8 +51,6 @@ namespace lsst::qserv::replica {
  */
 class HttpIngestConfigModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpIngestConfigModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -51,8 +59,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -60,14 +69,15 @@ public:
     HttpIngestConfigModule(HttpIngestConfigModule const&) = delete;
     HttpIngestConfigModule& operator=(HttpIngestConfigModule const&) = delete;
 
-    ~HttpIngestConfigModule() final = default;
+    virtual ~HttpIngestConfigModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestConfigModule(Controller::Ptr const& controller, std::string const& taskName,
-                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpIngestConfigModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                           std::shared_ptr<qhttp::Request> const& req,
+                           std::shared_ptr<qhttp::Response> const& resp);
 
     /// Get configuration parameters
     nlohmann::json _get();

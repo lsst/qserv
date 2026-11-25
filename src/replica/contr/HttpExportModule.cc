@@ -31,6 +31,7 @@
 #include "http/RequestBodyJSON.h"
 #include "replica/config/Config.h"
 #include "replica/config/ConfigWorker.h"
+#include "replica/contr/Controller.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -42,15 +43,16 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-void HttpExportModule::process(Controller::Ptr const& controller, string const& taskName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+void HttpExportModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                               shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
                                string const& subModuleName, http::AuthType const authType) {
     HttpExportModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpExportModule::HttpExportModule(Controller::Ptr const& controller, string const& taskName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpExportModule::HttpExportModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                   shared_ptr<qhttp::Request> const& req,
+                                   shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpExportModule::executeImpl(string const& subModuleName) {

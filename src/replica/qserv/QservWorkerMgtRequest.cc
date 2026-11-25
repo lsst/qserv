@@ -34,8 +34,8 @@ using namespace std;
 
 namespace lsst::qserv::replica {
 
-QservWorkerMgtRequest::QservWorkerMgtRequest(ServiceProvider::Ptr const& serviceProvider, string const& type,
-                                             string const& workerName)
+QservWorkerMgtRequest::QservWorkerMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
+                                             string const& type, string const& workerName)
         : QservMgtRequest(serviceProvider, type, "worker", workerName), _workerName(workerName) {}
 
 http::AsyncReq::GetHostPort QservWorkerMgtRequest::getHostPortTracker() const {

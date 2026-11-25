@@ -32,6 +32,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -50,12 +51,12 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-DeleteRequest::Ptr DeleteRequest::createAndStart(shared_ptr<Controller> const& controller,
-                                                 string const& workerName, string const& database,
-                                                 unsigned int chunk, CallbackType const& onFinish,
-                                                 int priority, bool keepTracking, string const& jobId,
-                                                 unsigned int requestExpirationIvalSec) {
-    auto ptr = DeleteRequest::Ptr(
+shared_ptr<DeleteRequest> DeleteRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                        string const& workerName, string const& database,
+                                                        unsigned int chunk, CallbackType const& onFinish,
+                                                        int priority, bool keepTracking, string const& jobId,
+                                                        unsigned int requestExpirationIvalSec) {
+    auto ptr = shared_ptr<DeleteRequest>(
             new DeleteRequest(controller, workerName, database, chunk, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
@@ -99,7 +100,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -139,7 +140,7 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -148,7 +149,7 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
     }
 
     // Always get the latest status reported by the remote server
-    setExtendedServerStatus(lock, message.status_ext());
+    setExtendedServerStatus(lock, protocol::toStatusExt(message.status_ext()));
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
@@ -164,47 +165,44 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
     // reported by the worker service.
     _replicaInfo = ReplicaInfo(&(message.replica_info()));
 
-    // Extract target request type-specific parameters from the response
-    if (message.has_request()) {
-        _targetRequestParams = DeleteRequestParams(message.request());
-    }
-    switch (message.status()) {
-        case ProtocolStatus::SUCCESS:
+    auto const status = protocol::toStatus(message.status());
+    switch (status) {
+        case protocol::Status::SUCCESS:
             controller()->serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
             break;
 
-        case ProtocolStatus::CREATED:
+        case protocol::Status::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
 
-        case ProtocolStatus::QUEUED:
+        case protocol::Status::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
 
-        case ProtocolStatus::IN_PROGRESS:
+        case protocol::Status::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
 
-        case ProtocolStatus::IS_CANCELLING:
+        case protocol::Status::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
 
-        case ProtocolStatus::BAD:
+        case protocol::Status::BAD:
             finish(lock, SERVER_BAD);
             break;
 
-        case ProtocolStatus::FAILED:
+        case protocol::Status::FAILED:
             finish(lock, SERVER_ERROR);
             break;
 
-        case ProtocolStatus::CANCELLED:
+        case protocol::Status::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
 
         default:
             throw logic_error("DeleteRequest::" + string(__func__) + "  unknown status '" +
-                              ProtocolStatus_Name(message.status()) + "' received from server");
+                              protocol::toString(status) + "' received from server");
     }
 }
 

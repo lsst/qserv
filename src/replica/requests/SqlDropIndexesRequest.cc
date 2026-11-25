@@ -22,24 +22,23 @@
 // Class header
 #include "replica/requests/SqlDropIndexesRequest.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
+// Qserv headers
+#include "replica/proto/Protocol.h"
 
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDropIndexesRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlDropIndexesRequest::Ptr SqlDropIndexesRequest::createAndStart(
+shared_ptr<SqlDropIndexesRequest> SqlDropIndexesRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, string const& database,
         vector<string> const& tables, string const& indexName, CallbackType const& onFinish, int priority,
         bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
-    auto ptr = Ptr(new SqlDropIndexesRequest(controller, workerName, database, tables, indexName, onFinish,
-                                             priority, keepTracking));
+    auto ptr = shared_ptr<SqlDropIndexesRequest>(new SqlDropIndexesRequest(
+            controller, workerName, database, tables, indexName, onFinish, priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -48,11 +47,10 @@ SqlDropIndexesRequest::SqlDropIndexesRequest(shared_ptr<Controller> const& contr
                                              string const& workerName, string const& database,
                                              vector<string> const& tables, string const& indexName,
                                              CallbackType const& onFinish, int priority, bool keepTracking)
-        : SqlRequest(controller, "SQL_DROP_TABLE_INDEXES", workerName, ::unlimitedMaxRows, priority,
-                     keepTracking),
+        : SqlRequest(controller, "SQL_DROP_TABLE_INDEXES", protocol::SqlRequestType::DROP_TABLE_INDEX,
+                     workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
-    requestBody.set_type(ProtocolRequestSql::DROP_TABLE_INDEX);
     requestBody.set_database(database);
     requestBody.clear_tables();
     for (auto&& table : tables) {
@@ -63,8 +61,6 @@ SqlDropIndexesRequest::SqlDropIndexesRequest(shared_ptr<Controller> const& contr
 }
 
 void SqlDropIndexesRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlDropIndexesRequest>(lock, _onFinish);
 }
 

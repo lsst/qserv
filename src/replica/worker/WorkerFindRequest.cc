@@ -30,6 +30,7 @@
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/Config.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "replica/worker/WorkerUtils.h"
@@ -42,25 +43,23 @@ using namespace std;
 namespace fs = std::filesystem;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-WorkerFindRequest::Ptr WorkerFindRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                 string const& worker, string const& id, int priority,
-                                                 ExpirationCallbackType const& onExpired,
-                                                 unsigned int requestExpirationIvalSec,
-                                                 ProtocolRequestFind const& request) {
-    auto ptr = WorkerFindRequest::Ptr(new WorkerFindRequest(serviceProvider, worker, id, priority, onExpired,
-                                                            requestExpirationIvalSec, request));
+shared_ptr<WorkerFindRequest> WorkerFindRequest::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                        string const& worker, string const& id, int priority,
+                                                        ExpirationCallbackType const& onExpired,
+                                                        unsigned int requestExpirationIvalSec,
+                                                        ProtocolRequestFind const& request) {
+    auto ptr = shared_ptr<WorkerFindRequest>(new WorkerFindRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
     ptr->init();
     return ptr;
 }
 
-WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+WorkerFindRequest::WorkerFindRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
                                      string const& id, int priority, ExpirationCallbackType const& onExpired,
                                      unsigned int requestExpirationIvalSec,
                                      ProtocolRequestFind const& request)
@@ -118,13 +117,13 @@ bool WorkerFindRequest::execute() {
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =
                 errorContext ||
-                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FOLDER_STAT,
                               "failed to check the status of directory: " + dataDir.string() +
                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
-                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                reportErrorIf(!fs::exists(stat), protocol::StatusExt::NO_FOLDER,
                               "the directory does not exists: " + dataDir.string());
         if (errorContext.failed) {
-            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+            setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -138,15 +137,19 @@ bool WorkerFindRequest::execute() {
         //
         // - assume the successful completion otherwise and adjust the replica
         //   information record accordingly, depending on the findings.
+
         ReplicaInfo::FileInfoCollection
                 fileInfoCollection;  // file info if not using the incremental processing
         vector<string> files;        // file paths registered for the incremental processing
 
+        string const cs;
+        uint64_t const beginTransferTime = 0;
+        uint64_t const endTransferTime = 0;
         for (auto&& file : FileUtils::partitionedFiles(databaseInfo, chunk())) {
             fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
             errorContext = errorContext ||
-                           reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
+                           reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FILE_STAT,
                                          "failed to check the status of file: " + path.string() + ", code: " +
                                                  to_string(ec.value()) + ", error: " + ec.message());
             if (fs::exists(stat)) {
@@ -155,7 +158,7 @@ bool WorkerFindRequest::execute() {
 
                     uint64_t const size = fs::file_size(path, ec);
                     errorContext = errorContext ||
-                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
+                                   reportErrorIf(ec.value() != 0, protocol::StatusExt::FILE_SIZE,
                                                  "failed to read file size: " + path.string() + ", code: " +
                                                          to_string(ec.value()) + ", error: " + ec.message());
                     time_t mtime = 0;
@@ -163,16 +166,12 @@ bool WorkerFindRequest::execute() {
                         mtime = replica::getMTime(path.string());
                     } catch (exception const& ex) {
                         errorContext =
-                                errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                errorContext || reportErrorIf(true, protocol::StatusExt::FILE_MTIME,
                                                               "failed to read file mtime: " + path.string() +
                                                                       ", ex: " + ex.what());
                     }
-                    fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
-                            file, size, mtime, "", /* cs */
-                            0,                     /* beginTransferTime */
-                            0,                     /* endTransferTime */
-                            size                   /* inSize */
-                    }));
+                    fileInfoCollection.emplace_back(file, size, mtime, cs, beginTransferTime, endTransferTime,
+                                                    size);
                 } else {
                     // Register this file for the incremental processing
                     files.push_back(path.string());
@@ -180,7 +179,7 @@ bool WorkerFindRequest::execute() {
             }
         }
         if (errorContext.failed) {
-            setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+            setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
             return true;
         }
 
@@ -196,7 +195,7 @@ bool WorkerFindRequest::execute() {
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
-            setStatus(lock, ProtocolStatus::SUCCESS);
+            setStatus(lock, protocol::Status::SUCCESS);
             return true;
         }
 
@@ -210,6 +209,8 @@ bool WorkerFindRequest::execute() {
         finished = _csComputeEnginePtr->execute();
         if (finished) {
             // Extract statistics
+            uint64_t const beginTransferTime = 0;
+            uint64_t const endTransferTime = 0;
             ReplicaInfo::FileInfoCollection fileInfoCollection;
             auto const fileNames = _csComputeEnginePtr->fileNames();
             for (auto&& file : fileNames) {
@@ -220,19 +221,16 @@ bool WorkerFindRequest::execute() {
                     mtime = replica::getMTime(path.string());
                 } catch (exception const& ex) {
                     errorContext =
-                            errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                            errorContext || reportErrorIf(true, protocol::StatusExt::FILE_MTIME,
                                                           "failed to read file mtime: " + path.string() +
                                                                   ", ex: " + ex.what());
                 }
-                fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
-                        path.filename().string(), size, mtime, to_string(_csComputeEnginePtr->cs(file)),
-                        0,   /* beginTransferTime */
-                        0,   /* endTransferTime */
-                        size /* inSize */
-                }));
+                fileInfoCollection.emplace_back(path.filename().string(), size, mtime,
+                                                to_string(_csComputeEnginePtr->cs(file)), beginTransferTime,
+                                                endTransferTime, size);
             }
             if (errorContext.failed) {
-                setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+                setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
                 return true;
             }
 
@@ -246,12 +244,12 @@ bool WorkerFindRequest::execute() {
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
-            setStatus(lock, ProtocolStatus::SUCCESS);
+            setStatus(lock, protocol::Status::SUCCESS);
         }
     } catch (exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
-        errorContext = errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_READ, ex.what());
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+        errorContext = errorContext || reportErrorIf(true, protocol::StatusExt::FILE_READ, ex.what());
+        setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
     }
 
     // If done (either way) then get rid of the engine right away because

@@ -32,6 +32,7 @@
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#include "replica/proto/Protocol.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -51,8 +52,8 @@ bool const disposeRequired = true;
 
 namespace lsst::qserv::replica {
 
-void SqlRequest::extendedPrinter(Ptr const& ptr) {
-    Request::defaultPrinter(ptr);
+void SqlRequest::extendedPrinter(shared_ptr<SqlRequest> const& ptr) {
+    RequestI::defaultPrinter(ptr);
     for (auto&& itr : ptr->responseData().queryResultSet) {
         auto&& scope = itr.first;
         auto&& resultSet = itr.second;
@@ -70,16 +71,19 @@ void SqlRequest::extendedPrinter(Ptr const& ptr) {
 }
 
 SqlRequest::SqlRequest(shared_ptr<Controller> const& controller, std::string const& requestName,
-                       string const& workerName, uint64_t maxRows, int priority, bool keepTracking)
-        : Request(controller, requestName, workerName, priority, keepTracking, ::disposeRequired) {
+                       protocol::SqlRequestType type, string const& workerName, uint64_t maxRows,
+                       int priority, bool keepTracking)
+        : Request(controller, requestName, workerName, priority, keepTracking, ::disposeRequired),
+          requestType(type) {
     // Partial initialization of the request body's content. Other members
     // will be set in the request type-specific subclasses.
+    requestBody.set_type(protocol::toUnsignedInt(type));
     requestBody.set_max_rows(maxRows);
 }
 
 list<pair<string, string>> SqlRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
-    result.emplace_back("type", ProtocolRequestSql_Type_Name(requestBody.type()));
+    result.emplace_back("type", protocol::toString(requestType));
     result.emplace_back("max_rows", to_string(requestBody.max_rows()));
     result.emplace_back("query", requestBody.query());
     result.emplace_back("user", requestBody.user());
@@ -123,7 +127,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
 
     if (isAborted(ec)) return;
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the status request's body into
@@ -164,7 +168,7 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    replica::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     if (not success) {
         finish(lock, CLIENT_ERROR);
@@ -172,7 +176,7 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     }
 
     // Always use  the latest status reported by the remote server
-    setExtendedServerStatus(lock, response.status_ext());
+    setExtendedServerStatus(lock, protocol::toStatusExt(response.status_ext()));
 
     // Performance counters are updated from either of two sources,
     // depending on the availability of the 'target' performance counters
@@ -189,38 +193,35 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     _responseData.set(response);
     _responseData.performanceSec = (util::TimeUtils::now() - performance(lock).c_create_time) / 1000.;
 
-    // Extract target request type-specific parameters from the response
-    if (response.has_request()) {
-        _targetRequestParams = SqlRequestParams(response.request());
-    }
-    switch (response.status()) {
-        case ProtocolStatus::SUCCESS:
+    auto const status = protocol::toStatus(response.status());
+    switch (status) {
+        case protocol::Status::SUCCESS:
             finish(lock, SUCCESS);
             break;
-        case ProtocolStatus::CREATED:
+        case protocol::Status::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-        case ProtocolStatus::QUEUED:
+        case protocol::Status::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-        case ProtocolStatus::IN_PROGRESS:
+        case protocol::Status::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-        case ProtocolStatus::IS_CANCELLING:
+        case protocol::Status::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-        case ProtocolStatus::BAD:
+        case protocol::Status::BAD:
             finish(lock, SERVER_BAD);
             break;
-        case ProtocolStatus::FAILED:
+        case protocol::Status::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-        case ProtocolStatus::CANCELLED:
+        case protocol::Status::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
         default:
             throw logic_error("SqlRequest::" + string(__func__) + "  unknown status '" +
-                              ProtocolStatus_Name(response.status()) + "' received from server");
+                              protocol::toString(status) + "' received from server");
     }
 }
 

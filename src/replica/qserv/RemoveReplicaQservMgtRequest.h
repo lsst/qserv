@@ -34,6 +34,7 @@
 // Qserv headers
 #include "replica/qserv/QservWorkerMgtRequest.h"
 
+// Forward declarations
 namespace lsst::qserv::replica {
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
@@ -47,10 +48,8 @@ namespace lsst::qserv::replica {
  */
 class RemoveReplicaQservMgtRequest : public QservWorkerMgtRequest {
 public:
-    typedef std::shared_ptr<RemoveReplicaQservMgtRequest> Ptr;
-
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr)> CallbackType;
+    typedef std::function<void(std::shared_ptr<RemoveReplicaQservMgtRequest>)> CallbackType;
 
     RemoveReplicaQservMgtRequest() = delete;
     RemoveReplicaQservMgtRequest(RemoveReplicaQservMgtRequest const&) = delete;
@@ -72,31 +71,22 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
-                      unsigned int chunk, std::vector<std::string> const& databases, bool force = false,
-                      CallbackType const& onFinish = nullptr);
+    static std::shared_ptr<RemoveReplicaQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
+            unsigned int chunk, std::vector<std::string> const& databases, bool force = false,
+            CallbackType const& onFinish = nullptr);
 
-    /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
-
-    /// @return names of databases
     std::vector<std::string> const& databases() const { return _databases; }
-
-    /// @return flag indicating of the chunk removal should be forced even if in use
     bool force() const { return _force; }
 
-    /// @see QservMgtRequest::extendedPersistentState()
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::createHttpReqImpl
     virtual void createHttpReqImpl(replica::Lock const& lock) override;
-
-    /// @see QservMgtRequest::notify
     virtual void notify(replica::Lock const& lock) override;
 
 private:
-    /// @see RemoveReplicaQservMgtRequest::create()
     RemoveReplicaQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                  std::string const& workerName, unsigned int chunk,
                                  std::vector<std::string> const& databases, bool force,
