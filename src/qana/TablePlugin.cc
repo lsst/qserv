@@ -307,6 +307,7 @@ void TablePlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryContext& conte
     for (Iter i = p.stmtParallel.begin(), e = p.stmtParallel.end(); i != e; ++i) {
         RelationGraph g(**i, pool, context.secIdxRestrictors, context.areaRestrictors);
         context.dispatchAreas = g.makeDispatchAreas(context.areaRestrictors);
+        context.dispatchSecIdxRestrictors = g.makeDispatchSecIdxRestrictors(context.secIdxRestrictors);
         g.rewrite(newList, *context.queryMapping);
     }
     p.dominantDbs = _dominantDbs;

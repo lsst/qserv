@@ -1141,6 +1141,35 @@ RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool, query::SecId
     swap(g);
 }
 
+query::SecIdxRestrictorVecPtr RelationGraph::makeDispatchSecIdxRestrictors(
+        query::SecIdxRestrictorVecPtr const& restrictors) const {
+    if (!restrictors) return nullptr;
+    query::SecIdxRestrictorVec local;
+    for (auto const& restrictor : *restrictors) {
+        auto const source = restrictor->getSourceColumnRef();
+        auto const* vertices = source ? &_map.find(*source) : nullptr;
+        if (vertices == nullptr || vertices->empty()) {
+            // Cannot establish locality. Omit the lookup from partition selection.
+            LOGS(_log, LOG_LVL_WARN,
+                 "Secondary index restrictor without a table reference ignored: " << *restrictor);
+            continue;
+        }
+
+        // To be local, all matches must require 0 overlap.
+        bool const isLocal = std::all_of(vertices->begin(), vertices->end(),
+                                         [](Vertex const* v) { return v->overlap == 0.0; });
+        if (isLocal) {
+            local.push_back(restrictor);
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "Cannot use secondary index restrictor " << *restrictor
+                                                          << " for dispatch: overlap required");
+        }
+    }
+
+    return local.empty() ? nullptr : std::make_shared<query::SecIdxRestrictorVec>(std::move(local));
+}
+
 query::DispatchAreaVec RelationGraph::makeDispatchAreas(
         query::AreaRestrictorVecPtr const& restrictors) const {
     query::DispatchAreaVec areas;

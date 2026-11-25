@@ -180,6 +180,10 @@ query::SecIdxRestrictorVecPtr QuerySession::getSecIdxRestrictors() const {
     return _context->secIdxRestrictors;
 }
 
+query::SecIdxRestrictorVecPtr QuerySession::getDispatchSecIdxRestrictors() const {
+    return _context->dispatchSecIdxRestrictors;
+}
+
 std::string QuerySession::getResultOrderBy() const {
     std::string orderBy;
     if (_stmt->hasOrderBy()) {
@@ -205,12 +209,12 @@ void QuerySession::setScanInteractive() {
 void QuerySession::setupChunking(std::shared_ptr<SecondaryIndex> const& secondaryIndex) {
     if (hasChunks()) {
         auto const& dispatchAreas = getDispatchAreas();
-        auto secIdxRestrictors = getSecIdxRestrictors();
+        auto dispatchSecIdxRestrictors = getDispatchSecIdxRestrictors();
         css::StripingParams partStriping = getDbStriping();
         auto const im = std::make_shared<IndexMap>(partStriping, secondaryIndex);
         ChunkSpecVector csv;
-        if (!dispatchAreas.empty() || secIdxRestrictors != nullptr) {
-            csv = im->getChunks(dispatchAreas, secIdxRestrictors);
+        if (!dispatchAreas.empty() || dispatchSecIdxRestrictors != nullptr) {
+            csv = im->getChunks(dispatchAreas, dispatchSecIdxRestrictors);
         } else {  // Unrestricted: full-sky
             csv = im->getAllChunks();
         }

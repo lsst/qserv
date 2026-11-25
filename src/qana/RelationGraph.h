@@ -287,7 +287,13 @@
 ///
 /// Restrictions must cover every partition containing a matching row of the
 /// initial vertex. Qserv first tries vertices with index restrictions followed
-/// by area restrictions to make them directly usable for partition selection.
+/// by area restrictions to make them usable for partition selection.
+///
+/// If a restricted reference needs overlap r > 0, matching rows may be located
+/// in neighboring partitions. We cover them by expanding area restrictions'
+/// region by r. Secondary index lookups that need overlap are excluded from
+/// partition selection. If no usable index or area restrictors remain, we have
+/// to fall back to a full scan.
 ///
 /// A more formal description of the algorithm is below, followed by a pair
 /// of illustrative examples.
@@ -621,6 +627,13 @@ public:
     RelationGraph(query::SelectStmt& stmt, TableInfoPool& pool,
                   query::SecIdxRestrictorVecPtr restrictors = nullptr,
                   query::AreaRestrictorVecPtr areaRestrictors = nullptr);
+
+    /// Determine which secondary index restrictors can be used for chunk selection.
+    /// References that are unresolved or need overlap are excluded.
+    /// @param restrictors Secondary index restrictors from the query
+    /// @return Secondary index restrictors for dispatch, nullptr if there are no usable restrictors
+    query::SecIdxRestrictorVecPtr makeDispatchSecIdxRestrictors(
+            query::SecIdxRestrictorVecPtr const& restrictors) const;
 
     /// Determines which area restrictors can be used for chunk selection, each paired
     /// with the distance to dilate its region by: the smallest overlap required by the table
