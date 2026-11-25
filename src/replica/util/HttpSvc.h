@@ -22,15 +22,21 @@
 #define LSST_QSERV_REPLICA_HTTPSVC_H
 
 // System headers
+#include <cstddef>
 #include <memory>
 #include <string>
 
 // Third party headers
 #include "boost/asio.hpp"
 
-// Qserv headers
-#include "qhttp/Server.h"
-#include "replica/services/ServiceProvider.h"
+// Forward declarations
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
+
+namespace lsst::qserv::qhttp {
+class Server;
+}  // namespace lsst::qserv::qhttp
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -45,14 +51,12 @@ namespace lsst::qserv::replica {
  */
 class HttpSvc : public std::enable_shared_from_this<HttpSvc> {
 public:
-    typedef std::shared_ptr<HttpSvc> Ptr;
-
     HttpSvc() = delete;
     HttpSvc(HttpSvc const&) = delete;
     HttpSvc& operator=(HttpSvc const&) = delete;
 
     /// Non-trivial destructor is required to stop the HTTP server.
-    ~HttpSvc();
+    virtual ~HttpSvc();
 
     /**
      * Register REST handlers, start threads and run the server in the thread pool.
@@ -81,11 +85,11 @@ protected:
      *   open by the server.
      * @param numThreads The number of BOOST ASIO threads.
      */
-    HttpSvc(ServiceProvider::Ptr const& serviceProvider, uint16_t port, unsigned int backlog,
-            size_t numThreads);
+    HttpSvc(std::shared_ptr<ServiceProvider> const& serviceProvider, std::uint16_t port, unsigned int backlog,
+            std::size_t numThreads);
 
-    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
-    qhttp::Server::Ptr const& httpServer() const { return _httpServer; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
+    std::shared_ptr<qhttp::Server> const& httpServer() const { return _httpServer; }
     std::shared_ptr<boost::asio::io_service> const& io_service_ptr() { return _io_service_ptr; }
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking)
@@ -101,13 +105,12 @@ protected:
     virtual void registerServices() = 0;
 
 private:
-    ServiceProvider::Ptr const _serviceProvider;
-    uint16_t const _port;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
+    std::uint16_t const _port;
     unsigned int const _backlog;
-    size_t const _numThreads;
-
+    std::size_t const _numThreads;
     std::shared_ptr<boost::asio::io_service> const _io_service_ptr;
-    qhttp::Server::Ptr _httpServer;
+    std::shared_ptr<qhttp::Server> _httpServer;
 };
 
 }  // namespace lsst::qserv::replica

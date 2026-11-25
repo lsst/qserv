@@ -22,24 +22,28 @@
 // Class header
 #include "replica/jobs/SqlGetIndexesJob.h"
 
+// System headers
+#include <stdexcept>
+
 // Qserv headers
 #include "replica/mysql/DatabaseMySQLRow.h"
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+#include "replica/requests/http/HttpSqlGetIndexesRequest.h"
+#else
 #include "replica/requests/SqlGetIndexesRequest.h"
+#endif
 
 // LSST headers
 #include "lsst/log/Log.h"
 
-// System headers
-#include <stdexcept>
-#include <vector>
-
 using namespace std;
 using namespace nlohmann;
-using namespace lsst::qserv::replica;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGetIndexesJob");
+
+using namespace lsst::qserv::replica;
 
 void parseRow2index(database::mysql::Row const& row, map<string, SqlIndexes::Index>& name2index) {
     string name;
@@ -72,6 +76,9 @@ void parseRow2index(database::mysql::Row const& row, map<string, SqlIndexes::Ind
     }
     index.columns.push_back(column);
 }
+
+uint64_t const MAX_ROWS_UNLIMITED = 0;
+
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -138,28 +145,31 @@ json SqlIndexes::toJson() const {
 
 string SqlGetIndexesJob::typeName() { return "SqlGetIndexesJob"; }
 
-SqlGetIndexesJob::Ptr SqlGetIndexesJob::create(string const& database, string const& table, bool overlap,
-                                               bool allWorkers, Controller::Ptr const& controller,
-                                               string const& parentJobId, CallbackType const& onFinish,
-                                               int priority) {
-    return Ptr(new SqlGetIndexesJob(database, table, overlap, allWorkers, controller, parentJobId, onFinish,
-                                    priority));
+shared_ptr<SqlGetIndexesJob> SqlGetIndexesJob::create(string const& database, string const& table,
+                                                      ChunkOverlapSelector tableSelector, bool allWorkers,
+                                                      shared_ptr<Controller> const& controller,
+                                                      string const& parentJobId, CallbackType const& onFinish,
+                                                      int priority) {
+    return shared_ptr<SqlGetIndexesJob>(new SqlGetIndexesJob(database, table, tableSelector, allWorkers,
+                                                             controller, parentJobId, onFinish, priority));
 }
 
-SqlGetIndexesJob::SqlGetIndexesJob(string const& database, string const& table, bool overlap, bool allWorkers,
-                                   Controller::Ptr const& controller, string const& parentJobId,
+SqlGetIndexesJob::SqlGetIndexesJob(string const& database, string const& table,
+                                   ChunkOverlapSelector tableSelector, bool allWorkers,
+                                   shared_ptr<Controller> const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
-        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_GET_TABLE_INDEXES", priority),
+        : SqlJob(::MAX_ROWS_UNLIMITED, allWorkers, controller, parentJobId, "SQL_GET_TABLE_INDEXES",
+                 priority),
           _database(database),
           _table(table),
-          _overlap(overlap),
+          _tableSelector(tableSelector),
           _onFinish(onFinish) {}
 
 list<pair<string, string>> SqlGetIndexesJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
-    result.emplace_back("overlap", bool2str(overlap()));
+    result.emplace_back("table_selector", toString(tableSelector()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
@@ -233,7 +243,7 @@ SqlIndexes SqlGetIndexesJob::indexes() const {
     SqlIndexes result;
     result.database = _database;
     result.table = _table;
-    result.overlap = _overlap;
+    result.overlap = _tableSelector == ChunkOverlapSelector::OVERLAP;
     for (auto itr : name2finalIndex) {
         SqlIndexes::Index& index = itr.second;
         if (index.status != SqlIndexes::Index::Status::INCONSISTENT) {
@@ -246,28 +256,46 @@ SqlIndexes SqlGetIndexesJob::indexes() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
-                                                       size_t maxRequestsPerWorker) {
-    list<SqlRequest::Ptr> requests;
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+list<shared_ptr<HttpSqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock const& lock,
+                                                                  string const& worker,
+                                                                  size_t maxRequestsPerWorker) {
+    list<shared_ptr<HttpSqlRequest>> requests;
+#else
+list<shared_ptr<SqlRequest>> SqlGetIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
+                                                              size_t maxRequestsPerWorker) {
+    list<shared_ptr<SqlRequest>> requests;
+#endif
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
     if (_workers2tables.count(worker) != 0) return requests;
 
     // Only the requested subset of tables is going to be processed at the worker.
-    bool const allTables = false;
-    _workers2tables[worker] = workerTables(worker, database(), table(), allTables, overlap());
+    bool const includeProtoTable = false;
+    bool const includeDummyChunkTable = false;
+    _workers2tables[worker] = workerTables(worker, database(), table(), tableSelector(), includeProtoTable,
+                                           includeDummyChunkTable);
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    for (auto&& tables : distributeTables(_workers2tables[worker], maxRequestsPerWorker)) {
+    for (auto const& tables : distributeTables(_workers2tables[worker], maxRequestsPerWorker)) {
         bool const keepTracking = true;
-        requests.push_back(SqlGetIndexesRequest::createAndStart(
+#ifdef QSERV_REPLICA_PROTOCOL_HTTP
+        requests.push_back(HttpSqlGetIndexesRequest::createAndStart(
                 controller(), worker, database(), tables,
-                [self = shared_from_base<SqlGetIndexesJob>()](SqlGetIndexesRequest::Ptr const& request) {
+                [self = shared_from_base<SqlGetIndexesJob>()](
+                        shared_ptr<HttpSqlGetIndexesRequest> const& request) {
                     self->onRequestFinish(request);
                 },
                 priority(), keepTracking, id()));
+#else
+        requests.push_back(SqlGetIndexesRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlGetIndexesJob>()](
+                        shared_ptr<SqlGetIndexesRequest> const& request) { self->onRequestFinish(request); },
+                priority(), keepTracking, id()));
+#endif
     }
     return requests;
 }

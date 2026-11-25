@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ReplicaInfo.h"
@@ -46,15 +47,17 @@ json HttpCatalogsModule::_catalogsReport = json::object();
 uint64_t HttpCatalogsModule::_catalogsReportTimeMs = 0;
 replica::Mutex HttpCatalogsModule::_catalogsMtx;
 
-void HttpCatalogsModule::process(Controller::Ptr const& controller, string const& taskName,
-                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName, http::AuthType const authType) {
+void HttpCatalogsModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                                 shared_ptr<qhttp::Request> const& req,
+                                 shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                 http::AuthType const authType) {
     HttpCatalogsModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpCatalogsModule::HttpCatalogsModule(Controller::Ptr const& controller, string const& taskName,
-                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpCatalogsModule::HttpCatalogsModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                       shared_ptr<qhttp::Request> const& req,
+                                       shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpCatalogsModule::executeImpl(string const& subModuleName) {
@@ -64,7 +67,7 @@ json HttpCatalogsModule::executeImpl(string const& subModuleName) {
     replica::Lock lock(_catalogsMtx, "HttpCatalogsModule::" + string(__func__));
 
     // Check if a valid cached report is still available
-    if (not _catalogsReport.is_null()) {
+    if (!_catalogsReport.is_null()) {
         // TODO: add a cache control parameter to the class's constructor,
         // or (even better) extract it from an optional parameter of the request
         // to let a client decide on how "stale" the result is expected to be.
@@ -76,8 +79,8 @@ json HttpCatalogsModule::executeImpl(string const& subModuleName) {
     json result;
     result["databases"] = json::object();
 
-    for (auto&& database : controller()->serviceProvider()->config()->databases()) {
-        result["databases"][database] = _databaseStats(database);
+    for (auto const& databaseName : controller()->serviceProvider()->config()->databases()) {
+        result["databases"][databaseName] = _databaseStats(databaseName);
     }
 
     // Update the cache
@@ -102,8 +105,8 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
     result["chunks"]["with_replicas"] = replicas.size();
 
     map<string, map<string, size_t>> stats;
-    for (auto&& table : config->databaseInfo(database).partitionedTables()) {
-        auto&& statsTable = stats[table];
+    for (auto const& table : config->databaseInfo(database).partitionedTables()) {
+        auto& statsTable = stats[table];
         statsTable["data_unique_in_chunks_data"] = 0;
         statsTable["data_unique_in_chunks_index"] = 0;
         statsTable["data_unique_in_overlaps_data"] = 0;
@@ -114,19 +117,19 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
         statsTable["data_with_replicas_in_overlaps_index"] = 0;
     }
     set<unsigned int> uniqueChunks;
-    for (auto&& replica : replicas) {
+    for (auto const& replica : replicas) {
         bool isUniqueChunk = false;
         if (uniqueChunks.count(replica.chunk()) == 0) {
             uniqueChunks.insert(replica.chunk());
             isUniqueChunk = true;
         }
-        for (auto&& f : replica.fileInfo()) {
+        for (auto const& f : replica.fileInfo()) {
             auto const table = f.baseTable();
             auto const isData = f.isData();
             auto const isIndex = f.isIndex();
             auto const isOverlap = f.isOverlap();
             auto const size = f.size;
-            auto&& statsTable = stats[table];
+            auto& statsTable = stats[table];
             if (isUniqueChunk) {
                 if (isData) {
                     if (isOverlap)
@@ -155,7 +158,7 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
             }
         }
     }
-    for (auto&& table : config->databaseInfo(database).partitionedTables()) {
+    for (auto const& table : config->databaseInfo(database).partitionedTables()) {
         size_t numRowsInChunks = 0;
         size_t numRowsInOverlaps = 0;
         auto const tableRowStats = databaseServices->tableRowStats(database, table);
@@ -165,38 +168,38 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
             else
                 numRowsInChunks += e.numRows;
         }
-        auto&& statsTable = stats[table];
-        auto&& resultTable = result["tables"][table];
+        auto const& statsTable = stats[table];
+        auto& resultTable = result["tables"][table];
         resultTable["is_partitioned"] = 1;
         resultTable["rows"]["in_chunks"] = numRowsInChunks;
         resultTable["rows"]["in_overlaps"] = numRowsInOverlaps;
-        resultTable["data"]["unique"]["in_chunks"]["data"] = statsTable["data_unique_in_chunks_data"];
-        resultTable["data"]["unique"]["in_chunks"]["index"] = statsTable["data_unique_in_chunks_index"];
-        resultTable["data"]["unique"]["in_overlaps"]["data"] = statsTable["data_unique_in_overlaps_data"];
-        resultTable["data"]["unique"]["in_overlaps"]["index"] = statsTable["data_unique_in_overlaps_index"];
+        resultTable["data"]["unique"]["in_chunks"]["data"] = statsTable.at("data_unique_in_chunks_data");
+        resultTable["data"]["unique"]["in_chunks"]["index"] = statsTable.at("data_unique_in_chunks_index");
+        resultTable["data"]["unique"]["in_overlaps"]["data"] = statsTable.at("data_unique_in_overlaps_data");
+        resultTable["data"]["unique"]["in_overlaps"]["index"] =
+                statsTable.at("data_unique_in_overlaps_index");
         resultTable["data"]["with_replicas"]["in_chunks"]["data"] =
-                statsTable["data_with_replica_in_chunks_data"];
+                statsTable.at("data_with_replica_in_chunks_data");
         resultTable["data"]["with_replicas"]["in_chunks"]["index"] =
-                statsTable["data_with_replica_in_chunks_index"];
+                statsTable.at("data_with_replica_in_chunks_index");
         resultTable["data"]["with_replicas"]["in_overlaps"]["data"] =
-                statsTable["data_with_replica_in_overlaps_data"];
+                statsTable.at("data_with_replica_in_overlaps_data");
         resultTable["data"]["with_replicas"]["in_overlaps"]["index"] =
-                statsTable["data_with_replica_in_overlaps_index"];
+                statsTable.at("data_with_replica_in_overlaps_index");
     }
-    for (auto&& table : config->databaseInfo(database).regularTables()) {
+    for (auto const& table : config->databaseInfo(database).regularTables()) {
         // TODO: implement this when the Replication system will support regular tables
 
         size_t data_unique_data = 0;
         size_t data_unique_index = 0;
         size_t data_with_replicas_data = 0;
         size_t data_with_replicas_index = 0;
-
         size_t numRows = 0;
         auto const tableRowStats = databaseServices->tableRowStats(database, table);
-        for (auto&& e : tableRowStats.entries) {
+        for (auto const& e : tableRowStats.entries) {
             numRows += e.numRows;
         }
-        auto&& resultTable = result["tables"][table];
+        auto& resultTable = result["tables"][table];
         resultTable["is_partitioned"] = 0;
         resultTable["rows"] = numRows;
         resultTable["data"]["unique"]["data"] = data_unique_data;

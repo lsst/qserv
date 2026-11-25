@@ -32,10 +32,14 @@ target_sources(replica_jobs PRIVATE
     SqlGrantAccessJob.cc
     SqlJob.cc
     SqlJobResult.cc
+    SqlPersistSubChunksJob.cc
     SqlQueryJob.cc
     SqlRemoveTablePartitionsJob.cc
     SqlRowStatsJob.cc
     VerifyJob.cc
+)
+target_compile_definitions(replica_jobs PRIVATE
+    QSERV_REPLICA_PROTOCOL_HTTP=1
 )
 target_link_libraries(replica_jobs PUBLIC
     log

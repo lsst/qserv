@@ -36,9 +36,11 @@
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
 #include "replica/jobs/Job.h"
+#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/proto/Protocol.h"
 #include "replica/qserv/QservWorkerMgtRequest.h"
-#include "replica/requests/Request.h"
+#include "replica/requests/RequestI.h"
 #include "replica/util/Common.h"
 #include "replica/util/NamedMutexRegistry.h"
 #include "replica/util/ReplicaInfo.h"
@@ -58,14 +60,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesMySQL");
 /**
  * Typical use:
  * @code
- * bool yesFound = in(Request::ExtendedState::SUCCESS, {
- *                          Request::ExtendedState::SUCCESS,
- *                          Request::ExtendedState::SERVER_ERROR,
- *                          Request::ExtendedState::SERVER_CANCELLED});
- * @code
+ * bool yesFound = in(RequestI::ExtendedState::SUCCESS, {
+ *                          RequestI::ExtendedState::SUCCESS,
+ *                          RequestI::ExtendedState::SERVER_ERROR,
+ *                          RequestI::ExtendedState::SERVER_CANCELLED});
+ * @endcode
  * @return 'true' if the specified state is found in a collection.
  */
-bool in(Request::ExtendedState val, vector<Request::ExtendedState> const& col) {
+bool in(RequestI::ExtendedState val, vector<RequestI::ExtendedState> const& col) {
     return col.end() != find(col.begin(), col.end(), val);
 }
 
@@ -79,6 +81,7 @@ DatabaseServicesMySQL::DatabaseServicesMySQL(shared_ptr<Config> const& config)
         : DatabaseServices(), _config(config), _conn(Connection::open(config->replDbParams())), _g(_conn) {}
 
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64_t startTime) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Controller] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -94,10 +97,12 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::saveState(Job const& job) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -134,10 +139,12 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     replica::Lock lock(_mtx, context);
@@ -149,11 +156,13 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                                       string const& serverError) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context =
             "DatabaseServicesMySQL::" + string(__func__) + "[QservWorkerMgtRequest::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -213,12 +222,14 @@ void DatabaseServicesMySQL::saveState(QservWorkerMgtRequest const& request, Perf
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
-void DatabaseServicesMySQL::saveState(Request const& request, Performance const& performance) {
+void DatabaseServicesMySQL::saveState(RequestI const& request, Performance const& performance) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context =
-            "DatabaseServicesMySQL::" + string(__func__) + "[Request::" + request.type() + "] ";
+            "DatabaseServicesMySQL::" + string(__func__) + "[RequestI::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     // Requests which haven't started yet or the ones which aren't associated
@@ -243,9 +254,9 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         auto const insert = [&](decltype(_conn) conn) {
             string const query =
                     _g.insert("request", request.id(), request.jobId(), request.type(), request.workerName(),
-                              request.priority(), Request::state2string(request.state()),
-                              Request::state2string(request.extendedState()),
-                              status2string(request.extendedServerStatus()), performance.c_create_time,
+                              request.priority(), RequestI::state2string(request.state()),
+                              RequestI::state2string(request.extendedState()),
+                              protocol::toString(request.extendedServerStatus()), performance.c_create_time,
                               performance.c_start_time, performance.w_receive_time, performance.w_start_time,
                               performance.w_finish_time, performance.c_finish_time);
             conn->execute(query);
@@ -258,9 +269,9 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         };
         auto const update = [&](decltype(_conn) conn) {
             string const query =
-                    _g.update("request", make_pair("state", Request::state2string(request.state())),
-                              make_pair("ext_state", Request::state2string(request.extendedState())),
-                              make_pair("server_status", status2string(request.extendedServerStatus())),
+                    _g.update("request", make_pair("state", RequestI::state2string(request.state())),
+                              make_pair("ext_state", RequestI::state2string(request.extendedState())),
+                              make_pair("server_status", protocol::toString(request.extendedServerStatus())),
                               make_pair("c_create_time", performance.c_create_time),
                               make_pair("c_start_time", performance.c_start_time),
                               make_pair("w_receive_time", performance.w_receive_time),
@@ -275,13 +286,15 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
-void DatabaseServicesMySQL::updateRequestState(Request const& request, string const& targetRequestId,
+void DatabaseServicesMySQL::updateRequestState(RequestI const& request, string const& targetRequestId,
                                                Performance const& targetRequestPerformance) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context =
-            "DatabaseServicesMySQL::" + string(__func__) + "[Request::" + request.type() + "] ";
+            "DatabaseServicesMySQL::" + string(__func__) + "[RequestI::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     replica::Lock lock(_mtx, context);
@@ -293,16 +306,16 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request, string co
     //
     // IMPLEMENTATION NOTE: the request state filter is placed in this method
     // to avoid code duplication in each monitoring request.
-    if ((request.state() == Request::State::FINISHED) and
+    if ((request.state() == RequestI::State::FINISHED) and
         ::in(request.extendedState(),
-             {Request::ExtendedState::SUCCESS, Request::ExtendedState::SERVER_QUEUED,
-              Request::ExtendedState::SERVER_IN_PROGRESS, Request::ExtendedState::SERVER_IS_CANCELLING,
-              Request::ExtendedState::SERVER_ERROR, Request::ExtendedState::SERVER_CANCELLED})) {
+             {RequestI::ExtendedState::SUCCESS, RequestI::ExtendedState::SERVER_QUEUED,
+              RequestI::ExtendedState::SERVER_IN_PROGRESS, RequestI::ExtendedState::SERVER_IS_CANCELLING,
+              RequestI::ExtendedState::SERVER_ERROR, RequestI::ExtendedState::SERVER_CANCELLED})) {
         try {
             string const query =
-                    _g.update("request", make_pair("state", Request::state2string(request.state())),
-                              make_pair("ext_state", Request::state2string(request.extendedState())),
-                              make_pair("server_status", status2string(request.extendedServerStatus())),
+                    _g.update("request", make_pair("state", RequestI::state2string(request.state())),
+                              make_pair("ext_state", RequestI::state2string(request.extendedState())),
+                              make_pair("server_status", protocol::toString(request.extendedServerStatus())),
                               make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
                               make_pair("w_start_time", targetRequestPerformance.w_start_time),
                               make_pair("w_finish_time", targetRequestPerformance.w_finish_time)) +
@@ -313,10 +326,12 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request, string co
             throw;
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -332,11 +347,13 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& workerName, string const& databaseName,
                                                       ReplicaInfoCollection const& newReplicaInfoCollection) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -357,7 +374,8 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& workerName, 
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context + "** DONE ** " << "elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::_saveReplicaInfoImpl(replica::Lock const& lock, ReplicaInfo const& info) {
@@ -492,6 +510,7 @@ void DatabaseServicesMySQL::_deleteReplicaInfoImpl(replica::Lock const& lock, st
 
 void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas, size_t maxReplicas,
                                                bool enabledWorkersOnly, bool allDatabases, bool isPublished) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -511,12 +530,15 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas, si
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << replicas.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, unsigned int chunk,
                                          string const& databaseName, bool enabledWorkersOnly,
                                          bool includeFileInfo) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " chunk=" + to_string(chunk) +
                            "  database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -532,12 +554,15 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, unsigned
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << replicas.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<unsigned int> const& chunks,
                                          string const& databaseName, bool enabledWorkersOnly,
                                          bool includeFileInfo) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
                            " chunks.size()=" + to_string(chunks.size()) + "  database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -559,12 +584,15 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<u
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << replicas.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, string const& workerName,
                                                string const& databaseName, bool allDatabases,
                                                bool isPublished, bool includeFileInfo) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " database=" + databaseName + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
@@ -582,11 +610,14 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, st
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << replicas.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& workerName, string const& databaseName,
                                                   bool allDatabases, bool isPublished) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " database=" + databaseName + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
@@ -611,7 +642,9 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& workerName, stri
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** num: " << num);
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** num: " << num << " elapsed: " << (util::TimeUtils::now() - beginTimeMs)
+                 << " ms");
     return num;
 }
 
@@ -641,6 +674,7 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(replica::Lock const& lock, v
 void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, unsigned int chunk,
                                                string const& workerName, string const& familyName,
                                                bool allDatabases, bool isPublished) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " chunk=" + to_string(chunk) + " family=" + familyName +
                            " allDatabases=" + bool2str(allDatabases) +
@@ -662,11 +696,14 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, un
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << replicas.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::findDatabaseReplicas(vector<ReplicaInfo>& replicas, string const& databaseName,
                                                  bool enabledWorkersOnly) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "  database=" + databaseName +
                            " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -682,11 +719,14 @@ void DatabaseServicesMySQL::findDatabaseReplicas(vector<ReplicaInfo>& replicas, 
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << replicas.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 void DatabaseServicesMySQL::findDatabaseChunks(vector<unsigned int>& chunks, string const& databaseName,
                                                bool enabledWorkersOnly) {
+    auto const beginTimeMs = util::TimeUtils::now();
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "  database=" + databaseName +
                            " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -705,7 +745,9 @@ void DatabaseServicesMySQL::findDatabaseChunks(vector<unsigned int>& chunks, str
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << chunks.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "** DONE ** replicas.size(): " << chunks.size()
+                 << " elapsed: " << (util::TimeUtils::now() - beginTimeMs) << " ms");
 }
 
 map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(

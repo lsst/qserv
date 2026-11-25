@@ -45,10 +45,10 @@ namespace lsst::qserv::css {
  *  may be set if director table does not exist.
  */
 struct PartTableParams {
-    PartTableParams() : overlap(0.0), partitioned(false), subChunks(false) {}
+    PartTableParams() : overlap(0.0), partitioned(false), subChunks(false), subChunksPersist(false) {}
     PartTableParams(std::string const& dirDb_, std::string const& dirTable_, std::string const& dirColName_,
                     std::string const& latColName_, std::string const& lonColName_, double overlap_,
-                    bool partitioned_, bool subChunks_)
+                    bool partitioned_, bool subChunks_, bool subChunksPersist_ = false)
             : dirDb(dirDb_),
               dirTable(dirTable_),
               dirColName(dirColName_),
@@ -56,7 +56,8 @@ struct PartTableParams {
               lonColName(lonColName_),
               overlap(overlap_),
               partitioned(partitioned_),
-              subChunks(subChunks_) {}
+              subChunks(subChunks_),
+              subChunksPersist(subChunksPersist_) {}
     std::string dirDb;       ///< Director database name.
     std::string dirTable;    ///< Director table name.
     std::string dirColName;  ///< Column in current table mapping to objectId column in director table.
@@ -65,6 +66,7 @@ struct PartTableParams {
     double overlap;          ///< Per-table overlap value.
     bool partitioned;        ///< True if table is chunked/partitioned
     bool subChunks;          ///< True if table is sub-chunked
+    bool subChunksPersist;   ///< True if sub-chunks are persistent
 
     /// Returns true if table is partitioned
     bool isPartitioned() const { return partitioned; }

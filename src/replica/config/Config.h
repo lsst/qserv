@@ -544,6 +544,22 @@ public:
     DatabaseInfo addTable(TableInfo const& table_);
 
     /**
+     * Update the 'persistSubChunks' attribute of an existing table.
+     * @note Setting this attribute to 'true' is only allowed for director or ref-match tables.
+     * @param databaseName The name of an existing database hosting the table.
+     * @param tableName The name of an existing table to be updated.
+     * @param persistSubChunks The new value for the 'persistSubChunks' attribute.
+     * @return A database descriptor of the updated database.
+     * @throw std::invalid_argument If the attributes of the table aren't complete,
+     *   or if there are any ambiguity in the values of the attributes.
+     * @throws ConfigUnknownDatabase if the database is unknown.
+     * @throws ConfigUnknownTable if the table is unknown.
+     * @throws std::logic_error If the database is published.
+     */
+    DatabaseInfo updateTableSubChunks(std::string const& databaseName, std::string const& tableName,
+                                      bool persistSubChunks);
+
+    /**
      * Delete an existing table.
      * @param databaseName The name of an existing database hosting the table.
      * @param tableName The name of an existing table to be deleted.

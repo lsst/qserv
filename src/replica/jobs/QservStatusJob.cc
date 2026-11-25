@@ -24,39 +24,39 @@
 
 // System headers
 #include <stdexcept>
-#include <thread>
 
 // Qserv headers
 #include "lsst/log/Log.h"
 #include "replica/config/Config.h"
 #include "replica/contr/Controller.h"
+#include "replica/qserv/GetStatusQservMgtRequest.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
 
-using namespace nlohmann;
 using namespace std;
+using namespace nlohmann;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservStatusJob");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 string QservStatusJob::typeName() { return "QservStatusJob"; }
 
-QservStatusJob::Ptr QservStatusJob::create(unsigned int timeoutSec, bool allWorkers,
-                                           Controller::Ptr const& controller, string const& parentJobId,
-                                           wbase::TaskSelector const& taskSelector,
-                                           CallbackType const& onFinish, int priority) {
-    return QservStatusJob::Ptr(new QservStatusJob(timeoutSec, allWorkers, controller, parentJobId,
-                                                  taskSelector, onFinish, priority));
+shared_ptr<QservStatusJob> QservStatusJob::create(unsigned int timeoutSec, bool allWorkers,
+                                                  std::shared_ptr<Controller> const& controller,
+                                                  string const& parentJobId,
+                                                  wbase::TaskSelector const& taskSelector,
+                                                  CallbackType const& onFinish, int priority) {
+    return shared_ptr<QservStatusJob>(new QservStatusJob(timeoutSec, allWorkers, controller, parentJobId,
+                                                         taskSelector, onFinish, priority));
 }
 
-QservStatusJob::QservStatusJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
-                               string const& parentJobId, wbase::TaskSelector const& taskSelector,
-                               CallbackType const& onFinish, int priority)
+QservStatusJob::QservStatusJob(unsigned int timeoutSec, bool allWorkers,
+                               std::shared_ptr<Controller> const& controller, string const& parentJobId,
+                               wbase::TaskSelector const& taskSelector, CallbackType const& onFinish,
+                               int priority)
         : Job(controller, parentJobId, "QSERV_STATUS", priority),
           _timeoutSec(timeoutSec == 0 ? controller->serviceProvider()->config()->get<unsigned int>(
                                                 "controller", "request-timeout-sec")
@@ -83,11 +83,11 @@ list<pair<string, string>> QservStatusJob::extendedPersistentState() const {
 
 list<pair<string, string>> QservStatusJob::persistentLogData() const {
     list<pair<string, string>> result;
-    for (auto&& entry : qservStatus().workers) {
-        auto worker = entry.first;
+    for (auto const& entry : qservStatus().workers) {
+        auto workerName = entry.first;
         auto responded = entry.second;
         if (not responded) {
-            result.emplace_back("failed-worker", worker);
+            result.emplace_back("failed-worker", workerName);
         }
     }
     return result;
@@ -98,13 +98,14 @@ void QservStatusJob::startImpl(replica::Lock const& lock) {
     auto self = shared_from_base<QservStatusJob>();
     auto workers = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                 : controller()->serviceProvider()->config()->workers();
-    for (auto const& worker : workers) {
-        _qservStatus.workers[worker] = false;
-        _qservStatus.info[worker] = json::object();
+    for (auto const& workerName : workers) {
+        _qservStatus.workers[workerName] = false;
+        _qservStatus.info[workerName] = json::object();
         auto const request = controller()->qservMgtServices()->status(
-                worker, id(), /* jobId */
-                taskSelector(),
-                [self](GetStatusQservMgtRequest::Ptr request) { self->_onRequestFinish(request); },
+                workerName, id(), taskSelector(),
+                [self](std::shared_ptr<GetStatusQservMgtRequest> const& request) {
+                    self->_onRequestFinish(request);
+                },
                 timeoutSec());
         _requests[request->id()] = request;
         ++_numStarted;
@@ -116,7 +117,7 @@ void QservStatusJob::startImpl(replica::Lock const& lock) {
 
 void QservStatusJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    for (auto&& entry : _requests) {
+    for (auto const& entry : _requests) {
         auto const& request = entry.second;
         request->cancel();
     }
@@ -128,7 +129,7 @@ void QservStatusJob::notify(replica::Lock const& lock) {
     notifyDefaultImpl<QservStatusJob>(lock, _onFinish);
 }
 
-void QservStatusJob::_onRequestFinish(GetStatusQservMgtRequest::Ptr const& request) {
+void QservStatusJob::_onRequestFinish(std::shared_ptr<GetStatusQservMgtRequest> const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[qserv]"
                    << "  worker=" << request->workerName());

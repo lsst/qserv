@@ -32,6 +32,16 @@
 #include "replica/contr/HttpModule.h"
 #include "replica/util/Common.h"
 
+// Forward declarations
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
+
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -40,8 +50,6 @@ namespace lsst::qserv::replica {
  */
 class HttpDirectorIndexModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpDirectorIndexModule> Ptr;
-
     /**
      * Supported values for parameter 'subModuleName':
      *
@@ -49,8 +57,9 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+    static void process(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp,
                         std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
@@ -58,14 +67,15 @@ public:
     HttpDirectorIndexModule(HttpDirectorIndexModule const&) = delete;
     HttpDirectorIndexModule& operator=(HttpDirectorIndexModule const&) = delete;
 
-    ~HttpDirectorIndexModule() final = default;
+    virtual ~HttpDirectorIndexModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpDirectorIndexModule(Controller::Ptr const& controller, std::string const& taskName,
-                            qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    HttpDirectorIndexModule(std::shared_ptr<Controller> const& controller, std::string const& taskName,
+                            std::shared_ptr<qhttp::Request> const& req,
+                            std::shared_ptr<qhttp::Response> const& resp);
 
     nlohmann::json _buildDirectorIndex();
 };

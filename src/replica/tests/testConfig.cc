@@ -172,6 +172,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 1);
+    BOOST_CHECK(config->get<size_t>("controller", "worker-response-size-limit") == 1024);
     BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 2);
     BOOST_CHECK(config->get<unsigned int>("controller", "health-probe-interval") == 10);
     BOOST_CHECK(config->get<unsigned int>("controller", "replication-interval") == 120);
@@ -268,7 +269,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
                 "mysql://qsmaster@host-B:13306/qservw_worker");
 
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 122);
-    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
     BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 10);
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
@@ -373,6 +373,10 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
                       invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "num-requests-per-worker", 2));
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 2);
+
+    BOOST_CHECK_THROW(config->set<size_t>("controller", "worker-response-size-limit", 0), invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "worker-response-size-limit", 2048));
+    BOOST_CHECK(config->get<size_t>("controller", "worker-response-size-limit") == 2048);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("controller", "max-repl-level", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "max-repl-level", 3));
@@ -658,10 +662,6 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 123));
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 123);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-threads", 4));
-    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 4);
-
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 5);
@@ -843,7 +843,6 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_CHECK(workerA.name == "worker-A");
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
-    BOOST_CHECK_EQUAL(workerA.svcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.httpSvcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.fsHost, hostA);
     BOOST_CHECK_EQUAL(workerA.exporterHost, hostA);
@@ -855,7 +854,6 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_CHECK(workerB.name == "worker-B");
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
-    BOOST_CHECK_EQUAL(workerB.svcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.httpSvcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.fsHost, hostB);
     BOOST_CHECK_EQUAL(workerB.exporterHost, hostB);
@@ -868,7 +866,6 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
     BOOST_REQUIRE_NO_THROW(workerC = config->worker("worker-C"));
     BOOST_CHECK(workerC.name == "worker-C");
     BOOST_CHECK(!workerC.isEnabled);
-    BOOST_CHECK_EQUAL(workerC.svcHost, ConfigHost({"168.1.1.1", "host-C1"}));
     BOOST_CHECK_EQUAL(workerC.httpSvcHost, ConfigHost({"168.1.1.7", "host-C7"}));
     BOOST_CHECK_EQUAL(workerC.fsHost, ConfigHost({"168.1.1.2", "host-C2"}));
     BOOST_CHECK_EQUAL(workerC.exporterHost, ConfigHost({"168.1.1.4", "host-C4"}));
@@ -1157,6 +1154,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table11"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table11"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id11"));
@@ -1176,6 +1174,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable11"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable11"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1222,6 +1221,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table21"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table21"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id21"));
@@ -1241,6 +1241,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table22"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table22"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table21", "id22"));
@@ -1259,6 +1260,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable21"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable21"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1274,6 +1276,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable22"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable22"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1321,6 +1324,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table31"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table31"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id31"));
@@ -1338,6 +1342,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table32"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table32"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table31", "id32"));
@@ -1354,6 +1359,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table33"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table33"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table31", "id33"));
@@ -1370,6 +1376,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable31"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable31"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1385,6 +1392,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable32"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable32"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1400,6 +1408,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable33"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable33"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1445,6 +1454,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table41"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table41"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id41"));
@@ -1464,6 +1474,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table42"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table42"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id42"));
@@ -1483,6 +1494,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("RefMatch43"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("RefMatch43"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table41", "Table41_id"));
@@ -1503,6 +1515,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("RefMatch44"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("RefMatch44"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("db2.Table21", "Table21_id"));
@@ -1551,6 +1564,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table51"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table51"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id51"));
@@ -1600,6 +1614,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("Table61"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("Table61"));
     BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id61"));
@@ -1619,6 +1634,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
     BOOST_CHECK(database.tableExists("MetaTable61"));
     BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable61"));
     BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.persistSubChunks);
     BOOST_CHECK(!table.isDirector());
     BOOST_CHECK(!table.isRefMatch());
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
@@ -1700,6 +1716,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         inTable.name = "T1";
         inTable.database = database.name;
         inTable.isPartitioned = true;
+        inTable.persistSubChunks = false;
         inTable.directorTable = DirectorTableRef("", "objectId");
         inTable.latitudeColName = "lat";
         inTable.longitudeColName = "lon";
@@ -1719,6 +1736,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         BOOST_REQUIRE_NO_THROW(table = database.findTable(inTable.name));
         BOOST_CHECK_EQUAL(table, inTable);
         BOOST_CHECK(!table.isPublished);
+        BOOST_CHECK(!table.persistSubChunks);
         BOOST_CHECK(table.isDirector());
         BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
         BOOST_CHECK(table.charsetName.empty());
@@ -1726,6 +1744,10 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         BOOST_CHECK(table.createTime != 0);
         BOOST_CHECK(table.publishTime == 0);
         BOOST_CHECK_THROW(config->addTable(inTable), invalid_argument);
+
+        BOOST_REQUIRE_NO_THROW(database = config->updateTableSubChunks(database.name, inTable.name, true));
+        BOOST_REQUIRE_NO_THROW(table = database.findTable(inTable.name));
+        BOOST_CHECK(table.persistSubChunks);
     }
     {
         DatabaseInfo database;
@@ -1740,6 +1762,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         inTable.name = "T2";
         inTable.database = database.name;
         inTable.isPartitioned = true;
+        inTable.persistSubChunks = false;
         inTable.directorTable = DirectorTableRef("T1", "idT2");
         inTable.latitudeColName = "declT2";
         inTable.longitudeColName = "raT2";
@@ -1758,6 +1781,7 @@ BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
         BOOST_REQUIRE_NO_THROW(table = database.findTable(inTable.name));
         BOOST_CHECK_EQUAL(table, inTable);
         BOOST_CHECK(!table.isPublished);
+        BOOST_CHECK(!table.persistSubChunks);
         BOOST_CHECK(table.createTime != 0);
         BOOST_CHECK(table.publishTime == 0);
         BOOST_CHECK_THROW(config->addTable(inTable), invalid_argument);

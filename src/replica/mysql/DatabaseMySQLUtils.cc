@@ -117,7 +117,7 @@ json processList(shared_ptr<Connection> const& conn, bool full) {
     return result;
 }
 
-std::string obj2fs(std::string const& objectName) {
+string obj2fs(string const& objectName) {
     if (objectName.empty()) throw invalid_argument("Object name is empty");
     string result;
     result.reserve(objectName.size() * 5);  // Reserve enough space for the worst case
@@ -132,7 +132,7 @@ std::string obj2fs(std::string const& objectName) {
     return result;
 }
 
-std::string fs2obj(std::string const& fileSystemName) {
+string fs2obj(string const& fileSystemName) {
     if (fileSystemName.empty()) throw invalid_argument("File system name is empty");
     string result = fileSystemName;
     size_t pos = 0;
@@ -149,7 +149,7 @@ std::string fs2obj(std::string const& fileSystemName) {
     return result;
 }
 
-bool isValidObjectName(std::string const& objectName) {
+bool isValidObjectName(string const& objectName) {
     if (objectName.empty()) throw invalid_argument("Object name is empty");
     for (char c : objectName) {
         if (isalnum(c) || c == '_') continue;
@@ -241,6 +241,40 @@ json tableSchemaForCreate(shared_ptr<Connection> const& conn, string const& data
             columnType += " PRIMARY KEY";
         }
         result.push_back(json::object({{"name", columnName}, {"type", columnType}}));
+    }
+    return result;
+}
+
+bool isPartitionedLike(shared_ptr<Connection> const& conn, string const& databaseName,
+                       string const& tableName, string const& partitionMethod,
+                       string const& partitionNamePrefix) {
+    if (!conn) throw invalid_argument("Connection pointer is null");
+    if (databaseName.empty()) throw invalid_argument("Database name is empty");
+    if (tableName.empty()) throw invalid_argument("Table name is empty");
+    if (partitionMethod.empty()) throw invalid_argument("Partition method is empty");
+    if (partitionNamePrefix.empty()) throw invalid_argument("Partition name prefix is empty");
+
+    QueryGenerator const g(conn);
+    string const query = g.select("PARTITION_NAME", "PARTITION_METHOD") +
+                         g.from(g.id("INFORMATION_SCHEMA", "PARTITIONS")) +
+                         g.where(g.eq("TABLE_SCHEMA", databaseName), g.eq("TABLE_NAME", tableName));
+    bool result = false;
+    auto const queryProcessor = [&query, &partitionNamePrefix, &partitionMethod,
+                                 &result](decltype(conn) const& conn_) {
+        conn_->execute(query);
+        Row row;
+        while (conn_->next(row)) {
+            string name;
+            if (!row.get("PARTITION_NAME", name) || !name.starts_with(partitionNamePrefix)) return;
+            string method;
+            if (!row.get("PARTITION_METHOD", method) || method != partitionMethod) return;
+        }
+        result = true;
+    };
+    if (conn->inTransaction()) {
+        queryProcessor(conn);
+    } else {
+        conn->executeInOwnTransaction(queryProcessor);
     }
     return result;
 }

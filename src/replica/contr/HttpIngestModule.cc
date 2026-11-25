@@ -42,6 +42,7 @@
 #include "global/constants.h"
 #include "http/Exceptions.h"
 #include "replica/config/Config.h"
+#include "replica/contr/Controller.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/QservSyncJob.h"
@@ -54,6 +55,7 @@
 #include "replica/jobs/SqlGrantAccessJob.h"
 #include "replica/jobs/SqlEnableDbJob.h"
 #include "replica/jobs/SqlRemoveTablePartitionsJob.h"
+#include "replica/proto/Protocol.h"
 #include "replica/qserv/PostEventQservCzarMgtRequest.h"
 #include "replica/registry/Registry.h"
 #include "replica/requests/SqlResultSet.h"
@@ -72,7 +74,7 @@ using namespace lsst::qserv::replica;
 
 namespace {
 
-string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
+string jobCompletionErrorIfAny(shared_ptr<SqlJob> const& job, string const& prefix) {
     string error;
     switch (job->extendedState()) {
         case Job::ExtendedState::NONE:
@@ -126,15 +128,16 @@ using namespace database::mysql;
 string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
-void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+void HttpIngestModule::process(shared_ptr<Controller> const& controller, string const& taskName,
+                               shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
                                string const& subModuleName, http::AuthType const authType) {
     HttpIngestModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpIngestModule::HttpIngestModule(Controller::Ptr const& controller, string const& taskName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpIngestModule::HttpIngestModule(shared_ptr<Controller> const& controller, string const& taskName,
+                                   shared_ptr<qhttp::Request> const& req,
+                                   shared_ptr<qhttp::Response> const& resp)
         : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestModule::executeImpl(string const& subModuleName) {
@@ -760,7 +763,7 @@ json HttpIngestModule::_scanTableStats() {
     auto const databaseName = body().required<string>("database");
     auto const tableName = body().required<string>("table");
     auto const overlapSelector =
-            str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
+            parseTableSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
     auto const rowCountersStateUpdatePolicy = SqlRowStatsJob::str2policy(
             body().optional<string>("row_counters_state_update_policy", "DISABLED"));
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
@@ -768,7 +771,7 @@ json HttpIngestModule::_scanTableStats() {
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "table=" + tableName);
-    debug(__func__, "overlap_selector=" + overlapSelector2str(overlapSelector));
+    debug(__func__, "overlap_selector=" + toString(overlapSelector));
     debug(__func__,
           "row_counters_state_update_policy=" + SqlRowStatsJob::policy2str(rowCountersStateUpdatePolicy));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
@@ -850,7 +853,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
                     break;
                 default:
                     runtime_error("HttpIngestModule::" + string(__func__) +
-                                  " unsupported overlap selector '" + overlapSelector2str(overlapSelector));
+                                  " unsupported overlap selector '" + toString(overlapSelector));
             }
             if (scanRequired) {
                 debug(__func__, "scan required for " + database.name + "." + table.name +
@@ -859,7 +862,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
                                         to_string(chunks.size()) + " chunkOverlapsInEntries.size(): " +
                                         to_string(chunkOverlapsInEntries.size()) +
                                         " chunksInEntries.size(): " + to_string(chunksInEntries.size()) +
-                                        " with overlapSelector: " + overlapSelector2str(overlapSelector));
+                                        " with overlapSelector: " + toString(overlapSelector));
             }
         } else {
             // The regular table won't require rescan since the collection of entries
@@ -882,9 +885,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
             job->getResultData().iterate([&](SqlJobResult::Worker const& worker,
                                              SqlJobResult::Scope const& internalTable,
                                              SqlResultSet::ResultSet const& resultSet) {
-                if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
+                if (resultSet.extendedStatus != protocol::StatusExt::NONE) {
                     errorExt["workers"][worker][internalTable] =
-                            json::object({{"status", ProtocolStatusExt_Name(resultSet.extendedStatus)},
+                            json::object({{"status", protocol::toString(resultSet.extendedStatus)},
                                           {"error", resultSet.error}});
                 }
             });
@@ -953,9 +956,9 @@ json HttpIngestModule::_deleteTableStats() {
     auto const table = getTableInfo(__func__);
     bool const qservOnly = body().optional<int>("qserv_only", 0) != 0;
     auto const overlapSelector =
-            str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
+            parseTableSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
     debug(__func__, "qserv_only=" + bool2str(qservOnly));
-    debug(__func__, "overlap_selector=" + overlapSelector2str(overlapSelector));
+    debug(__func__, "overlap_selector=" + toString(overlapSelector));
 
     try {
         ConnectionHandler const h(qservMasterDbConnection("qservMeta"));

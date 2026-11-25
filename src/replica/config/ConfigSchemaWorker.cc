@@ -69,9 +69,6 @@ json ConfigSchemaWorker::_build() {
               " in the requests sent to the worker. In this cases, the value specified in the request"
               " will take precedence over the default timeout."},
              {"default", 28800}},
-    worker["num-threads"] = {
-            {"description", "The number of threads managed by BOOST ASIO. Must be greater than 0."},
-            {"default", min(8U, num_threads)}};
     worker["num-svc-processing-threads"] = {
             {"description", "The number of request processing threads in each Replication worker service."},
             {"default", min(8U, num_threads)}};
@@ -151,8 +148,6 @@ json ConfigSchemaWorker::_build() {
              " the default value unless there are specific reasons to change it."},
             {"empty-allowed", 1},
             {"default", 0}};
-    worker["svc-port"] = {{"description", "The port number for the worker replication service."},
-                          {"default", 25000}};
     worker["http-svc-port"] = {
             {"description", "The port number for the HTTP-based worker replication service."},
             {"default", 25005}};

@@ -387,6 +387,16 @@ void CssAccess::setTableStatus(std::string const& dbName, std::string const& tab
     _kvI->set(tableKey, status);
 }
 
+void CssAccess::setSubChunkMode(std::string const& dbName, std::string const& tableName, bool persist) {
+    LOGS(_log, LOG_LVL_DEBUG, "setSubChunkMode(" << dbName << ", " << tableName << ", " << persist << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
+    _checkVersion();
+
+    std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
+    if (not _kvI->exists(tableKey)) throw NoSuchTable(ERR_LOC, dbName, tableName);
+    _kvI->set(tableKey + "/partitioning/subChunksPersist", persist ? "1" : "0");
+}
+
 bool CssAccess::containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly) const {
     LOGS(_log, LOG_LVL_DEBUG, "containsTable(" << dbName << ", " << tableName << ")");
     std::lock_guard<std::mutex> lock(_mutex);
@@ -469,6 +479,7 @@ PartTableParams CssAccess::getPartTableParams(std::string const& dbName, std::st
 
     std::vector<std::string> subKeys{"partitioning",
                                      "partitioning/subChunks",
+                                     "partitioning/subChunksPersist",
                                      "partitioning/dirDb",
                                      "partitioning/dirTable",
                                      "partitioning/dirColName",
@@ -529,6 +540,7 @@ TableParams CssAccess::getTableParams(std::string const& dbName, std::string con
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
     TableParams params;
     std::vector<std::string> subKeys{"partitioning/subChunks",
+                                     "partitioning/subChunksPersist",
                                      "partitioning/dirDb",
                                      "partitioning/dirTable",
                                      "partitioning/dirColName",
@@ -589,6 +601,7 @@ void CssAccess::createTable(std::string const& dbName, std::string const& tableN
                 std::make_pair("latColName", partParams.latColName),
                 std::make_pair("lonColName", partParams.lonColName),
                 std::make_pair("subChunks", std::to_string(int(partParams.subChunks))),
+                std::make_pair("subChunksPersist", std::to_string(int(partParams.subChunksPersist))),
         };
         // only store overlap if non-zero
         if (partParams.overlap != 0.0) {
@@ -1054,6 +1067,10 @@ void CssAccess::_fillPartTableParams(std::map<std::string, std::string>& paramMa
         auto iter = paramMap.find("partitioning/subChunks");
         if (iter != paramMap.end()) {
             params.subChunks = std::stoi(iter->second);
+        }
+        iter = paramMap.find("partitioning/subChunksPersist");
+        if (iter != paramMap.end()) {
+            params.subChunksPersist = std::stoi(iter->second);
         }
         iter = paramMap.find("partitioning/overlap");
         if (iter != paramMap.end()) {

@@ -29,8 +29,7 @@
 #include "replica/config/Config.h"
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/mysql/DatabaseMySQL.h"
-#include "replica/proto/protocol.pb.h"
-#include "util/Issue.h"
+#include "replica/services/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -47,11 +46,7 @@ Application::Application(int argc, const char* const argv[], string const& descr
                          bool const enableServiceProvider, ConfigSchema const& configSchema)
         : _enableServiceProvider(enableServiceProvider),
           _configSchema(configSchema),
-          _parser(argc, argv, description) {
-    // Verify that the version of the library that we linked against is
-    // compatible with the version of the headers we compiled against.
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-}
+          _parser(argc, argv, description) {}
 
 int Application::run() {
     // The standard option which is available to all applications.
@@ -168,7 +163,7 @@ int Application::run() {
     return exitCode;
 }
 
-ServiceProvider::Ptr const& Application::serviceProvider() const {
+std::shared_ptr<ServiceProvider> const& Application::serviceProvider() const {
     string const context_ = "Application::" + string(__func__) + " ";
     if (_parser.status() != Parser::SUCCESS) {
         throw logic_error(context_ +

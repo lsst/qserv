@@ -45,21 +45,21 @@ BOOST_AUTO_TEST_CASE(CommonTypesTest) {
     LOGS_INFO("CommonTypesTest test begins");
 
     BOOST_REQUIRE_NO_THROW({
-        BOOST_CHECK_EQUAL(overlapSelector2str(ChunkOverlapSelector::CHUNK), "CHUNK");
-        BOOST_CHECK_EQUAL(overlapSelector2str(ChunkOverlapSelector::OVERLAP), "OVERLAP");
-        BOOST_CHECK_EQUAL(overlapSelector2str(ChunkOverlapSelector::CHUNK_AND_OVERLAP), "CHUNK_AND_OVERLAP");
+        BOOST_CHECK_EQUAL(toString(ChunkOverlapSelector::CHUNK), "CHUNK");
+        BOOST_CHECK_EQUAL(toString(ChunkOverlapSelector::OVERLAP), "OVERLAP");
+        BOOST_CHECK_EQUAL(toString(ChunkOverlapSelector::CHUNK_AND_OVERLAP), "CHUNK_AND_OVERLAP");
     });
-    BOOST_CHECK_THROW({ overlapSelector2str(static_cast<ChunkOverlapSelector>(0)); }, invalid_argument);
+    BOOST_CHECK_THROW({ toString(static_cast<ChunkOverlapSelector>(0)); }, invalid_argument);
 
     BOOST_REQUIRE_NO_THROW({
-        BOOST_CHECK_EQUAL(str2overlapSelector("CHUNK"), ChunkOverlapSelector::CHUNK);
-        BOOST_CHECK_EQUAL(str2overlapSelector("OVERLAP"), ChunkOverlapSelector::OVERLAP);
-        BOOST_CHECK_EQUAL(str2overlapSelector("CHUNK_AND_OVERLAP"), ChunkOverlapSelector::CHUNK_AND_OVERLAP);
+        BOOST_CHECK_EQUAL(parseTableSelector("CHUNK"), ChunkOverlapSelector::CHUNK);
+        BOOST_CHECK_EQUAL(parseTableSelector("OVERLAP"), ChunkOverlapSelector::OVERLAP);
+        BOOST_CHECK_EQUAL(parseTableSelector("CHUNK_AND_OVERLAP"), ChunkOverlapSelector::CHUNK_AND_OVERLAP);
     });
     BOOST_CHECK_THROW(
             {
-                str2overlapSelector("");
-                str2overlapSelector("ABC");
+                parseTableSelector("");
+                parseTableSelector("ABC");
             },
             invalid_argument);
 

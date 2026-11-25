@@ -66,9 +66,6 @@ public:
     bool isReadOnly = false;  // The worker can only serve as a source of replicas.
                               // New replicas can't be placed on it.
 
-    ConfigHost svcHost;    // The host name (and IP address) of the worker service
-    uint16_t svcPort = 0;  // The port number of the worker service
-
     ConfigHost httpSvcHost;    // The host name (and IP address) of the HTTP-based worker service
     uint16_t httpSvcPort = 0;  // The port number of the HTTP-based worker service
 

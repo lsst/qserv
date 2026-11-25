@@ -33,18 +33,16 @@ using namespace nlohmann;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.PostEventQservCzarMgtRequest");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-PostEventQservCzarMgtRequest::Ptr PostEventQservCzarMgtRequest::create(
+shared_ptr<PostEventQservCzarMgtRequest> PostEventQservCzarMgtRequest::create(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& czarName,
         cconfig::DataManagementEvent const& event,
         PostEventQservCzarMgtRequest::CallbackType const& onFinish) {
-    return PostEventQservCzarMgtRequest::Ptr(
+    return shared_ptr<PostEventQservCzarMgtRequest>(
             new PostEventQservCzarMgtRequest(serviceProvider, czarName, event, onFinish));
 }
 

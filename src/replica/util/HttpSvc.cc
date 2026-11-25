@@ -23,9 +23,12 @@
 #include "replica/util/HttpSvc.h"
 
 // System headers
-#include <functional>
 #include <stdexcept>
 #include <thread>
+
+// Qserv headers
+#include "qhttp/Server.h"
+#include "replica/services/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -33,14 +36,12 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpSvc");
-
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider, uint16_t port, unsigned int backlog,
+HttpSvc::HttpSvc(shared_ptr<ServiceProvider> const& serviceProvider, uint16_t port, unsigned int backlog,
                  size_t numThreads)
         : _serviceProvider(serviceProvider),
           _port(port),
@@ -70,10 +71,10 @@ void HttpSvc::run() {
     // Launch all threads in a dedicated pool.
     auto const self = shared_from_this();
     vector<shared_ptr<thread>> threads(_numThreads);
-    for (auto&& ptr : threads) {
+    for (auto& ptr : threads) {
         ptr = shared_ptr<thread>(new thread([self]() { self->_io_service_ptr->run(); }));
     }
-    for (auto&& ptr : threads) {
+    for (auto& ptr : threads) {
         ptr->join();
     }
 }

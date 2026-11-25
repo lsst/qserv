@@ -113,6 +113,7 @@ json TableInfo::toJson() const {
     result["is_partitioned"] = isPartitioned ? 1 : 0;
     result["is_director"] = isDirector() ? 1 : 0;
     result["is_ref_match"] = isRefMatch() ? 1 : 0;
+    result["persist_sub_chunks"] = persistSubChunks ? 1 : 0;
     result["director_table"] = directorTable.databaseTableName();
     result["director_database_name"] = directorTable.databaseName();
     result["director_table_name"] = directorTable.tableName();
@@ -143,11 +144,11 @@ json TableInfo::toJson() const {
 
 bool operator==(TableInfo const& lhs, TableInfo const& rhs) {
     return (lhs.columns == rhs.columns) && (lhs.name == rhs.name) && (lhs.database == rhs.database) &&
-           (lhs.isPartitioned == rhs.isPartitioned) && (lhs.directorTable == rhs.directorTable) &&
-           (lhs.directorTable2 == rhs.directorTable2) && (lhs.flagColName == rhs.flagColName) &&
-           (lhs.uniquePrimaryKey == rhs.uniquePrimaryKey) && (lhs.charsetName == rhs.charsetName) &&
-           (lhs.collationName == rhs.collationName) && (lhs.latitudeColName == rhs.latitudeColName) &&
-           (lhs.longitudeColName == rhs.longitudeColName);
+           (lhs.isPartitioned == rhs.isPartitioned) && (lhs.persistSubChunks == rhs.persistSubChunks) &&
+           (lhs.directorTable == rhs.directorTable) && (lhs.directorTable2 == rhs.directorTable2) &&
+           (lhs.flagColName == rhs.flagColName) && (lhs.uniquePrimaryKey == rhs.uniquePrimaryKey) &&
+           (lhs.charsetName == rhs.charsetName) && (lhs.collationName == rhs.collationName) &&
+           (lhs.latitudeColName == rhs.latitudeColName) && (lhs.longitudeColName == rhs.longitudeColName);
 }
 
 ostream& operator<<(ostream& os, TableInfo const& info) {
