@@ -28,6 +28,7 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class Config;
+class DatabaseInfo;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -58,6 +59,19 @@ public:
      */
     static void createMissingDatabase(std::string const& context, std::shared_ptr<Config> const& config,
                                       std::string const& databaseName);
+
+    /**
+     * Drop the specified chunk's tables. Missing tables are ignored.
+     *
+     * @note SQL is used to achieve this rather than the file system to ensure MariaDB's cached table handles
+     *       are invalidated.
+     * @param config a pointer to the configuration object, used to connect to MariaDB
+     * @param databaseInfo database whose chunk tables are to be dropped
+     * @param chunk the chunk number to delete
+     * @throws std::exception If a DROP fails. Earlier drops are not rolled back.
+     */
+    static void dropChunkTables(std::shared_ptr<Config> const& config, DatabaseInfo const& databaseInfo,
+                                unsigned int chunk);
 };
 
 }  // namespace lsst::qserv::replica
