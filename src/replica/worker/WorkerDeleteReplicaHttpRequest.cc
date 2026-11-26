@@ -22,26 +22,18 @@
 // Class header
 #include "replica/worker/WorkerDeleteReplicaHttpRequest.h"
 
-// System headers
-#include <filesystem>
-#include <system_error>
-
-// Third party headers
-
 // Qserv headers
 #include "replica/config/Config.h"
 #include "replica/config/ConfigDatabase.h"
-#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/proto/Protocol.h"
 #include "replica/services/ServiceProvider.h"
-#include "replica/util/FileUtils.h"
+#include "replica/worker/WorkerUtils.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 namespace {
@@ -90,38 +82,13 @@ bool WorkerDeleteReplicaHttpRequest::execute() {
     // The method will throw ConfigUnknownDatabase if the database is invalid.
     DatabaseInfo const databaseInfo = serviceProvider()->config()->databaseInfo(_databaseName);
 
-    // The collection of short names of files to be deleted.
-    vector<string> const files = FileUtils::partitionedFiles(databaseInfo, _chunkNumber);
-
-    // The data folder will be locked while performing the operation
-    int numFilesDeleted = 0;
-    std::error_code ec;
-    {
+    try {
         replica::Lock dataFolderLock(mtxDataFolderOperations, _CONTEXT);
-        fs::path const dataDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
-                                 database::mysql::obj2fs(_databaseName);
-        fs::file_status const stat = fs::status(dataDir, ec);
-        if (stat.type() == fs::file_type::none) {
-            _SET_STATUS_FAILED(protocol::StatusExt::FOLDER_STAT,
-                               "failed to check the status of directory: " + dataDir.string() +
-                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message());
-            return true;
-        }
-        if (!fs::exists(stat)) {
-            _SET_STATUS_FAILED(protocol::StatusExt::NO_FOLDER,
-                               "the directory does not exists: " + dataDir.string());
-            return true;
-        }
-        for (auto const& name : files) {
-            fs::path const file = dataDir / fs::path(name);
-            if (fs::remove(file, ec)) ++numFilesDeleted;
-            if (ec.value() != 0) {
-                _SET_STATUS_FAILED(protocol::StatusExt::FILE_DELETE,
-                                   "failed to delete file: " + file.string() +
-                                           ", code: " + to_string(ec.value()) + ", error: " + ec.message());
-                return true;
-            }
-        }
+        WorkerUtils::dropChunkTables(serviceProvider()->config(), databaseInfo, _chunkNumber);
+    } catch (exception const& ex) {
+        _SET_STATUS_FAILED(protocol::StatusExt::MYSQL_ERROR,
+                           "failed to drop chunk tables, error: " + string(ex.what()));
+        return true;
     }
     setStatus(lock, protocol::Status::SUCCESS);
     return true;

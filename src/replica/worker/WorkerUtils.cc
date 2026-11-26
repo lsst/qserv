@@ -28,8 +28,10 @@
 
 // Qserv headers
 #include "replica/config/Config.h"
+#include "replica/config/ConfigDatabase.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
+#include "replica/util/ChunkedTable.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -67,6 +69,24 @@ void WorkerUtils::createMissingDatabase(string const& context, shared_ptr<Config
              context << "  database: " << databaseName
                      << "  failed to create the missing database, error: " << ex.what());
     }
+}
+
+void WorkerUtils::dropChunkTables(shared_ptr<Config> const& config, DatabaseInfo const& databaseInfo,
+                                  unsigned int chunk) {
+    ConnectionHandler const h(Connection::open(config->qservWorkerDbParams()));
+    QueryGenerator const g(h.conn);
+    bool const ifExists = true;
+    vector<string> queries;
+    for (auto const& table : databaseInfo.partitionedTables()) {
+        queries.push_back(g.dropTable(g.id(databaseInfo.name, ChunkedTable(table, chunk).name()), ifExists));
+        queries.push_back(
+                g.dropTable(g.id(databaseInfo.name, ChunkedTable(table, chunk, true).name()), ifExists));
+    }
+    h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
+        for (auto const& query : queries) {
+            conn_->execute(query);
+        }
+    });
 }
 
 }  // namespace lsst::qserv::replica

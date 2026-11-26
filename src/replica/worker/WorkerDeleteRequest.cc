@@ -22,22 +22,17 @@
 // Class header
 #include "replica/worker/WorkerDeleteRequest.h"
 
-// System headers
-#include <filesystem>
-#include <system_error>
-
 // Qserv headers
 #include "replica/config/Config.h"
-#include "replica/mysql/DatabaseMySQLUtils.h"
+#include "replica/config/ConfigDatabase.h"
 #include "replica/services/ServiceProvider.h"
-#include "replica/util/FileUtils.h"
+#include "replica/worker/WorkerUtils.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = std::filesystem;
 
 namespace {
 
@@ -86,33 +81,13 @@ bool WorkerDeleteRequest::execute() {
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
 
-    vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
-
-    // The data folder will be locked while performing the operation
-    int numFilesDeleted = 0;
-    WorkerRequest::ErrorContext errorContext;
-    std::error_code ec;
-    {
+    try {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
-                                 database::mysql::obj2fs(database());
-        fs::file_status const stat = fs::status(dataDir, ec);
-        errorContext =
-                errorContext ||
-                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
-                              "failed to check the status of directory: " + dataDir.string() +
-                                      ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
-                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
-                              "the directory does not exists: " + dataDir.string());
-        for (const auto& name : files) {
-            const fs::path file = dataDir / fs::path(name);
-            if (fs::remove(file, ec)) ++numFilesDeleted;
-            errorContext = errorContext || reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_DELETE,
-                                                         "failed to delete file: " + file.string());
-        }
-    }
-    if (errorContext.failed) {
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+        WorkerUtils::dropChunkTables(_serviceProvider->config(), databaseInfo, chunk());
+    } catch (exception const& ex) {
+        reportErrorIf(true, ProtocolStatusExt::MYSQL_ERROR,
+                      "failed to drop chunk tables, error: " + string(ex.what()));
+        setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::MYSQL_ERROR);
         return true;
     }
     setStatus(lock, ProtocolStatus::SUCCESS);
