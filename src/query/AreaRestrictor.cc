@@ -92,6 +92,12 @@ std::ostream& operator<<(std::ostream& os, AreaRestrictor const& q) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, DispatchArea const& area) {
+    os << *area.restrictor;
+    if (area.dilationDeg > 0.0) os << " dilated by " << area.dilationDeg << " deg";
+    return os;
+}
+
 std::string AreaRestrictor::sqlFragment() const {
     QueryTemplate qt;
     renderTo(qt);

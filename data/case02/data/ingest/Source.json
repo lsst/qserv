@@ -6,8 +6,8 @@
     "is_partitioned":1,
     "director_table":"Object",
     "director_key":"objectId",
-    "latitude_key":"decl",
-    "longitude_key":"ra",
+    "latitude_key":"declObject",
+    "longitude_key":"raObject",
     "schema":[
         {"name":"sourceId", "type":"bigint(20) NOT NULL"},
         {"name":"scienceCcdExposureId", "type":"bigint(20) DEFAULT NULL"},

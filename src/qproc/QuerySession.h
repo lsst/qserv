@@ -104,9 +104,19 @@ public:
     query::AreaRestrictorVecPtr getAreaRestrictors() const;
 
     /**
-     * @brief Get the Secondary Index Restrictors
+     * @brief Get the area restrictions used for chunk selection, with their dilation
+     */
+    query::DispatchAreaVec const& getDispatchAreas() const;
+
+    /**
+     * @brief Get Secondary Index Restrictors from the query
      */
     query::SecIdxRestrictorVecPtr getSecIdxRestrictors() const;
+
+    /**
+     * @brief Get Secondary Index Restrictors for chunk selection.
+     */
+    query::SecIdxRestrictorVecPtr getDispatchSecIdxRestrictors() const;
 
     void addChunk(ChunkSpec const& cs);
     void setDummy();

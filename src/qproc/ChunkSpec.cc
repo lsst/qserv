@@ -73,27 +73,23 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
 /// chunkId. i.e., for all ChunkSpec A element, there is no ChunkSpec B element
 /// in the same vector where A.chunkId == B.chunkId.
 void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
-    ChunkSpecVector tmp;
-    ChunkSpecVector::iterator di = dest.begin();
-    ChunkSpecVector::iterator de = dest.end();
-    ChunkSpecVector::const_iterator ai = a.begin();
-    ChunkSpecVector::const_iterator ae = a.end();
-    for (; (di != de) && (ai != ae); ++di) {  // march down dest vector
-        // For each item in dest, advance through a to find a matching chunkId.
-        while (ai->chunkId < di->chunkId) {
-            ++ai;
-        }
-
-        if (ai->chunkId == di->chunkId) {
-            ChunkSpec cs = *di;
-            // On a match, perform the intersection.
-            cs.restrict(*ai);
-            if (di->chunkId != ChunkSpec::CHUNKID_INVALID) {
-                tmp.push_back(cs);
-            }
-        }
+    ChunkSpecVector result;
+    auto ai = a.begin();
+    for (auto const& d : dest) {
+        // Both are sorted by chunkId, so each search starts where the last one stopped.
+        ai = std::ranges::lower_bound(ai, a.end(), d.chunkId, {}, &ChunkSpec::chunkId);
+        if (ai == a.end()) break;  // nothing left to check against; we're done.
+        if (ai->chunkId != d.chunkId || d.chunkId == ChunkSpec::CHUNKID_INVALID) continue;
+        ChunkSpec cs = d;
+        // On a match, perform the intersection.
+        cs.restrict(*ai);
+        // Both select sub-chunks of this chunk, but none in common: no row matches
+        // both restrictions here. Keeping the chunk with an empty sub-chunk list
+        // would dispatch a sub-chunk query with no sub-chunk, which fails.
+        if (cs.subChunks.empty() && !d.subChunks.empty() && !ai->subChunks.empty()) continue;
+        result.push_back(std::move(cs));
     }
-    tmp.swap(dest);
+    dest = std::move(result);
 }
 
 ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b) {
@@ -140,13 +136,17 @@ ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
 
 void ChunkSpec::restrict(ChunkSpec const& rhs) {
     if (chunkId != rhs.chunkId) {
-        throw util::Bug(ERR_LOC, "ChunkSpec::merge with different chunkId");
+        throw util::Bug(ERR_LOC, "ChunkSpec::restrict with different chunkId");
+    }
+    // empty = unrestricted
+    if (rhs.subChunks.empty()) return;
+    if (subChunks.empty()) {
+        subChunks = rhs.subChunks;
+        return;
     }
     Int32Vector output;
-    output.reserve(rhs.subChunks.size());
-    std::set_intersection(subChunks.begin(), subChunks.end(), rhs.subChunks.begin(), rhs.subChunks.end(),
-                          std::insert_iterator<Int32Vector>(output, output.end()));
-    subChunks.swap(output);
+    std::ranges::set_intersection(subChunks, rhs.subChunks, std::back_inserter(output));
+    subChunks = std::move(output);
 }
 
 void ChunkSpec::mergeUnion(ChunkSpec const& rhs) {

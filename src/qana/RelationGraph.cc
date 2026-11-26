@@ -44,6 +44,7 @@
 #include "qana/TableInfoPool.h"
 
 #include "query/AndTerm.h"
+#include "query/AreaRestrictor.h"
 #include "query/BoolFactor.h"
 #include "query/ColumnRef.h"
 #include "query/CompPredicate.h"
@@ -52,6 +53,7 @@
 #include "query/OrTerm.h"
 #include "query/QueryContext.h"
 #include "query/QueryTemplate.h"
+#include "query/SecIdxRestrictor.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
@@ -757,6 +759,13 @@ void RelationGraph::_fuse(JoinRef::Type joinType, bool natural, JoinSpec::Ptr co
         // provided later (e.g. in the WHERE clause).
         throw QueryNotEvaluableError("Unable to evaluate query by joining only partition-local data");
     }
+    // Track references that may be absent from an outer-join result (the NULL-supplying side).
+    if (joinType == JoinRef::LEFT || joinType == JoinRef::FULL) {
+        for (auto& vertex : g._vertices) vertex.nullable = true;
+    }
+    if (joinType == JoinRef::RIGHT || joinType == JoinRef::FULL) {
+        for (auto& vertex : _vertices) vertex.nullable = true;
+    }
     // Splice g into this graph.
     LOGS(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " (" << this << ") splicing in verticies from (" << &g
@@ -986,6 +995,30 @@ bool isEvaluable(std::list<Vertex> const& vertices) {
     return true;
 }
 
+/// `canRewriteWithSubChunks` returns `true` if the plan stays within the overlap limit and
+/// can avoid duplicate rows.
+bool canRewriteWithSubChunks(std::list<Vertex> const& vertices) {
+    size_t numOverlap = 0;
+    bool confined = false;
+    for (auto const& v : vertices) {
+        if (v.info->kind == TableInfo::DIRECTOR && v.overlap > 0.0) ++numOverlap;
+        if (!v.nullable && v.overlap == 0.0 &&
+            (v.info->kind == TableInfo::DIRECTOR || v.info->kind == TableInfo::CHILD)) {
+            confined = true;
+        }
+    }
+    if (numOverlap > RelationGraph::MAX_TABLE_REFS_WITH_OVERLAP) return false;
+    return numOverlap == 0 || confined;
+}
+
+/// `preservesOuterJoinResults` returns `true` if no director on an outer join's
+/// null-supplying side needs overlap.
+bool preservesOuterJoinResults(std::list<Vertex> const& vertices) {
+    return std::none_of(vertices.begin(), vertices.end(), [](Vertex const& v) {
+        return v.nullable && v.info->kind == TableInfo::DIRECTOR && v.overlap != 0.0;
+    });
+}
+
 /// `resetVertices` sets the required overlap of all graph vertices to ∞.
 void resetVertices(std::list<Vertex>& vertices) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
@@ -997,34 +1030,79 @@ void resetVertices(std::list<Vertex>& vertices) {
 
 }  // anonymous namespace
 
-/// `_validate` searches for a graph traversal that proves the input query
-/// is evaluable.
-bool RelationGraph::_validate() {
+/// `_validate` chooses an initial vertex and computes the plan's overlap requirements,
+/// leaving final rewrite feasibility checks to rewrite().
+bool RelationGraph::_validate(query::SecIdxRestrictorVecPtr const& restrictors,
+                              query::AreaRestrictorVecPtr const& areaRestrictors) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
-    size_t numStarts = 0;
-    for (Vertex& vtx : _vertices) {
-        if (vtx.info->kind != TableInfo::MATCH) {
-            ++numStarts;
-            resetVertices(_vertices);
-            computeMinimumOverlap(vtx);
-            if (isEvaluable(_vertices)) {
-                return true;
-            }
-            // At least one vertex still has infinite required overlap, so
-            // the graph is disconnected or too much overlap is required.
-            // Try again with another starting vertex.
+    // Prefer index-restricted tables, then area-restricted tables, then the rest.
+    std::vector<Vertex*> starts;
+    auto addCandidate = [&](Vertex* vertex) {
+        if (vertex->info->kind != TableInfo::MATCH &&
+            std::find(starts.begin(), starts.end(), vertex) == starts.end()) {
+            starts.push_back(vertex);
+        }
+    };
+    auto addCandidatesForColumn = [&](query::ColumnRef const& source) {
+        for (auto* vertex : _map.find(source)) {
+            addCandidate(vertex);
+        }
+    };
+
+    if (restrictors) {
+        for (auto const& restrictor : *restrictors) {
+            if (auto const source = restrictor->getSourceColumnRef()) addCandidatesForColumn(*source);
         }
     }
-    if (numStarts == 0) {
-        // If the input query involves only unpartitioned tables, or just a
-        // single match table, it can be evaluated. If it involves more than
-        // one match table, its relation graph must be disconnected.
+    if (areaRestrictors) {
+        for (auto const& restrictor : *areaRestrictors) {
+            for (auto const& source : restrictor->getSourceColumnRefs()) {
+                if (source) addCandidatesForColumn(*source);
+            }
+        }
+    }
+    for (auto& vertex : _vertices) {
+        addCandidate(&vertex);
+    }
+
+    // Try candidates in the order above. Returning here takes the first plan that passes all three checks.
+    bool splitsOuterJoin = false;
+    Vertex* fallback = nullptr;
+    for (auto* start : starts) {
+        resetVertices(_vertices);
+        computeMinimumOverlap(*start);
+
+        if (!isEvaluable(_vertices)) continue;
+
+        if (!preservesOuterJoinResults(_vertices)) {
+            splitsOuterJoin = true;
+            continue;
+        }
+
+        if (canRewriteWithSubChunks(_vertices)) return true;
+
+        if (fallback == nullptr) fallback = start;
+    }
+    if (fallback != nullptr) {
+        // No candidate passed. Restore the first that passed our locality and outer join checks and let
+        // rewrite() handle this (if possible).
+        resetVertices(_vertices);
+        computeMinimumOverlap(*fallback);
+        return true;
+    }
+    if (splitsOuterJoin) {
+        throw QueryNotEvaluableError("Cannot safely evaluate this combination of outer and spatial joins");
+    }
+    if (starts.empty()) {
+        // Accept an empty graph or one match table (two vertices)
         return _vertices.empty() || _vertices.size() == 2;
     }
     return false;
 }
 
-RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&stmt) {
+RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool, query::SecIdxRestrictorVecPtr restrictors,
+                             query::AreaRestrictorVecPtr areaRestrictors)
+        : _query(&stmt) {
     LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: stmt=" << stmt.getQueryTemplate());
 
     // Check that at least one thing is being selected.
@@ -1061,13 +1139,65 @@ RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&st
 
     g._dumpGraph();
 
-    if (!g._validate()) {
+    if (!g._validate(restrictors, areaRestrictors)) {
         throw QueryNotEvaluableError(
                 "Query involves partitioned table joins that Qserv does not "
                 "know how to evaluate using only partition-local data");
     }
 
     swap(g);
+}
+
+query::SecIdxRestrictorVecPtr RelationGraph::makeDispatchSecIdxRestrictors(
+        query::SecIdxRestrictorVecPtr const& restrictors) const {
+    if (!restrictors) return nullptr;
+    query::SecIdxRestrictorVec local;
+    for (auto const& restrictor : *restrictors) {
+        auto const source = restrictor->getSourceColumnRef();
+        auto const* vertices = source ? &_map.find(*source) : nullptr;
+        if (vertices == nullptr || vertices->empty()) {
+            // Cannot establish locality. Omit the lookup from partition selection.
+            LOGS(_log, LOG_LVL_WARN,
+                 "Secondary index restrictor without a table reference ignored: " << *restrictor);
+            continue;
+        }
+
+        // To be local, all matches must require 0 overlap.
+        bool const isLocal = std::all_of(vertices->begin(), vertices->end(),
+                                         [](Vertex const* v) { return v->overlap == 0.0; });
+        if (isLocal) {
+            local.push_back(restrictor);
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "Cannot use secondary index restrictor " << *restrictor
+                                                          << " for dispatch: overlap required");
+        }
+    }
+
+    return local.empty() ? nullptr : std::make_shared<query::SecIdxRestrictorVec>(std::move(local));
+}
+
+query::DispatchAreaVec RelationGraph::makeDispatchAreas(
+        query::AreaRestrictorVecPtr const& restrictors) const {
+    query::DispatchAreaVec areas;
+    if (!restrictors) return areas;
+    for (auto const& restrictor : *restrictors) {
+        double radius = std::numeric_limits<double>::infinity();
+        for (auto const& source : restrictor->getSourceColumnRefs()) {
+            if (!source) continue;
+            auto const& vertices = _map.find(*source);
+            if (vertices.empty()) continue;
+            double sourceRadius = 0.0;
+            for (auto* vertex : vertices) sourceRadius = std::max(sourceRadius, vertex->overlap);
+            radius = std::min(radius, sourceRadius);
+        }
+        if (std::isinf(radius)) {
+            LOGS(_log, LOG_LVL_WARN, "Area restrictor without a table reference ignored: " << *restrictor);
+            continue;
+        }
+        areas.push_back({restrictor, radius});
+    }
+    return areas;
 }
 
 void RelationGraph::_dumpGraph() const { dumpGraph(_vertices); }

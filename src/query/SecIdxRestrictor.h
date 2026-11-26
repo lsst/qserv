@@ -64,6 +64,14 @@ public:
 
     virtual std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const = 0;
 
+    /// @brief Get the source column reference.
+    /// @see _sourceColumnRef
+    std::shared_ptr<ColumnRef const> getSourceColumnRef() const { return _sourceColumnRef; }
+
+    /// @brief Set the source column reference.
+    /// @see _sourceColumnRef
+    void setSourceColumnRef(std::shared_ptr<ColumnRef const> const& column) { _sourceColumnRef = column; }
+
     virtual std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
                                              std::string const& secondaryIndexTable,
                                              std::string const& chunkColumn,
@@ -84,6 +92,11 @@ protected:
      * least make sure that typeid(this) == typeid(rhs) before calling isEqual.
      */
     virtual bool isEqual(const SecIdxRestrictor& rhs) const = 0;
+
+private:
+    /// @brief Table + column ref this restriction applies to. `RelationGraph` uses this to choose the query's
+    /// core table and to determine whether the table is read with or without overlap.
+    std::shared_ptr<ColumnRef const> _sourceColumnRef;
 };
 
 class SecIdxCompRestrictor : public SecIdxRestrictor {

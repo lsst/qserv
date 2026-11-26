@@ -156,6 +156,13 @@
 /// For now, Qserv does not support LEFT or RIGHT joins with near-neighbor
 /// predicates.
 ///
+/// Outer equi-joins have the same issue if the director on the null-supplying
+/// side needs overlap. For `A LEFT JOIN B`, reading B's subchunk and overlap
+/// tables in separate queries can produce "false negatives": one returns a
+/// match, but the other returns extra NULL results. Qserv therefore selects a
+/// plan where null-supplying directors need no overlap, and rejects the query
+/// if that is not possible (see Vertex::nullable).
+///
 /// Match Table Joins
 /// -----------------
 ///
@@ -284,6 +291,16 @@
 /// from V, it also identifies the table references requiring overlap (those
 /// with min(Σα) > 0). This is critical information for the query rewriting
 /// stage, described in more detail later.
+///
+/// Restrictions must cover every partition containing a matching row of the
+/// initial vertex. Qserv first tries vertices with index restrictions followed
+/// by area restrictions to make them usable for partition selection.
+///
+/// If a restricted reference needs overlap r > 0, matching rows may be located
+/// in neighboring partitions. We cover them by expanding area restrictions'
+/// region by r. Secondary index lookups that need overlap are excluded from
+/// partition selection. If no usable index or area restrictors remain, we have
+/// to fall back to a full scan.
 ///
 /// A more formal description of the algorithm is below, followed by a pair
 /// of illustrative examples.
@@ -552,6 +569,9 @@ struct Vertex {
     /// of the table referenced by `tr`. This member is used during query
     /// validation and rewriting.
     double overlap;
+    /// True if this table reference is the null-supplying side of an outer join, e.g., in `A LEFT JOIN B`, B
+    /// is null-supplying because its columns are filled with NULL when no B row matches.
+    bool nullable = false;
     /// `edges` is the set of edges incident to this vertex, implemented
     /// as a sorted vector. It will contain at most one edge to another
     /// vertex in the relation graph, and will never contain a loop.
@@ -611,9 +631,24 @@ public:
 
     /// This constructor creates a relation graph from a query.
     /// If the query is not evaluable, an exception is thrown.
-    RelationGraph(query::SelectStmt& stmt, TableInfoPool& pool);
+    RelationGraph(query::SelectStmt& stmt, TableInfoPool& pool,
+                  query::SecIdxRestrictorVecPtr restrictors = nullptr,
+                  query::AreaRestrictorVecPtr areaRestrictors = nullptr);
 
-    /// `empty` returns `true` if this graph has no vertices.
+    /// Determine which secondary index restrictors can be used for chunk selection.
+    /// References that are unresolved or need overlap are excluded.
+    /// @param restrictors Secondary index restrictors from the query
+    /// @return Secondary index restrictors for dispatch, nullptr if there are no usable restrictors
+    query::SecIdxRestrictorVecPtr makeDispatchSecIdxRestrictors(
+            query::SecIdxRestrictorVecPtr const& restrictors) const;
+
+    /// Determines which area restrictors can be used for chunk selection, each paired
+    /// with the distance to dilate its region by: the smallest overlap required by the table
+    /// references it applies to, so 0 if one of them is the core table. Restrictions whose
+    /// references can't be resolved are left out; their predicates still filter rows on the workers.
+    query::DispatchAreaVec makeDispatchAreas(query::AreaRestrictorVecPtr const& restrictors) const;
+
+    /// `empty` returns `true` if the query has no partitioned table references.
     bool empty() const { return _vertices.empty(); }
 
     /// `rewrite` rewrites the input query into a set of output queries.
@@ -645,7 +680,8 @@ private:
     void _dumpGraph() const;
 
     // Graph validation
-    bool _validate();
+    bool _validate(query::SecIdxRestrictorVecPtr const& restrictors,
+                   query::AreaRestrictorVecPtr const& areaRestrictors);
 };
 
 }  // namespace lsst::qserv::qana

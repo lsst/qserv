@@ -167,6 +167,34 @@ BOOST_AUTO_TEST_CASE(Vector) {
     v2.push_back(c5);
 
     ChunkSpecVector v1v2 = intersect(v1, v2);
+    BOOST_REQUIRE_EQUAL(v1v2.size(), 3u);
+    BOOST_CHECK_EQUAL(v1v2[0], ChunkSpec(13, {13010, 13020}));
+    BOOST_CHECK_EQUAL(v1v2[1], ChunkSpec::makeFake(14, true));
+    BOOST_CHECK_EQUAL(v1v2[2], ChunkSpec::makeFake(15, true));
+}
+
+BOOST_AUTO_TEST_CASE(IntersectPastEnd) {
+    ChunkSpecVector v1 = {ChunkSpec(10, {1}), ChunkSpec(20, {1}), ChunkSpec(30, {1})};
+    ChunkSpecVector v2 = {ChunkSpec(10, {1, 2})};
+    ChunkSpecVector v1v2 = intersect(v1, v2);
+    BOOST_REQUIRE_EQUAL(v1v2.size(), 1u);
+    BOOST_CHECK_EQUAL(v1v2[0], ChunkSpec(10, {1}));
+    BOOST_CHECK(intersect(v2, ChunkSpecVector{ChunkSpec(5, {1})}).empty());
+}
+
+BOOST_AUTO_TEST_CASE(IntersectDisjointSubChunks) {
+    ChunkSpecVector index = {ChunkSpec(10, {1, 2}), ChunkSpec(20, {5})};
+    ChunkSpecVector area = {ChunkSpec(10, {3}), ChunkSpec(20, {5, 6})};
+    ChunkSpecVector both = intersect(index, area);
+    BOOST_REQUIRE_EQUAL(both.size(), 1u);
+    BOOST_CHECK_EQUAL(both[0], ChunkSpec(20, {5}));
+    ChunkSpecVector unknown = {ChunkSpec(10, lsst::qserv::Int32Vector())};
+    ChunkSpecVector withAll = intersect(index, unknown);
+    BOOST_REQUIRE_EQUAL(withAll.size(), 1u);
+    BOOST_CHECK_EQUAL(withAll[0], ChunkSpec(10, {1, 2}));
+    withAll = intersect(unknown, index);
+    BOOST_REQUIRE_EQUAL(withAll.size(), 1u);
+    BOOST_CHECK_EQUAL(withAll[0], ChunkSpec(10, {1, 2}));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

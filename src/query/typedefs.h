@@ -54,6 +54,9 @@ class AreaRestrictor;
 typedef std::vector<std::shared_ptr<AreaRestrictor>> AreaRestrictorVec;
 typedef std::shared_ptr<AreaRestrictorVec> AreaRestrictorVecPtr;
 
+struct DispatchArea;
+typedef std::vector<DispatchArea> DispatchAreaVec;
+
 class SecIdxRestrictor;
 typedef std::vector<std::shared_ptr<SecIdxRestrictor>> SecIdxRestrictorVec;
 typedef std::shared_ptr<SecIdxRestrictorVec> SecIdxRestrictorVecPtr;
